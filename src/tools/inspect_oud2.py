@@ -9,6 +9,8 @@
 
 import argparse
 import logging
+import sys
+from io import TextIOBase
 from pathlib import Path
 
 
@@ -52,6 +54,39 @@ def detect_encoding(file_path: Path) -> str | None:
     return None
 
 
+def display_content(
+    lines: list[str],
+    output_file: TextIOBase,
+    encoding: str,
+    is_file_output: bool = False,
+) -> None:
+    """
+    ファイル内容を行番号付きで表示します。
+
+    Args:
+        lines: ファイルの行リスト
+        output_file: 出力先ファイルオブジェクト
+        encoding: 使用した文字コード
+        is_file_output: ファイル出力の場合 True（先頭にヘッダーを書く）
+    """
+    if is_file_output:
+        # ファイル出力時は文字コード情報をヘッダーとして先頭に出力
+        output_file.write(f"Encoding: {encoding}\n")
+        output_file.write("\n")
+
+    formatted_lines = [
+        f"{line_number:4d}: {line.rstrip()}"
+        for line_number, line in enumerate(lines, start=1)
+    ]
+
+    if not is_file_output:
+        # 標準出力へ表示
+        output_file.write("\n")  # 空行を挿入
+
+    for formatted_line in formatted_lines:
+        output_file.write(formatted_line + "\n")
+
+
 def main() -> None:
     """エントリーポイント。ファイルを読み込んで表示します。"""
     logger = setup_logger()
@@ -65,9 +100,17 @@ def main() -> None:
         type=Path,
         help="調査対象の.oud2ファイルパス",
     )
+    parser.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        default=None,
+        help="出力先ファイルパス（指定がない場合は標準出力へ表示）",
+    )
     args = parser.parse_args()
 
     file_path = args.file_path
+    output_path = args.output
 
     # ファイルの存在確認
     if not file_path.exists():
@@ -87,18 +130,24 @@ def main() -> None:
     # 成功した文字コードを表示
     logger.info(f"文字コード: {encoding}")
 
-    # ファイル内容を行番号付きで表示
+    # ファイル内容を読み込み
     try:
         with open(file_path, "r", encoding=encoding) as f:
             lines = f.readlines()
 
-        print()  # 空行を挿入
-        for line_number, line in enumerate(lines, start=1):
-            print(f"{line_number:4d}: {line.rstrip()}")
+        # 出力先を決定してdisplay_contentを呼び出し
+        if output_path is not None:
+            logger.info(f"出力先: {output_path}")
+            with open(output_path, "w", encoding="utf-8") as output_file:
+                display_content(lines, output_file, encoding, is_file_output=True)
+        else:
+            display_content(lines, sys.stdout, encoding, is_file_output=False)
 
     except OSError as e:
         logger.error(f"ファイル読み込みエラー: {e}")
+        return
 
 
 if __name__ == "__main__":
     main()
+
