@@ -28,7 +28,6 @@ class Train:
     number: str
     train_type: str
     stop_times: list["StopTime"] = field(default_factory=list)
-    diagram: Optional["Diagram"] = None
 
 
 @dataclass
@@ -43,7 +42,5 @@ class StopTime:
 @dataclass
 class Diagram:
     name: str
-    direction: Direction = Direction.UP
-    stations: list["Station"] = field(default_factory=list)
+    direction: Direction
     trains: list["Train"] = field(default_factory=list)
-    railway: Optional["Railway"] = None
