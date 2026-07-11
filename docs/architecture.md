@@ -3,21 +3,13 @@
 ## 入力
 
 OudiaSecond (.oud2)
-
 ↓
-
 Parser
-
 ↓
-
 Railway Model
-
 ↓
-
 Excel Writer
-
 ↓
-
 Excel (.xlsx)
 
 ## レイヤー
