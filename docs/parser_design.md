@@ -58,3 +58,29 @@ Domain Modelを構築する
 - Key=Value解析
 - Domain Model生成
 
+## シーケンス図
+Caller
+  │
+  ▼
+read_file()
+  │
+  ▼
+SourceFile
+  │
+  ▼
+tokenize()
+  │
+  ▼
+Token[]
+  │
+  ▼
+parse()
+  │
+  ▼
+Railway
+  │
+  ▼
+validate()
+  │
+  ▼
+Complete
