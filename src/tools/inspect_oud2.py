@@ -14,7 +14,7 @@ from io import TextIOBase
 from pathlib import Path
 
 
-ENCODINGS = ["utf-8", "utf-8-sig", "shift_jis", "cp932"]
+ENCODINGS = ["utf-8-sig", "utf-8", "shift_jis", "cp932"]
 
 
 def setup_logger() -> logging.Logger:
