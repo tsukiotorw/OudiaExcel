@@ -57,6 +57,7 @@ Domain Modelを構築する
 - Section抽出
 - Key=Value解析
 - Domain Model生成
+---
 
 ## シーケンス図
 Caller
@@ -84,3 +85,4 @@ validate()
   │
   ▼
 Complete
+---
