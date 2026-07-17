@@ -1,0 +1,25 @@
+sample.oud2
+        │
+        ▼
+Reader
+        │
+        ▼
+SourceFile
+        │
+        ▼
+Tokenizer
+        │
+        ▼
+Token[]
+        │
+        ▼
+SectionBuilder
+        │
+        ▼
+SectionNode
+        │
+        ▼
+Parser
+        │
+        ▼
+Railway
