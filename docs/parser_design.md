@@ -1,88 +1,56 @@
-# Parser Design
+# Parser設計
 
 ## 目的
 
-Parserを作る前に .oud2 ファイルの構造を調査する。
-本ツールはParserではなく、調査用ツールである。
+SectionBuilder が生成した SectionNode ツリーを解析し、
+OudiaSecond のドメインモデルへ変換する。
+
+Parser は OudiaSecond の仕様を知る唯一の層であり、
+SectionNode の内容を Railway / Diagram / Train / Station / StopTime
+へ変換する責務を持つ。
+
+意味的な整合性チェックは Validator が担当する。
 
 ---
 
-## inspect_oud2.py の責務
+## 入力
 
-- CLIからファイルを受け取る
-- 文字コードを判定する
-- 行番号付きで内容を表示する
-
-Parserは呼ばない。
+SectionNode
 
 ---
 
-## 非機能要件
+## 出力
 
-- Python 3.13
-- argparse
-- pathlib
-- logging
-- 型ヒント
-- PEP8
-
----
-
-## 対応文字コード
-
-優先順位
-
-1. UTF-8 BOM
-2. UTF-8
-3. CP932
-
----
-
-## Parserとの違い
-
-inspect_oud2.py
-
-目的：
-ファイルを観察する
-
-Parser
-
-目的：
-Domain Modelを構築する
-
----
-
-## 今後追加予定
-
-- Section抽出
-- Key=Value解析
-- Domain Model生成
----
-
-## シーケンス図
-Caller
-  │
-  ▼
-read_file()
-  │
-  ▼
-SourceFile
-  │
-  ▼
-tokenize()
-  │
-  ▼
-Token[]
-  │
-  ▼
-parse()
-  │
-  ▼
 Railway
-  │
-  ▼
-validate()
-  │
-  ▼
-Complete
+
 ---
+
+## 責務
+
+- Railway を生成する
+- Station を生成する
+- Diagram を生成する
+- Train を生成する
+- StopTime を生成する
+
+---
+
+## 行わないこと
+
+- ファイル読み込み
+- 文字コード判定
+- Token生成
+- Section構造生成
+- 意味チェック
+
+---
+
+## エラー
+
+ParserError
+
+例)
+
+- 必須キーが存在しない
+- 不明なSection
+- 不明なキー
