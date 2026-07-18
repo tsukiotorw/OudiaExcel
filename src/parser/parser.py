@@ -5,6 +5,7 @@ from src.models.railway import (
     Direction,
     Railway,
     Station,
+    Train,
 )
 from src.parser.section import SectionNode
 
@@ -105,20 +106,30 @@ class Parser:
         for child in section.children:
             match child.name:
                 case "Kudari":
-                    diagrams.append(
-                        Diagram(
-                            name=name,
-                            direction=Direction.DOWN,
-                        )
+                    diagram = Diagram(
+                        name=name,
+                        direction=Direction.DOWN,
                     )
 
-                case "Nobori":
-                    diagrams.append(
-                        Diagram(
-                            name=name,
-                            direction=Direction.UP,
-                        )
+                    self._parse_direction(
+                        child,
+                        diagram,
                     )
+
+                    diagrams.append(diagram)
+
+                case "Nobori":
+                    diagram = Diagram(
+                        name=name,
+                        direction=Direction.UP,
+                    )
+
+                    self._parse_direction(
+                        child,
+                        diagram,
+                    )
+
+                    diagrams.append(diagram)
 
                 case _:
                     raise ParserError(
@@ -127,6 +138,46 @@ class Parser:
 
         return diagrams
 
+    def _parse_direction(
+        self,
+        section: SectionNode,
+        diagram: Diagram,
+    ) -> None:
+        """
+        Kudari/Noboriセクションを解析する。
+        """
+
+        for child in section.children:
+
+            match child.name:
+
+                case "Ressya":
+                    diagram.trains.append(
+                        self._parse_train(child)
+                    )
+
+                case _:
+                    raise ParserError(
+                        f"{child.line_number}行目: "
+                        f"未対応のSection '{child.name}'"
+                    )
+
+    def _parse_train(
+        self,
+        section: SectionNode,
+    ) -> Train:
+        """
+        Ressyaセクションを解析しTrainを生成する。
+        """
+
+        return Train(
+            number="",
+            train_type=self._get_required_value(
+                section,
+                "Syubetsu",
+            ),
+            stop_times=[],
+        )
 
     def _get_required_value(
         self,
