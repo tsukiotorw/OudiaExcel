@@ -144,3 +144,19 @@ def test_detect_pass_record_without_time() -> None:
         TimeParser._detect_record_type("2$1")
         is RecordType.TIME
     )
+
+def test_parse_track_index() -> None:
+    """
+    track_index を解析できること。
+    """
+
+    stations = [
+        create_station(0, "東京"),
+    ]
+
+    stop_times = parse_stop_times(
+        "1;503/504$2",
+        stations,
+    )
+
+    assert stop_times[0].track_index == 2
