@@ -6,6 +6,7 @@ from src.models.railway import (
     Railway,
     Station,
     Train,
+    Operation,
 )
 from src.parser.section import SectionNode
 from src.parser.time_parser import parse_stop_times
@@ -198,6 +199,14 @@ class Parser:
                     train.stop_times = parse_stop_times(
                         token.value,
                         self._stations,
+                    )
+                    
+                case key if key.startswith("Operation"):
+                    train.operations.append(
+                        Operation(
+                            name=token.key,
+                            value=token.value,
+                        )
                     )
 
         if not train.train_type:

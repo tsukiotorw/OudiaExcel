@@ -28,6 +28,7 @@ class Train:
     number: str
     train_type: str
     stop_times: list["StopTime"] = field(default_factory=list)
+    operations: list[Operation] = field(default_factory=list)
 
 
 @dataclass
@@ -45,3 +46,13 @@ class Diagram:
     name: str
     direction: Direction
     trains: list["Train"] = field(default_factory=list)
+
+
+@dataclass
+class Operation:
+    """
+    OudiaSecond の OperationXX レコード。
+    """
+
+    name: str
+    value: str

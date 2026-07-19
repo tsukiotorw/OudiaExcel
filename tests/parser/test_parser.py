@@ -200,6 +200,12 @@ def test_parse_train() -> None:
                                         key="EkiJikoku",
                                         value="1;500$0",
                                     ),
+                                    KeyValueToken(
+                                        line_number=9,
+                                        raw_line="Operation14B=5/$",
+                                        key="Operation14B",
+                                        value="5/$",
+                                    ),
                                 ],
                             )
                         ],
@@ -231,3 +237,11 @@ def test_parse_train() -> None:
     assert stop_time.arrival_time is None
     assert stop_time.is_pass is False
     assert stop_time.track_index == 0
+
+    assert len(train.operations) == 1
+
+    operation = train.operations[0]
+
+    assert operation.name == "Operation14B"
+    assert operation.value == "5/$"
+
