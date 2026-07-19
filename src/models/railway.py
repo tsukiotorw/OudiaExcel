@@ -32,11 +32,12 @@ class Train:
 
 @dataclass
 class StopTime:
-    station: "Station"
+    station: Station
     order: int
-    arrival_time: Optional[str] = None
-    departure_time: Optional[str] = None
-    is_pass: bool = False
+    arrival_time: Optional[str]
+    departure_time: Optional[str]
+    is_pass: bool
+    track_index: int | None
 
 
 @dataclass

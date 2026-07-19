@@ -75,11 +75,7 @@ def _parse_record(
                 arrival_time=arrival_time,
                 departure_time=departure_time,
                 is_pass=False,
-            )
-
-        case RecordType.FLAG_ONLY:
-            raise TimeParserError(
-                f"未対応のレコード形式: {record}"
+                track_index=int(_track) if _track else None,
             )
 
 
