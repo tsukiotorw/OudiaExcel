@@ -160,3 +160,23 @@ def test_parse_track_index() -> None:
     )
 
     assert stop_times[0].track_index == 2
+
+def test_parse_pass_record() -> None:
+    """
+    通過レコードを解析できること。
+    """
+
+    stations = [
+        create_station(0, "東京"),
+    ]
+
+    stop_times = parse_stop_times(
+        "2;551$1",
+        stations,
+    )
+
+    assert stop_times[0].is_pass is True
+    assert stop_times[0].arrival_time == "551"
+    assert stop_times[0].departure_time is None
+    assert stop_times[0].track_index == 1
+

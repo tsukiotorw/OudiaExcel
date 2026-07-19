@@ -65,16 +65,22 @@ def _parse_record(
         case RecordType.TIME:
             stop_flag, time_info = record.split(";", maxsplit=1)
 
+            is_pass = (stop_flag == "2")
+
             time_value, _track = time_info.split("$", maxsplit=1)
 
             arrival_time, departure_time = _parse_time(time_value)
+
+            if is_pass and arrival_time is None:
+                arrival_time = departure_time
+                departure_time = None
 
             return StopTime(
                 station=station,
                 order=order,
                 arrival_time=arrival_time,
                 departure_time=departure_time,
-                is_pass=False,
+                is_pass=is_pass,
                 track_index=int(_track) if _track else None,
             )
 
