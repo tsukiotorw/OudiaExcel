@@ -5,7 +5,14 @@ from src.models.railway import (
     Station,
     StopTime,
 )
-from src.parser.time_parser import parse_stop_times
+from src.parser.time_parser import (
+    parse_stop_times,
+    RecordType,
+    TimeParser,
+)
+
+
+
 
 def create_station(
     index: int = 0,
@@ -104,3 +111,38 @@ def test_parse_origin_station() -> None:
     assert stop.arrival_time is None
     assert stop.departure_time == "430"
 
+
+def test_detect_empty_record() -> None:
+    """
+    空レコードを判定できること。
+    """
+
+    parser = TimeParser()
+
+    assert parser._detect_record_type("") is RecordType.EMPTY
+
+
+def test_detect_normal_record() -> None:
+    """
+    通常レコードを判定できること。
+    """
+
+    parser = TimeParser()
+
+    assert (
+        parser._detect_record_type("1;500$0")
+        is RecordType.NORMAL
+    )
+
+
+def test_detect_flag_only_record() -> None:
+    """
+    フラグのみレコードを判定できること。
+    """
+
+    parser = TimeParser()
+
+    assert (
+        parser._detect_record_type("2$1")
+        is RecordType.FLAG_ONLY
+    )

@@ -3,6 +3,15 @@ from src.models.railway import (
     StopTime,
 )
 
+from enum import StrEnum
+
+class RecordType(StrEnum):
+    """EkiJikokuレコードの種類。"""
+
+    EMPTY = "empty"
+    NORMAL = "normal"
+    FLAG_ONLY = "flag_only"
+
 
 def parse_stop_times(
     value: str,
@@ -37,6 +46,7 @@ def parse_stop_times(
     ]
 
 
+@staticmethod
 def _parse_record(
     record: str,
     station: Station,
@@ -45,21 +55,37 @@ def _parse_record(
     """
     駅ごとの時刻情報を解析してStopTimeを生成する。
     """
-    stop_flag, time_info = record.split(";", maxsplit=1)
+    record_type = TimeParser._detect_record_type(record)
 
-    time_value, _track = time_info.split("$", maxsplit=1)
+    match record_type:
 
-    arrival_time, departure_time = _parse_time(time_value)
+        case RecordType.EMPTY:
+            raise TimeParserError(
+                f"未対応のレコード形式: {record}"
+            )
 
-    return StopTime(
-        station=station,
-        order=order,
-        arrival_time=arrival_time,
-        departure_time=departure_time,
-        is_pass=False,
-    )
+        case RecordType.NORMAL:
+            stop_flag, time_info = record.split(";", maxsplit=1)
+
+            time_value, _track = time_info.split("$", maxsplit=1)
+
+            arrival_time, departure_time = _parse_time(time_value)
+
+            return StopTime(
+                station=station,
+                order=order,
+                arrival_time=arrival_time,
+                departure_time=departure_time,
+                is_pass=False,
+            )
+
+        case RecordType.FLAG_ONLY:
+            raise TimeParserError(
+                f"未対応のレコード形式: {record}"
+            )
 
 
+@staticmethod
 def _parse_time(
     value: str,
 ) -> tuple[str | None, str | None]:
@@ -75,3 +101,32 @@ def _parse_time(
         )
 
     return (None, value)
+
+
+class TimeParser:
+    """
+    後方互換のためのクラスラッパー。
+    実処理はモジュールレベルの関数に委譲する。
+    """
+
+    @staticmethod
+    def _detect_record_type(
+        record: str,
+    ) -> RecordType:
+        """
+        レコード種別を判定する。
+        """
+
+        if record == "":
+            return RecordType.EMPTY
+
+        if ";" not in record:
+            return RecordType.FLAG_ONLY
+
+        return RecordType.NORMAL
+
+
+class TimeParserError(Exception):
+    """TimeParser層の例外"""
+
+    pass
