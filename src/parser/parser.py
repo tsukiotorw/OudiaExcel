@@ -8,6 +8,7 @@ from src.models.railway import (
     Train,
 )
 from src.parser.section import SectionNode
+from src.parser.time_parser import parse_stop_times
 
 
 class ParserError(Exception):
@@ -21,10 +22,15 @@ class Parser:
     SectionNodeをドメインモデルへ変換する。
     """
 
+    def __init__(self) -> None:
+        self._stations: list[Station] = []
+
+
     def parse(self, root: SectionNode) -> Railway:
         """
         SectionNodeからRailwayを生成する。
         """
+        self._stations = []
 
         if root.name != "Rosen":
             raise ParserError(
@@ -49,6 +55,7 @@ class Parser:
                     railway.stations.append(
                         self._parse_station(child, index)
                     )
+                    self._stations = railway.stations
 
                 case "Dia":
                     railway.diagrams.extend(
@@ -138,6 +145,7 @@ class Parser:
 
         return diagrams
 
+
     def _parse_direction(
         self,
         section: SectionNode,
@@ -162,6 +170,7 @@ class Parser:
                         f"未対応のSection '{child.name}'"
                     )
 
+
     def _parse_train(
         self,
         section: SectionNode,
@@ -169,8 +178,7 @@ class Parser:
         """
         Ressyaセクションを解析しTrainを生成する。
         """
-
-        return Train(
+        train = Train(
             number="",
             train_type=self._get_required_value(
                 section,
@@ -178,6 +186,27 @@ class Parser:
             ),
             stop_times=[],
         )
+
+        for token in section.key_values:
+
+            match token.key:
+
+                case "Syubetsu":
+                    pass
+
+                case "EkiJikoku":
+                    train.stop_times = parse_stop_times(
+                        token.value,
+                        self._stations,
+                    )
+
+        if not train.train_type:
+            raise ParserError(
+                f"{section.line_number}行目: 必須キー 'Syubetsu' が見つかりません。"
+            )
+
+        return train
+
 
     def _get_required_value(
         self,

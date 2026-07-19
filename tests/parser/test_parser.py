@@ -158,6 +158,18 @@ def test_parse_train() -> None:
         children=[
             SectionNode(
                 line_number=3,
+                name="Eki",
+                key_values=[
+                    KeyValueToken(
+                        line_number=4,
+                        raw_line="Ekimei=東京",
+                        key="Ekimei",
+                        value="東京",
+                    )
+                ],
+            ),
+            SectionNode(
+                line_number=3,
                 name="Dia",
                 key_values=[
                     KeyValueToken(
@@ -181,7 +193,13 @@ def test_parse_train() -> None:
                                         raw_line="Syubetsu=0",
                                         key="Syubetsu",
                                         value="0",
-                                    )
+                                    ),
+                                    KeyValueToken(
+                                        line_number=8,
+                                        raw_line="EkiJikoku=1;500$0",
+                                        key="EkiJikoku",
+                                        value="1;500$0",
+                                    ),
                                 ],
                             )
                         ],
@@ -202,3 +220,14 @@ def test_parse_train() -> None:
     train = diagram.trains[0]
 
     assert train.train_type == "0"
+
+    assert len(train.stop_times) == 1
+
+    stop_time = train.stop_times[0]
+
+    assert stop_time.station.name == "東京"
+    assert stop_time.order == 0
+    assert stop_time.departure_time == "500"
+    assert stop_time.arrival_time is None
+    assert stop_time.is_pass is False
+    assert stop_time.track_index == 0

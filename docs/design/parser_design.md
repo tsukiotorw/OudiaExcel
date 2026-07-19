@@ -54,3 +54,17 @@ ParserError
 - 必須キーが存在しない
 - 不明なSection
 - 不明なキー
+
+
+## TimeParserの構造
+TimeParser
+
+parse_stop_times()
+    ↓
+TimeParser.parse()
+    ↓
+_parse_record()
+    ↓
+_parse_time_record()
+    ↓
+_parse_time()

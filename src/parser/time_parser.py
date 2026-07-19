@@ -35,14 +35,13 @@ def parse_stop_times(
     records = value.split(",")
 
     return [
-        TimeParser._parse_record(
+        TimeParser.parse(
             record,
             stations[order],
             order,
         )
         for order, record in enumerate(records)
     ]
-
 
 class TimeParser:
 
@@ -95,39 +94,57 @@ class TimeParser:
                 )
 
             case RecordType.TIME:
-                if ";" in record :
+                return TimeParser._parse_time_record(
+                    record=record,
+                    station=station,
+                    order=order,
+                )
 
-                    stop_flag, time_info = record.split(";", maxsplit=1)
 
-                    is_pass = (stop_flag == "2")
+    @staticmethod
+    def _parse_time_record(
+        record: str,
+        station: Station,
+        order: int,
+    ) -> StopTime:
+        """
+        TIME レコードを解析して StopTime を生成する。
+        """
+        if ";" in record :
 
-                    time_value, track = time_info.split("$", maxsplit=1)
+            stop_flag, time_info = record.split(";", maxsplit=1)
 
-                    arrival_time, departure_time = TimeParser._parse_time(time_value)
+            is_pass = (stop_flag == "2")
 
-                    if is_pass and arrival_time is None:
-                        arrival_time = departure_time
-                        departure_time = None
+            time_value, track = time_info.split("$", maxsplit=1)
 
-                    return StopTime(
-                        station=station,
-                        order=order,
-                        arrival_time=arrival_time,
-                        departure_time=departure_time,
-                        is_pass=is_pass,
-                        track_index=int(track) if track else None,
-                    )
-                else :
-                    stop_flag, track = record.split("$", maxsplit=1)
+            arrival_time, departure_time = TimeParser._parse_time(time_value)
 
-                    return StopTime(
-                        station=station,
-                        order=order,
-                        arrival_time=None,
-                        departure_time=None,
-                        is_pass=True,
-                        track_index=int(track)
-                    )
+            if is_pass and arrival_time is None:
+
+                arrival_time = departure_time
+                departure_time = None
+
+            return StopTime(
+                station=station,
+                order=order,
+                arrival_time=arrival_time,
+                departure_time=departure_time,
+                is_pass=is_pass,
+                track_index=int(track) if track else None,
+            )
+
+        else :
+            stop_flag, track = record.split("$", maxsplit=1)
+
+            return StopTime(
+                station=station,
+                order=order,
+                arrival_time=None,
+                departure_time=None,
+                is_pass=True,
+                track_index=int(track)
+            )
 
 
     @staticmethod

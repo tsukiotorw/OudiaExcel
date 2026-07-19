@@ -192,7 +192,7 @@ def test_parse_pass_record_without_time() -> None:
 
     stop_time = TimeParser.parse(
         record="2$1",
-        station=stations,
+        station=stations[0],
         order=0,
     )
 
