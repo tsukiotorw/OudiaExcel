@@ -7,10 +7,8 @@ from enum import StrEnum
 
 class RecordType(StrEnum):
     """EkiJikokuレコードの種類。"""
-
     EMPTY = "empty"
-    NORMAL = "normal"
-    FLAG_ONLY = "flag_only"
+    TIME = "time"
 
 
 def parse_stop_times(
@@ -64,7 +62,7 @@ def _parse_record(
                 f"未対応のレコード形式: {record}"
             )
 
-        case RecordType.NORMAL:
+        case RecordType.TIME:
             stop_flag, time_info = record.split(";", maxsplit=1)
 
             time_value, _track = time_info.split("$", maxsplit=1)
@@ -120,10 +118,7 @@ class TimeParser:
         if record == "":
             return RecordType.EMPTY
 
-        if ";" not in record:
-            return RecordType.FLAG_ONLY
-
-        return RecordType.NORMAL
+        return RecordType.TIME
 
 
 class TimeParserError(Exception):

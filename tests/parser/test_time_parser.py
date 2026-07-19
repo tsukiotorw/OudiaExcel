@@ -131,18 +131,16 @@ def test_detect_normal_record() -> None:
 
     assert (
         parser._detect_record_type("1;500$0")
-        is RecordType.NORMAL
+        is RecordType.TIME
     )
 
 
-def test_detect_flag_only_record() -> None:
+def test_detect_pass_record_without_time() -> None:
     """
-    フラグのみレコードを判定できること。
+    通過時刻なしレコードも TIME と判定できること。
     """
-
-    parser = TimeParser()
 
     assert (
-        parser._detect_record_type("2$1")
-        is RecordType.FLAG_ONLY
+        TimeParser._detect_record_type("2$1")
+        is RecordType.TIME
     )
