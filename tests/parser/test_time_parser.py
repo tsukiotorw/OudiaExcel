@@ -180,3 +180,24 @@ def test_parse_pass_record() -> None:
     assert stop_times[0].departure_time is None
     assert stop_times[0].track_index == 1
 
+
+def test_parse_pass_record_without_time() -> None:
+    """
+    通過時刻なしレコードを解析できること。
+    """
+
+    stations = [
+        create_station(0, "東京"),
+    ]
+
+    stop_time = TimeParser.parse(
+        record="2$1",
+        station=stations,
+        order=0,
+    )
+
+    assert stop_time.is_pass is True
+    assert stop_time.arrival_time is None
+    assert stop_time.departure_time is None
+    assert stop_time.track_index == 1
+

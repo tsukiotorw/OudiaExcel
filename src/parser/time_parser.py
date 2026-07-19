@@ -35,7 +35,7 @@ def parse_stop_times(
     records = value.split(",")
 
     return [
-        _parse_record(
+        TimeParser._parse_record(
             record,
             stations[order],
             order,
@@ -44,70 +44,23 @@ def parse_stop_times(
     ]
 
 
-@staticmethod
-def _parse_record(
-    record: str,
-    station: Station,
-    order: int,
-) -> StopTime:
-    """
-    駅ごとの時刻情報を解析してStopTimeを生成する。
-    """
-    record_type = TimeParser._detect_record_type(record)
+class TimeParser:
 
-    match record_type:
-
-        case RecordType.EMPTY:
-            raise TimeParserError(
-                f"未対応のレコード形式: {record}"
-            )
-
-        case RecordType.TIME:
-            stop_flag, time_info = record.split(";", maxsplit=1)
-
-            is_pass = (stop_flag == "2")
-
-            time_value, _track = time_info.split("$", maxsplit=1)
-
-            arrival_time, departure_time = _parse_time(time_value)
-
-            if is_pass and arrival_time is None:
-                arrival_time = departure_time
-                departure_time = None
-
-            return StopTime(
-                station=station,
-                order=order,
-                arrival_time=arrival_time,
-                departure_time=departure_time,
-                is_pass=is_pass,
-                track_index=int(_track) if _track else None,
-            )
-
-
-@staticmethod
-def _parse_time(
-    value: str,
-) -> tuple[str | None, str | None]:
-    """
-    OudiaSecondの時刻表現を
-    (着時刻, 発時刻)へ変換する。
-    """
-    if "/" in value:
-        arrival, departure = value.split("/", maxsplit=1)
-        return (
-            arrival or None,
-            departure or None,
+    @staticmethod
+    def parse(
+        record: str,
+        station: Station,
+        order: int,
+    ) -> StopTime:
+        """
+        EkiJikoku の1レコードを解析する。
+        """
+        return TimeParser._parse_record(
+            record=record,
+            station=station,
+            order=order,
         )
 
-    return (None, value)
-
-
-class TimeParser:
-    """
-    後方互換のためのクラスラッパー。
-    実処理はモジュールレベルの関数に委譲する。
-    """
 
     @staticmethod
     def _detect_record_type(
@@ -121,6 +74,78 @@ class TimeParser:
             return RecordType.EMPTY
 
         return RecordType.TIME
+
+
+    @staticmethod
+    def _parse_record(
+        record: str,
+        station: Station,
+        order: int,
+    ) -> StopTime:
+        """
+        駅ごとの時刻情報を解析してStopTimeを生成する。
+        """
+        record_type = TimeParser._detect_record_type(record)
+
+        match record_type:
+
+            case RecordType.EMPTY:
+                raise TimeParserError(
+                    f"未対応のレコード形式: {record}"
+                )
+
+            case RecordType.TIME:
+                if ";" in record :
+
+                    stop_flag, time_info = record.split(";", maxsplit=1)
+
+                    is_pass = (stop_flag == "2")
+
+                    time_value, track = time_info.split("$", maxsplit=1)
+
+                    arrival_time, departure_time = TimeParser._parse_time(time_value)
+
+                    if is_pass and arrival_time is None:
+                        arrival_time = departure_time
+                        departure_time = None
+
+                    return StopTime(
+                        station=station,
+                        order=order,
+                        arrival_time=arrival_time,
+                        departure_time=departure_time,
+                        is_pass=is_pass,
+                        track_index=int(track) if track else None,
+                    )
+                else :
+                    stop_flag, track = record.split("$", maxsplit=1)
+
+                    return StopTime(
+                        station=station,
+                        order=order,
+                        arrival_time=None,
+                        departure_time=None,
+                        is_pass=True,
+                        track_index=int(track)
+                    )
+
+
+    @staticmethod
+    def _parse_time(
+        value: str,
+    ) -> tuple[str | None, str | None]:
+        """
+        OudiaSecondの時刻表現を
+        (着時刻, 発時刻)へ変換する。
+        """
+        if "/" in value:
+            arrival, departure = value.split("/", maxsplit=1)
+            return (
+                arrival or None,
+                departure or None,
+            )
+
+        return (None, value)
 
 
 class TimeParserError(Exception):
