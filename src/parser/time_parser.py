@@ -1,7 +1,6 @@
-from src.models.railway import (
-    Station,
-    StopTime,
-)
+from src.models.station import Station
+from src.models.stop_time import StopTime
+
 
 from enum import StrEnum
 

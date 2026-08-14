@@ -6,7 +6,6 @@ from src.models.diagram import Diagram
 from src.models.train import Train
 from src.models.train_type import TrainType
 from src.models.operation import Operation
-from src.models.stop_time import StopTime
 
 from src.parser.section import SectionNode
 from src.parser.time_parser import parse_stop_times
@@ -50,6 +49,8 @@ class Parser:
             name=self._get_required_value(section, "Name"),
         )
 
+        self._stations = railway.stations
+
         for index, child in enumerate(section.children):
             match child.name:
 
@@ -58,9 +59,12 @@ class Parser:
                         self._parse_station(child, index)
                     )
 
-                case "TrainType":
+                case "Ressyasyubetsu":
                     railway.train_types.append(
-                        self._parse_train_type(child, len(railway.train_types))
+                        self._parse_train_type(
+                            child,
+                            len(railway.train_types),
+                        )
                     )
 
                 case "Dia":
@@ -73,8 +77,6 @@ class Parser:
                         f"{child.line_number}行目: "
                         f"未対応のSection '{child.name}'"
                     )
-
-        self._stations = railway.stations
 
         return railway
 
@@ -188,7 +190,16 @@ class Parser:
         """
         Ressyaセクションを解析しTrainを生成する。
         """
-        train = Train()
+        train = Train(
+            number="",
+            train_type_index=int(
+                self._get_required_value(
+                    section,
+                    "Syubetsu",
+                )
+            ),
+            stop_times=[],
+        )
 
         for token in section.key_values:
 
@@ -214,11 +225,6 @@ class Parser:
                         )
                     )
 
-        if not train.train_type:
-            raise ParserError(
-                f"{section.line_number}行目: 必須キー 'Syubetsu' が見つかりません。"
-            )
-
         return train
 
 
@@ -233,7 +239,10 @@ class Parser:
 
         return TrainType(
             index=index,
-            name=self._get_required_value(section, "Syubetsumei"),
+            name=self._get_required_value(
+                section, 
+                "Syubetsumei"
+            ),
             short_name=self._get_optional_value(
                 section,
                 "Ryaku",

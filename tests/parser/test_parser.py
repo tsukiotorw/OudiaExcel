@@ -1,13 +1,13 @@
 """
 Parserのテスト
 """
+from src.models.railway import Railway, Direction
+from src.models.station import Station
+from src.models.diagram import Diagram
+from src.models.train import Train
+from src.models.train_type import TrainType
+from src.models.operation import Operation
 
-from src.models.railway import (
-    Diagram,
-    Direction,
-    Railway,
-    Station,
-)
 from src.parser.parser import Parser
 from src.parser.section import SectionNode
 from src.parser.tokens import KeyValueToken
@@ -225,7 +225,7 @@ def test_parse_train() -> None:
 
     train = diagram.trains[0]
 
-    assert train.train_type == "0"
+    assert train.train_type_index == 0
 
     assert len(train.stop_times) == 1
 

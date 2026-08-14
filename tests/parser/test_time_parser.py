@@ -1,10 +1,11 @@
 """
 Time Parserのテスト
+
+
 """
-from src.models.railway import (
-    Station,
-    StopTime,
-)
+
+from src.models.station import Station
+
 from src.parser.time_parser import (
     parse_stop_times,
     RecordType,
