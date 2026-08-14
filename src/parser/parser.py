@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from src.models.railway import (
-    Diagram,
-    Direction,
-    Railway,
-    Station,
-    Train,
-    Operation,
-)
+from src.models.railway import Railway, Direction
+from src.models.station import Station
+from src.models.diagram import Diagram
+from src.models.train import Train
+from src.models.train_type import TrainType
+from src.models.operation import Operation
+from src.models.stop_time import StopTime
+
 from src.parser.section import SectionNode
 from src.parser.time_parser import parse_stop_times
 
@@ -43,20 +43,25 @@ class Parser:
 
     def _parse_railway(self, section: SectionNode) -> Railway:
         """
-        Railwayを生成する。
+        Rosen SectionからRailwayを生成する。
         """
 
         railway = Railway(
-            name = self._get_required_value(section, "Name"),
+            name=self._get_required_value(section, "Name"),
         )
 
         for index, child in enumerate(section.children):
             match child.name:
+
                 case "Eki":
                     railway.stations.append(
                         self._parse_station(child, index)
                     )
-                    self._stations = railway.stations
+
+                case "TrainType":
+                    railway.train_types.append(
+                        self._parse_train_type(child, len(railway.train_types))
+                    )
 
                 case "Dia":
                     railway.diagrams.extend(
@@ -65,10 +70,14 @@ class Parser:
 
                 case _:
                     raise ParserError(
-                        f"{child.line_number}行目: 未対応のSection '{child.name}'"
-            )
+                        f"{child.line_number}行目: "
+                        f"未対応のSection '{child.name}'"
+                    )
+
+        self._stations = railway.stations
 
         return railway
+
 
     def _parse_station(
         self,
@@ -179,21 +188,17 @@ class Parser:
         """
         Ressyaセクションを解析しTrainを生成する。
         """
-        train = Train(
-            number="",
-            train_type=self._get_required_value(
-                section,
-                "Syubetsu",
-            ),
-            stop_times=[],
-        )
+        train = Train()
 
         for token in section.key_values:
 
             match token.key:
 
+                case "Ressyabangou":
+                    train.number = token.value
+
                 case "Syubetsu":
-                    pass
+                    train.train_type_index = int(token.value)
 
                 case "EkiJikoku":
                     train.stop_times = parse_stop_times(
@@ -215,6 +220,25 @@ class Parser:
             )
 
         return train
+
+
+    def _parse_train_type(
+        self,
+        section: SectionNode,
+        index: int,
+    ) -> TrainType:
+        """
+        TrainType SectionからTrainTypeを生成する。
+        """
+
+        return TrainType(
+            index=index,
+            name=self._get_required_value(section, "Syubetsumei"),
+            short_name=self._get_optional_value(
+                section,
+                "Ryaku",
+            ) or "",
+        )
 
 
     def _get_required_value(
