@@ -245,3 +245,61 @@ def test_parse_train() -> None:
     assert operation.name == "Operation14B"
     assert operation.value == "5/$"
 
+
+def test_parse_train_types():
+    root = SectionNode(
+        line_number=1,
+        name="Rosen",
+        key_values=[
+            KeyValueToken(
+                line_number=2,
+                raw_line="Name=中央線",
+                key="Name",
+                value="中央線",
+            )
+        ],
+        children=[
+            SectionNode(
+                line_number=3,
+                name="Eki",
+                key_values=[
+                    KeyValueToken(
+                        line_number=4,
+                        raw_line="Ekimei=東京",
+                        key="Ekimei",
+                        value="東京",
+                    )
+                ],
+            ),
+            SectionNode(
+                line_number=4,
+                name="Ressyasyubetsu",
+                key_values=[
+                    KeyValueToken(
+                        line_number=5,
+                        raw_line="Syubetsumei=貨物",
+                        key="Syubetsumei",
+                        value="貨物",
+                    ),
+                    KeyValueToken(
+                        line_number=6,
+                        raw_line="Ryakusyou=貨",
+                        key="Ryakusyou",
+                        value="貨",
+                    )
+                ]
+            )
+        ],
+    )
+
+    parser = Parser()
+
+    railway = parser.parse(root)
+
+    assert len(railway.train_types) == 1
+
+    train_type = railway.train_types[0]
+
+    assert train_type.index == 0
+    assert train_type.name == "貨物"
+    assert train_type.short_name == "貨"

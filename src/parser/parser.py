@@ -245,7 +245,7 @@ class Parser:
             ),
             short_name=self._get_optional_value(
                 section,
-                "Ryaku",
+                "Ryakusyou",
             ) or "",
         )
 
