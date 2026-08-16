@@ -202,3 +202,43 @@ def test_parse_pass_record_without_time() -> None:
     assert stop_time.departure_time is None
     assert stop_time.track_index == 1
 
+
+def test_parse_empty_record():
+    station = Station(index=0, name="東京")
+
+    result = TimeParser.parse(
+        "",
+        station,
+        0,
+    )
+
+    assert result.station == station
+    assert result.order == 0
+    assert result.arrival_time is None
+    assert result.departure_time is None
+    assert result.is_pass is False
+    assert result.track_index is None
+
+
+def test_parse_empty_records_are_preserved():
+    stations = [
+        Station(index=0, name="A"),
+        Station(index=1, name="B"),
+        Station(index=2, name="C"),
+    ]
+
+    result = parse_stop_times(
+        ",,1;100$1",
+        stations,
+    )
+
+    assert len(result) == 3
+
+    assert result[0].station.name == "A"
+    assert result[0].arrival_time is None
+
+    assert result[1].station.name == "B"
+    assert result[1].arrival_time is None
+
+    assert result[2].station.name == "C"
+    assert result[2].departure_time == "100"

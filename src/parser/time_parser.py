@@ -88,8 +88,13 @@ class TimeParser:
         match record_type:
 
             case RecordType.EMPTY:
-                raise TimeParserError(
-                    f"未対応のレコード形式: {record}"
+                return StopTime(
+                    station=station,
+                    order=order,
+                    arrival_time=None,
+                    departure_time=None,
+                    is_pass=False,
+                    track_index=None,
                 )
 
             case RecordType.TIME:
@@ -97,6 +102,11 @@ class TimeParser:
                     record=record,
                     station=station,
                     order=order,
+                )
+
+            case _:
+                raise TimeParserError(
+                    f"未対応のレコード形式: {record}"
                 )
 
 

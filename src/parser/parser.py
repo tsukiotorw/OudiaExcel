@@ -5,7 +5,8 @@ from src.models.station import Station
 from src.models.diagram import Diagram
 from src.models.train import Train
 from src.models.train_type import TrainType
-from src.models.operation import Operation
+from src.models.operation import OperationRecord
+from src.parser.operation_parser import OperationParser
 
 from src.parser.section import SectionNode
 from src.parser.time_parser import parse_stop_times
@@ -201,6 +202,8 @@ class Parser:
             stop_times=[],
         )
 
+        operation_tokens: list[tuple[str, str]] = []
+
         for token in section.key_values:
 
             match token.key:
@@ -218,12 +221,9 @@ class Parser:
                     )
                     
                 case key if key.startswith("Operation"):
-                    train.operations.append(
-                        Operation(
-                            name=token.key,
-                            value=token.value,
-                        )
-                    )
+                    operation_tokens.append((token.key, token.value))
+
+        train.operations = OperationParser().parse(operation_tokens)
 
         return train
 

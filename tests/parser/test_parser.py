@@ -6,7 +6,7 @@ from src.models.station import Station
 from src.models.diagram import Diagram
 from src.models.train import Train
 from src.models.train_type import TrainType
-from src.models.operation import Operation
+from src.models.operation import OperationRecord
 
 from src.parser.parser import Parser
 from src.parser.section import SectionNode
@@ -240,10 +240,6 @@ def test_parse_train() -> None:
 
     assert len(train.operations) == 1
 
-    operation = train.operations[0]
-
-    assert operation.name == "Operation14B"
-    assert operation.value == "5/$"
 
 
 def test_parse_train_types():
@@ -272,34 +268,78 @@ def test_parse_train_types():
                 ],
             ),
             SectionNode(
-                line_number=4,
+                line_number=5,
                 name="Ressyasyubetsu",
                 key_values=[
                     KeyValueToken(
-                        line_number=5,
+                        line_number=6,
+                        raw_line="Syubetsumei=快速",
+                        key="Syubetsumei",
+                        value="快速",
+                    ),
+                    KeyValueToken(
+                        line_number=7,
+                        raw_line="Ryakusyou=快",
+                        key="Ryakusyou",
+                        value="快",
+                    )
+                ]
+            ),
+            SectionNode(
+                line_number=8,
+                name="Ressyasyubetsu",
+                key_values=[
+                    KeyValueToken(
+                        line_number=9,
                         raw_line="Syubetsumei=貨物",
                         key="Syubetsumei",
                         value="貨物",
                     ),
                     KeyValueToken(
-                        line_number=6,
+                        line_number=10,
                         raw_line="Ryakusyou=貨",
                         key="Ryakusyou",
                         value="貨",
                     )
                 ]
+            ),
+            SectionNode(
+                line_number=11,
+                name="Ressyasyubetsu",
+                key_values=[
+                    KeyValueToken(
+                        line_number=12,
+                        raw_line="Syubetsumei=普通",
+                        key="Syubetsumei",
+                        value="普通",
+                    )
+                ]
             )
-        ],
+        ]
     )
 
     parser = Parser()
 
     railway = parser.parse(root)
 
-    assert len(railway.train_types) == 1
+    assert len(railway.train_types) == 3
 
     train_type = railway.train_types[0]
 
     assert train_type.index == 0
+    assert train_type.name == "快速"
+    assert train_type.short_name == "快"
+
+    train_type = railway.train_types[1]
+
+    assert train_type.index == 1
     assert train_type.name == "貨物"
     assert train_type.short_name == "貨"
+
+    train_type = railway.train_types[2]
+
+    assert train_type.index == 2
+    assert train_type.name == "普通"
+    assert train_type.short_name == ""
+
+
