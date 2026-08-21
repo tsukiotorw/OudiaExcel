@@ -6,7 +6,11 @@ from src.models.station import Station
 from src.models.diagram import Diagram
 from src.models.train import Train
 from src.models.train_type import TrainType
-from src.models.operation import OperationRecord
+from src.models.operation import (
+    OperationRecord,
+    OperationType,
+    JunctionDetail,
+)
 
 from src.parser.parser import Parser
 from src.parser.section import SectionNode
@@ -238,7 +242,29 @@ def test_parse_train() -> None:
     assert stop_time.is_pass is False
     assert stop_time.track_index == 0
 
+
+    """
+    結合テスト
+    """
     assert len(train.operations) == 1
+
+    assert len(train.operations) == 1
+
+    record = train.operations[0]
+
+    assert isinstance(record, OperationRecord)
+    assert record.order == 14
+    assert record.is_before is True
+    assert len(record.operations) == 1
+
+    operation = record.operations[0]
+
+    assert operation.type is OperationType.JUNCTION
+    assert isinstance(operation.detail, JunctionDetail)
+    assert operation.detail.time is None
+    assert operation.detail.value is None
+    assert operation.before_children == []
+    assert operation.after_children == []
 
 
 
