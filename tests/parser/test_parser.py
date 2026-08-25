@@ -28,8 +28,8 @@ def test_parse_railway_name() -> None:
         key_values=[
             KeyValueToken(
                 line_number=2,
-                raw_line="Name=中央線",
-                key="Name",
+                raw_line="Rosenmei=中央線",
+                key="Rosenmei",
                 value="中央線",
             )
         ],
@@ -54,8 +54,8 @@ def test_parse_station() -> None:
         key_values=[
             KeyValueToken(
                 line_number=2,
-                raw_line="Name=中央線",
-                key="Name",
+                raw_line="Rosenmei=中央線",
+                key="Rosenmei",
                 value="中央線",
             )
         ],
@@ -99,8 +99,8 @@ def test_parse_diagrams() -> None:
         key_values=[
             KeyValueToken(
                 line_number=2,
-                raw_line="Name=中央線",
-                key="Name",
+                raw_line="Rosenmei=中央線",
+                key="Rosenmei",
                 value="中央線",
             )
         ],
@@ -154,8 +154,8 @@ def test_parse_train() -> None:
         key_values=[
             KeyValueToken(
                 line_number=2,
-                raw_line="Name=中央線",
-                key="Name",
+                raw_line="Rosenmei=中央線",
+                key="Rosenmei",
                 value="中央線",
             )
         ],
@@ -275,8 +275,8 @@ def test_parse_train_types():
         key_values=[
             KeyValueToken(
                 line_number=2,
-                raw_line="Name=中央線",
-                key="Name",
+                raw_line="Rosenmei=中央線",
+                key="Rosenmei",
                 value="中央線",
             )
         ],

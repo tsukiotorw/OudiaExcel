@@ -15,16 +15,24 @@ class SectionBuilderError(Exception):
 
 def build_sections(tokens: list[Token]) -> SectionNode:
     """
-    Token列からSectionツリーを構築します。
+    Token列からRosen Sectionのツリーを構築します。
     """
 
     stack: list[SectionNode] = []
-
     root: SectionNode | None = None
+    ignored_depth = 0
 
     for token in tokens:
 
         if isinstance(token, SectionStartToken):
+
+            if ignored_depth > 0:
+                ignored_depth += 1
+                continue
+
+            if not stack and token.name != "Rosen":
+                ignored_depth = 1
+                continue
 
             node = SectionNode(
                 line_number=token.line_number,
@@ -40,14 +48,19 @@ def build_sections(tokens: list[Token]) -> SectionNode:
 
         elif isinstance(token, KeyValueToken):
 
+            if ignored_depth > 0:
+                continue
+
             if not stack:
-                raise SectionBuilderError(
-                    f"{token.line_number}行目: Section外にKeyValueがあります。"
-                )
+                continue
 
             stack[-1].key_values.append(token)
 
         elif isinstance(token, SectionEndToken):
+
+            if ignored_depth > 0:
+                ignored_depth -= 1
+                continue
 
             if not stack:
                 raise SectionBuilderError(
@@ -60,6 +73,7 @@ def build_sections(tokens: list[Token]) -> SectionNode:
         raise SectionBuilderError("Sectionが閉じられていません。")
 
     if root is None:
-        raise SectionBuilderError("Sectionが存在しません。")
+        raise SectionBuilderError("Rosen Sectionが存在しません。")
 
     return root
+

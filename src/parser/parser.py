@@ -47,7 +47,7 @@ class Parser:
         """
 
         railway = Railway(
-            name=self._get_required_value(section, "Name"),
+            name=self._get_required_value(section, "Rosenmei"),
         )
 
         self._stations = railway.stations
