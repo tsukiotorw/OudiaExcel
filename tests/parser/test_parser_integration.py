@@ -45,6 +45,15 @@ def test_parse_real_oud2_file() -> None:
     ]
 
     assert len(railway.train_types) == 2
+
+    assert [
+        (train_type.index, train_type.name, train_type.short_name)
+        for train_type in railway.train_types
+    ] == [
+        (0, "普通", ""),
+        (1, "快速", "快"),
+    ]
+
     assert len(railway.diagrams) == 2
 
     train_count = sum(
