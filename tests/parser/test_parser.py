@@ -267,7 +267,6 @@ def test_parse_train() -> None:
     assert operation.after_children == []
 
 
-
 def test_parse_train_types():
     root = SectionNode(
         line_number=1,

@@ -33,6 +33,17 @@ def test_parse_real_oud2_file() -> None:
     railway = Parser().parse(root)
 
     assert len(railway.stations) == 4
+
+    assert [
+        (station.index, station.name)
+        for station in railway.stations
+    ] == [
+        (0, "A"),
+        (1, "B"),
+        (2, "C"),
+        (3, "D"),
+    ]
+
     assert len(railway.train_types) == 2
     assert len(railway.diagrams) == 2
 
