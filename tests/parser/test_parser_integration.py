@@ -72,6 +72,25 @@ def test_parse_real_oud2_file() -> None:
 
     assert train_count == 16
 
+    assert len(railway.diagrams[0].trains) == 10
+    assert len(railway.diagrams[1].trains) == 6
+
+    assert all(
+        train.train_type_index == 0
+        for train in railway.diagrams[0].trains
+    )
+
+    assert all(
+        train.train_type_index == 1
+        for train in railway.diagrams[1].trains
+    )
+
+    assert all(
+        len(train.stop_times) == 4
+        for diagram in railway.diagrams
+        for train in diagram.trains
+    )
+
     operation_count = sum(
         len(train.operations)
         for diagram in railway.diagrams
