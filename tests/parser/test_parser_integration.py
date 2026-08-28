@@ -91,6 +91,76 @@ def test_parse_real_oud2_file() -> None:
         for train in diagram.trains
     )
 
+    first_train = railway.diagrams[0].trains[0]
+
+    assert [
+        (
+            stop_time.order,
+            stop_time.station.index,
+            stop_time.station.name,
+            stop_time.arrival_time,
+            stop_time.departure_time,
+            stop_time.is_pass,
+            stop_time.track_index,
+        )
+        for stop_time in first_train.stop_times
+    ] == [
+        (0, 0, "A", None, None, False, None),
+        (1, 1, "B", None, None, False, None),
+        (2, 2, "C", None, "000", False, 0),
+        (3, 3, "D", "023", None, False, 0),
+    ]
+
+    # 到着・発車の両方を持つ通常停車
+    second_down_train = railway.diagrams[0].trains[1]
+
+    assert (
+        second_down_train.stop_times[1].station.name,
+        second_down_train.stop_times[1].arrival_time,
+        second_down_train.stop_times[1].departure_time,
+        second_down_train.stop_times[1].is_pass,
+        second_down_train.stop_times[1].track_index,
+    ) == (
+        "B",
+        "005",
+        "006",
+        False,
+        0,
+    )
+
+    # 通過
+    first_up_train = railway.diagrams[1].trains[0]
+
+    assert (
+        first_up_train.stop_times[1].station.name,
+        first_up_train.stop_times[1].arrival_time,
+        first_up_train.stop_times[1].departure_time,
+        first_up_train.stop_times[1].is_pass,
+        first_up_train.stop_times[1].track_index,
+    ) == (
+        "B",
+        None,
+        None,
+        True,
+        1,
+    )
+
+    for diagram in railway.diagrams:
+        for train in diagram.trains:
+            assert [stop_time.order for stop_time in train.stop_times] == [
+                0, 1, 2, 3
+            ]
+
+            assert [
+                stop_time.station.index
+                for stop_time in train.stop_times
+            ] == [0, 1, 2, 3]
+
+            assert [
+                stop_time.station.name
+                for stop_time in train.stop_times
+            ] == ["A", "B", "C", "D"]
+
     operation_count = sum(
         len(train.operations)
         for diagram in railway.diagrams
