@@ -6,6 +6,7 @@ from src.parser.reader import read_file
 from src.parser.tokenizer import tokenize
 from src.parser.section_builder import build_sections
 from src.parser.parser import Parser
+from src.models.railway import Direction
 
 
 EXAMPLE_FILE = (
@@ -55,6 +56,14 @@ def test_parse_real_oud2_file() -> None:
     ]
 
     assert len(railway.diagrams) == 2
+
+    assert [
+        (diagram.name, diagram.direction)
+        for diagram in railway.diagrams
+    ] == [
+        ("検証用", Direction.DOWN),
+        ("検証用", Direction.UP),
+    ]
 
     train_count = sum(
         len(diagram.trains)
