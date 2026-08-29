@@ -13,7 +13,8 @@ from src.models.operation import (
     OutInDetail,
     NumberChangeDetail,
     JunctionDetail,
-    ConnectDetail
+    ConnectDetail,
+    ReleaseDetail
 )
 
 
@@ -40,6 +41,7 @@ def test_parse_real_oud2_file() -> None:
     assert root.name == "Rosen"
 
     railway = Parser().parse(root)
+
 
     assert len(railway.stations) == 4
 
@@ -275,6 +277,52 @@ def test_parse_real_oud2_file() -> None:
     assert isinstance(child.detail, JunctionDetail)
     assert child.detail.time is None
     assert child.detail.value is None
+
+    assert child.before_children == []
+    assert child.after_children == []
+
+    # 同じRecord内の2つ目のOperation
+    operation = record.operations[1]
+
+    assert operation.type == OperationType.JUNCTION
+    assert isinstance(operation.detail, JunctionDetail)
+    assert operation.detail.time is None
+    assert operation.detail.value == "0"
+
+    assert operation.before_children == []
+    assert operation.after_children == []
+
+    # Nested Operation: after_children
+    down_train_8 = railway.diagrams[0].trains[8]
+
+    record = next(
+        record
+        for record in down_train_8.operations
+        if record.order == 3
+    )
+
+    assert record.is_before is False
+    assert len(record.operations) == 2
+
+    # 親Operation: Release
+    operation = record.operations[0]
+
+    assert operation.type == OperationType.RELEASE
+    assert isinstance(operation.detail, ReleaseDetail)
+    assert operation.detail.release_position == 0
+    assert operation.detail.release_count == 1
+    assert operation.detail.release_time == "755"
+
+    assert operation.before_children == []
+    assert len(operation.after_children) == 1
+
+    # 子Operation: Junction
+    child = operation.after_children[0]
+
+    assert child.type == OperationType.JUNCTION
+    assert isinstance(child.detail, JunctionDetail)
+    assert child.detail.time is None
+    assert child.detail.value == "0"
 
     assert child.before_children == []
     assert child.after_children == []
