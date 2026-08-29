@@ -8,6 +8,13 @@ from src.parser.section_builder import build_sections
 from src.parser.parser import Parser
 from src.models.railway import Direction
 
+from src.models.operation import (
+    OperationType,
+    OutInDetail,
+    NumberChangeDetail,
+    JunctionDetail,
+)
+
 
 EXAMPLE_FILE = (
     Path(__file__).resolve().parents[2]
@@ -160,6 +167,46 @@ def test_parse_real_oud2_file() -> None:
                 stop_time.station.name
                 for stop_time in train.stop_times
             ] == ["A", "B", "C", "D"]
+
+    first_train = railway.diagrams[0].trains[0]
+
+    assert len(first_train.operations) == 2
+
+    # Operation order=2
+    record = first_train.operations[0]
+
+    assert record.order == 2
+    assert record.is_before is True
+    assert len(record.operations) == 1
+
+    operation = record.operations[0]
+
+    assert operation.type == OperationType.OUT_IN
+    assert isinstance(operation.detail, OutInDetail)
+    assert operation.detail.time == "2359"
+    assert operation.detail.train_number == "901"
+    assert operation.before_children == []
+    assert operation.after_children == []
+
+    # Operation order=3
+    record = first_train.operations[1]
+
+    assert record.order == 3
+    assert record.is_before is False
+    assert len(record.operations) == 2
+
+    operation = record.operations[0]
+
+    assert operation.type == OperationType.NUMBER_CHANGE
+    assert isinstance(operation.detail, NumberChangeDetail)
+    assert operation.detail.train_number == "ZZZ"
+
+    operation = record.operations[1]
+
+    assert operation.type == OperationType.JUNCTION
+    assert isinstance(operation.detail, JunctionDetail)
+    assert operation.detail.time is None
+    assert operation.detail.value == "0"
 
     operation_count = sum(
         len(train.operations)
