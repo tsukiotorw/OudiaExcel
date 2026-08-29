@@ -42,8 +42,23 @@ def test_parse_real_oud2_file() -> None:
 
     railway = Parser().parse(root)
 
-
+    # Stations
     assert len(railway.stations) == 4
+
+    expected_stations = [
+        (0, "A"),
+        (1, "B"),
+        (2, "C"),
+        (3, "D"),
+    ]
+
+    for station, (expected_index, expected_name) in zip(
+        railway.stations,
+        expected_stations,
+    ):
+        assert station.index == expected_index
+        assert station.name == expected_name
+
 
     assert [
         (station.index, station.name)
