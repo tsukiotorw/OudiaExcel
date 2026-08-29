@@ -42,6 +42,7 @@ def test_parse_real_oud2_file() -> None:
 
     railway = Parser().parse(root)
 
+
     # Stations
     assert len(railway.stations) == 4
 
@@ -70,25 +71,40 @@ def test_parse_real_oud2_file() -> None:
         (3, "D"),
     ]
 
+    # TrainTypes
     assert len(railway.train_types) == 2
 
-    assert [
-        (train_type.index, train_type.name, train_type.short_name)
-        for train_type in railway.train_types
-    ] == [
+    expected_train_types = [
         (0, "普通", ""),
         (1, "快速", "快"),
     ]
 
+    for train_type, (
+        expected_index,
+        expected_name,
+        expected_short_name,
+    ) in zip(
+        railway.train_types,
+        expected_train_types,
+    ):
+        assert train_type.index == expected_index
+        assert train_type.name == expected_name
+        assert train_type.short_name == expected_short_name
+
+
+    # Diagrams
     assert len(railway.diagrams) == 2
 
-    assert [
-        (diagram.name, diagram.direction)
-        for diagram in railway.diagrams
-    ] == [
-        ("検証用", Direction.DOWN),
-        ("検証用", Direction.UP),
-    ]
+    down = railway.diagrams[0]
+    assert down.name == "検証用"
+    assert down.direction == Direction.DOWN
+    assert len(down.trains) == 10
+
+    up = railway.diagrams[1]
+    assert up.name == "検証用"
+    assert up.direction == Direction.UP
+    assert len(up.trains) == 6
+
 
     train_count = sum(
         len(diagram.trains)
@@ -97,8 +113,29 @@ def test_parse_real_oud2_file() -> None:
 
     assert train_count == 16
 
-    assert len(railway.diagrams[0].trains) == 10
-    assert len(railway.diagrams[1].trains) == 6
+    # Trains
+    down_trains = railway.diagrams[0].trains
+    up_trains = railway.diagrams[1].trains
+
+    assert len(down_trains) == 10
+    assert len(up_trains) == 6
+
+    for train in down_trains:
+        assert train.number == ""
+        assert train.train_type_index == 0
+        assert len(train.stop_times) == 4
+        assert len(train.operations) == 2
+
+    for index, train in enumerate(up_trains):
+        assert train.number == ""
+        assert train.train_type_index == 1
+        assert len(train.stop_times) == 4
+
+        if index < 4:
+            assert len(train.operations) == 2
+        else:
+            assert len(train.operations) == 3
+
 
     assert all(
         train.train_type_index == 0
