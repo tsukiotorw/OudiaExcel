@@ -208,6 +208,42 @@ def test_parse_real_oud2_file() -> None:
     assert operation.detail.time is None
     assert operation.detail.value == "0"
 
+    first_up_train = railway.diagrams[1].trains[0]
+
+    assert len(first_up_train.operations) == 2
+
+    # Operation order=0
+    record = first_up_train.operations[0]
+
+    assert record.order == 0
+    assert record.is_before is True
+    assert len(record.operations) == 1
+
+    operation = record.operations[0]
+
+    assert operation.type == OperationType.JUNCTION
+    assert isinstance(operation.detail, JunctionDetail)
+    assert operation.detail.time is None
+    assert operation.detail.value is None
+    assert operation.before_children == []
+    assert operation.after_children == []
+
+    # Operation order=3
+    record = first_up_train.operations[1]
+
+    assert record.order == 3
+    assert record.is_before is False
+    assert len(record.operations) == 1
+
+    operation = record.operations[0]
+
+    assert operation.type == OperationType.JUNCTION
+    assert isinstance(operation.detail, JunctionDetail)
+    assert operation.detail.time is None
+    assert operation.detail.value == "0"
+    assert operation.before_children == []
+    assert operation.after_children == []
+
     operation_count = sum(
         len(train.operations)
         for diagram in railway.diagrams
