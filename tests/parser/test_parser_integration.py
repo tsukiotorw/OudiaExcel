@@ -42,6 +42,8 @@ def test_parse_real_oud2_file() -> None:
 
     railway = Parser().parse(root)
 
+    # ここに確認用のコードを入れる
+    # ここまで
 
     # Stations
     assert len(railway.stations) == 4
@@ -397,3 +399,34 @@ def test_parse_real_oud2_file() -> None:
     )
 
     assert operation_count > 0
+
+
+    # StopTimes: DOWN train 0
+    stop_times = railway.diagrams[0].trains[0].stop_times
+
+    assert len(stop_times) == 4
+
+    expected_stop_times = [
+        (0, 0, "A", None, None, False, None),
+        (1, 1, "B", None, None, False, None),
+        (2, 2, "C", None, "000", False, 0),
+        (3, 3, "D", "023", None, False, 0),
+    ]
+
+    for stop_time, (
+        expected_order,
+        expected_station_index,
+        expected_station_name,
+        expected_arrival,
+        expected_departure,
+        expected_is_pass,
+        expected_track_index,
+    ) in zip(stop_times, expected_stop_times):
+        assert stop_time.order == expected_order
+        assert stop_time.station.index == expected_station_index
+        assert stop_time.station.name == expected_station_name
+        assert stop_time.arrival_time == expected_arrival
+        assert stop_time.departure_time == expected_departure
+        assert stop_time.is_pass == expected_is_pass
+        assert stop_time.track_index == expected_track_index
+
