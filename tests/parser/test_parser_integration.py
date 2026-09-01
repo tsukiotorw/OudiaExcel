@@ -570,3 +570,34 @@ def test_parse_real_oud2_file() -> None:
     assert before_child.detail.time is None
     assert before_child.detail.value is None
 
+
+    # Operation Type 2: Release
+    train = railway.diagrams[0].trains[8]
+
+    record = next(
+        record
+        for record in train.operations
+        if record.order == 3
+    )
+
+    operation = record.operations[0]
+
+    assert operation.type == OperationType.RELEASE
+    assert isinstance(operation.detail, ReleaseDetail)
+
+    detail = operation.detail
+
+    assert detail.release_position == 0
+    assert detail.release_count == 1
+    assert detail.release_time == "755"
+
+    assert len(operation.before_children) == 0
+    assert len(operation.after_children) == 1
+
+    after_child = operation.after_children[0]
+
+    assert after_child.type == OperationType.JUNCTION
+    assert isinstance(after_child.detail, JunctionDetail)
+    assert after_child.detail.time is None
+    assert after_child.detail.value == "0"
+
