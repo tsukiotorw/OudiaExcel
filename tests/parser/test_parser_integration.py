@@ -14,7 +14,8 @@ from src.models.operation import (
     NumberChangeDetail,
     JunctionDetail,
     ConnectDetail,
-    ReleaseDetail
+    ReleaseDetail,
+    ShuntDetail
 )
 
 
@@ -43,6 +44,7 @@ def test_parse_real_oud2_file() -> None:
     railway = Parser().parse(root)
 
     # ここに確認用のコードを入れる
+
     # ここまで
 
     # Stations
@@ -516,4 +518,25 @@ def test_parse_real_oud2_file() -> None:
         assert stop_time.is_pass == expected_is_pass
         assert stop_time.track_index == expected_track_index
 
+
+    # Operation Type 0: Shunt
+    train = railway.diagrams[0].trains[6]
+
+    record = next(
+        record
+        for record in train.operations
+        if record.order == 3
+    )
+
+    operation = record.operations[0]
+
+    assert operation.type == OperationType.SHUNT
+    assert isinstance(operation.detail, ShuntDetail)
+
+    detail = operation.detail
+
+    assert detail.linked_track_index == 0
+    assert detail.departure_time == "555"
+    assert detail.arrival_time == "600"
+    assert detail.show_arrival is False
 
