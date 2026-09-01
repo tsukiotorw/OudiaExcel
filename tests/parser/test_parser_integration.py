@@ -624,3 +624,25 @@ def test_parse_real_oud2_file() -> None:
     assert len(operation.before_children) == 0
     assert len(operation.after_children) == 0
 
+
+    # Operation Type 5: Junction
+    train = railway.diagrams[0].trains[1]
+
+    record = next(
+        record
+        for record in train.operations
+        if record.order == 3
+    )
+
+    operation = record.operations[0]
+
+    assert operation.type == OperationType.JUNCTION
+    assert isinstance(operation.detail, JunctionDetail)
+
+    detail = operation.detail
+
+    assert detail.time is None
+    assert detail.value == "0"
+
+    assert len(operation.before_children) == 0
+    assert len(operation.after_children) == 0
