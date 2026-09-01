@@ -601,3 +601,26 @@ def test_parse_real_oud2_file() -> None:
     assert after_child.detail.time is None
     assert after_child.detail.value == "0"
 
+
+    # Operation Type 3: OutIn
+    train = railway.diagrams[0].trains[0]
+
+    record = next(
+        record
+        for record in train.operations
+        if record.order == 2
+    )
+
+    operation = record.operations[0]
+
+    assert operation.type == OperationType.OUT_IN
+    assert isinstance(operation.detail, OutInDetail)
+
+    detail = operation.detail
+
+    assert detail.time == "2359"
+    assert detail.train_number == "901"
+
+    assert len(operation.before_children) == 0
+    assert len(operation.after_children) == 0
+
