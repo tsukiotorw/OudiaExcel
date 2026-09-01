@@ -540,3 +540,33 @@ def test_parse_real_oud2_file() -> None:
     assert detail.arrival_time == "600"
     assert detail.show_arrival is False
 
+
+    # Operation Type 1: Connect
+    train = railway.diagrams[0].trains[7]
+
+    record = next(
+        record
+        for record in train.operations
+        if record.order == 3
+    )
+
+    operation = record.operations[0]
+
+    assert operation.type == OperationType.CONNECT
+    assert isinstance(operation.detail, ConnectDetail)
+
+    detail = operation.detail
+
+    assert detail.connect_position == 0
+    assert detail.connect_time == "655"
+
+    assert len(operation.before_children) == 1
+    assert len(operation.after_children) == 0
+
+    before_child = operation.before_children[0]
+
+    assert before_child.type == OperationType.JUNCTION
+    assert isinstance(before_child.detail, JunctionDetail)
+    assert before_child.detail.time is None
+    assert before_child.detail.value is None
+
