@@ -646,3 +646,26 @@ def test_parse_real_oud2_file() -> None:
 
     assert len(operation.before_children) == 0
     assert len(operation.after_children) == 0
+
+
+    # Operation Type 6: NumberChange
+    train = railway.diagrams[0].trains[0]
+
+    record = next(
+        record
+        for record in train.operations
+        if record.order == 3
+    )
+
+    operation = record.operations[0]
+
+    assert operation.type == OperationType.NUMBER_CHANGE
+    assert isinstance(operation.detail, NumberChangeDetail)
+
+    detail = operation.detail
+
+    assert detail.train_number == "ZZZ"
+
+    assert len(operation.before_children) == 0
+    assert len(operation.after_children) == 0
+
