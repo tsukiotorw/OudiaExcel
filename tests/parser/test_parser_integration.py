@@ -669,3 +669,28 @@ def test_parse_real_oud2_file() -> None:
     assert len(operation.before_children) == 0
     assert len(operation.after_children) == 0
 
+
+def test_parse_real_oud2_stations() -> None:
+    """実データから駅が正しく解析されること。"""
+
+    source = read_file(EXAMPLE_FILE)
+    tokens = tokenize(source)
+    root = build_sections(tokens)
+
+    railway = Parser().parse(root)
+
+    assert len(railway.stations) == 4
+
+    expected = [
+        (0, "A"),
+        (1, "B"),
+        (2, "C"),
+        (3, "D"),
+    ]
+
+    for station, (index, name) in zip(
+        railway.stations,
+        expected,
+    ):
+        assert station.index == index
+        assert station.name == name
