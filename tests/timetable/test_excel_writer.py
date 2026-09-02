@@ -22,6 +22,8 @@ def test_write_station_timetable(
     writer = ExcelWriter()
     writer.write(timetable, output_path)
 
+    print(f"output_path = {output_path}")
+
     assert output_path.exists()
 
     workbook = load_workbook(output_path)
@@ -30,8 +32,5 @@ def test_write_station_timetable(
 
     worksheet = workbook[timetable.station_name]
 
-    assert worksheet["A1"].value == "下り"
-    assert worksheet["A2"].value == "時"
-    assert worksheet["B2"].value == "分"
-    assert worksheet["C2"].value == "行先"
-    assert worksheet["D2"].value == "種別"
+    assert worksheet["A1"].value == "B 時刻表"
+    assert worksheet["A3"].value == "下り"

@@ -20,6 +20,7 @@ def test_generate_station_timetable(
     assert timetable.station_name == "B"
 
 
+
 def test_generate_station_timetable_down(
     parsed_railway: Railway,
 ) -> None:
