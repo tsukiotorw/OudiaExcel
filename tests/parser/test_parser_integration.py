@@ -694,3 +694,28 @@ def test_parse_real_oud2_stations() -> None:
     ):
         assert station.index == index
         assert station.name == name
+
+
+def test_parse_real_oud2_train_types() -> None:
+    """実データから列車種別が正しく解析されること。"""
+
+    source = read_file(EXAMPLE_FILE)
+    tokens = tokenize(source)
+    root = build_sections(tokens)
+
+    railway = Parser().parse(root)
+
+    assert len(railway.train_types) == 2
+
+    expected = [
+        (0, "普通", ""),
+        (1, "快速", "快"),
+    ]
+
+    for train_type, (index, name, short_name) in zip(
+        railway.train_types,
+        expected,
+    ):
+        assert train_type.index == index
+        assert train_type.name == name
+        assert train_type.short_name == short_name
