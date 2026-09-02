@@ -1,11 +1,7 @@
 """実データを使ったParser統合テスト。"""
 
-from src.parser.reader import read_file
-from src.parser.tokenizer import tokenize
-from src.parser.section_builder import build_sections
 from src.models.railway import Direction
 from src.models.railway import Railway
-
 from src.models.operation import (
     OperationType,
     OutInDetail,
