@@ -770,3 +770,38 @@ def test_parse_real_oud2_trains() -> None:
     for train in up.trains:
         assert train.train_type_index == 1
 
+
+def test_parse_real_oud2_down_train_stop_times() -> None:
+    """実データの下り列車の駅時刻が正しく解析されること。"""
+
+    source = read_file(EXAMPLE_FILE)
+    tokens = tokenize(source)
+    root = build_sections(tokens)
+
+    railway = Parser().parse(root)
+
+    train = railway.diagrams[0].trains[0]
+
+    assert len(train.stop_times) == 4
+
+    expected = [
+        (0, "A", None, None, False, None),
+        (1, "B", None, None, False, None),
+        (2, "C", None, "000", False, 0),
+        (3, "D", "023", None, False, 0),
+    ]
+
+    for stop_time, (
+        order,
+        station_name,
+        arrival_time,
+        departure_time,
+        is_pass,
+        track_index,
+    ) in zip(train.stop_times, expected):
+        assert stop_time.order == order
+        assert stop_time.station.name == station_name
+        assert stop_time.arrival_time == arrival_time
+        assert stop_time.departure_time == departure_time
+        assert stop_time.is_pass == is_pass
+        assert stop_time.track_index == track_index
