@@ -190,13 +190,14 @@ class StationTimetableGenerator:
         cls,
         entries: list[tuple[int, TimetableEntry]],
     ) -> list[TimetableHour]:
-        """
-        時刻表エントリを時間単位にまとめる。
-        """
-        hours: dict[int, list[TimetableEntry]] = {}
+        """時刻表エントリを04時始発～03時終電の24時間にまとめる。"""
+        hours: dict[int, list[TimetableEntry]] = {
+            hour: []
+            for hour in range(24)
+        }
 
         for hour, entry in entries:
-            hours.setdefault(hour, []).append(entry)
+            hours[hour].append(entry)
 
         return [
             TimetableHour(
@@ -208,3 +209,4 @@ class StationTimetableGenerator:
                 key=cls._timetable_order,
             )
         ]
+

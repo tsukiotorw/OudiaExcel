@@ -147,3 +147,45 @@ def test_generate_station_timetable_train_type(
         entry.train_type.name == "普通"
         for entry in down_entries
     )
+
+
+def test_generate_station_timetable_contains_all_hours(
+    parsed_railway: Railway,
+) -> None:
+    """駅時刻表に04時～翌03時の24時間がすべて含まれること。"""
+    station = parsed_railway.stations[1]
+
+    generator = StationTimetableGenerator(parsed_railway)
+    timetable = generator.generate(station)
+
+    expected_hours = [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        0,
+        1,
+        2,
+        3,
+    ]
+
+    assert [hour.hour for hour in timetable.down] == expected_hours
+    assert [hour.hour for hour in timetable.up] == expected_hours
+
+
