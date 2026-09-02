@@ -744,4 +744,29 @@ def test_parse_real_oud2_diagrams() -> None:
         assert diagram.direction == direction
         assert diagram.name == name
         assert len(diagram.trains) == train_count
-    
+
+
+def test_parse_real_oud2_trains() -> None:
+    """実データから列車が正しく解析されること。"""
+
+    source = read_file(EXAMPLE_FILE)
+    tokens = tokenize(source)
+    root = build_sections(tokens)
+
+    railway = Parser().parse(root)
+
+    down = railway.diagrams[0]
+    up = railway.diagrams[1]
+
+    assert down.direction == Direction.DOWN
+    assert up.direction == Direction.UP
+
+    assert len(down.trains) == 10
+    assert len(up.trains) == 6
+
+    for train in down.trains:
+        assert train.train_type_index == 0
+
+    for train in up.trains:
+        assert train.train_type_index == 1
+
