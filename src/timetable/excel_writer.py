@@ -194,14 +194,6 @@ class ExcelWriter:
                 column_letter
             ].width = 10
 
-        # 使用セルの書式
-        for row in worksheet.iter_rows():
-            for cell in row:
-                if cell.value is None:
-                    continue
-
-                cell.alignment = alignment
-                cell.border = border
 
         # 表全体(空欄セルも含む)に罫線・中央揃えを適用
         for row in worksheet.iter_rows(
