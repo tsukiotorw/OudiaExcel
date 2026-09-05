@@ -30,4 +30,5 @@ class StationTimetable:
     station_name: str
     down: list[TimetableHour]
     up: list[TimetableHour]
+    train_types: list[TrainType]
 

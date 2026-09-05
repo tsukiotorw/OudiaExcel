@@ -186,3 +186,39 @@ def test_write_train_type_colors(
     assert worksheet["B4"].font.color.rgb == (
         "FF" + expected_color
     )
+
+
+def test_write_station_timetable_legend(
+    parsed_railway: Railway,
+    tmp_path,
+) -> None:
+    """駅時刻表に列車種別の凡例が出力されること。"""
+    station = parsed_railway.stations[1]
+
+    generator = StationTimetableGenerator(parsed_railway)
+    timetable = generator.generate(station)
+
+    output_path = tmp_path / "station_timetable.xlsx"
+
+    writer = ExcelWriter()
+    writer.write(timetable, output_path)
+
+    workbook = load_workbook(output_path)
+    worksheet = workbook[timetable.station_name]
+
+    legend_row = 53
+
+    assert worksheet.cell(
+        row=legend_row,
+        column=1,
+    ).value == "凡例"
+
+    assert worksheet.cell(
+        row=legend_row + 1,
+        column=1,
+    ).value == "普通"
+
+    assert worksheet.cell(
+        row=legend_row + 2,
+        column=1,
+    ).value == "快速"

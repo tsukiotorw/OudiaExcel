@@ -41,7 +41,9 @@ class StationTimetableGenerator:
             station_name=station.name,
             down=down,
             up=up,
+            train_types=list(self.railway.train_types),
         )
+
 
     def _generate_direction(
         self,

@@ -79,16 +79,29 @@ class ExcelWriter:
             width=up_width,
         )
 
+        table_end_row = max(
+            down_end_row,
+            up_end_row,
+        )
+
         self._apply_layout(
             worksheet=worksheet,
             down_start_column=down_start_column,
             down_width=down_width,
             up_start_column=up_start_column,
             up_width=up_width,
-            table_end_row=max(down_end_row, up_end_row),
+            table_end_row=table_end_row,
+        )
+
+        self._write_legend(
+            worksheet=worksheet,
+            row=table_end_row + 1,
+            start_column=down_start_column,
+            timetable=timetable,
         )
 
         workbook.save(output_path)
+
 
     @staticmethod
     def _max_entry_count(
@@ -475,4 +488,118 @@ class ExcelWriter:
             fill_type="solid",
             fgColor=ExcelWriter._to_excel_color(color),
         )
+
+
+    def _write_legend(
+        self,
+        worksheet,
+        row: int,
+        start_column: int,
+        timetable: StationTimetable,
+    ) -> int:
+        """列車種別の凡例を書き込む。"""
+
+        train_types = timetable.train_types
+
+        if not train_types:
+            return row
+
+        thin = Side(style="thin")
+        medium = Side(style="medium")
+
+        # 凡例見出し
+        header_cell = worksheet.cell(
+            row=row,
+            column=start_column,
+            value="凡例",
+        )
+
+        header_cell.font = Font(
+            size=11,
+            bold=True,
+        )
+
+        header_cell.fill = (
+            self._create_fill(
+                self.display_config.header_fill
+            )
+            or PatternFill()
+        )
+
+        header_cell.alignment = Alignment(
+            horizontal="center",
+            vertical="center",
+        )
+
+        header_cell.border = Border(
+            top=medium,
+            bottom=medium,
+            left=medium,
+            right=medium,
+        )
+
+        row += 1
+
+        # 列車種別
+        for train_type in train_types:
+            color = self._to_excel_color(
+                self.display_config.get_train_type_color(
+                    train_type.index
+                )
+            )
+
+            fill = (
+                self._create_fill(
+                    self.display_config.get_train_type_fill(
+                        train_type.index
+                    )
+                )
+                or PatternFill()
+            )
+
+            cell = worksheet.cell(
+                row=row,
+                column=start_column,
+                value=train_type.name,
+            )
+
+            cell.font = Font(
+                size=11,
+                color=color,
+                bold=True,
+            )
+
+            cell.fill = fill
+
+            cell.alignment = Alignment(
+                horizontal="center",
+                vertical="center",
+            )
+
+            cell.border = Border(
+                top=thin,
+                bottom=thin,
+                left=medium,
+                right=medium,
+            )
+
+            row += 1
+
+        # 最後の凡例セルの下端を太くする
+        last_cell = worksheet.cell(
+            row=row - 1,
+            column=start_column,
+        )
+
+        last_cell.border = Border(
+            top=last_cell.border.top,
+            bottom=medium,
+            left=medium,
+            right=medium,
+        )
+
+        return row
+
+
+
 
