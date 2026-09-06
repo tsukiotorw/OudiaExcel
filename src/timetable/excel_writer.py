@@ -97,6 +97,7 @@ class ExcelWriter:
             worksheet=worksheet,
             row=table_end_row + 1,
             start_column=down_start_column,
+            end_column=up_start_column + up_width - 1,
             timetable=timetable,
         )
 
@@ -495,111 +496,89 @@ class ExcelWriter:
         worksheet,
         row: int,
         start_column: int,
+        end_column: int,
         timetable: StationTimetable,
     ) -> int:
         """列車種別の凡例を書き込む。"""
 
         train_types = timetable.train_types
-
         if not train_types:
             return row
 
-        thin = Side(style="thin")
-        medium = Side(style="medium")
+        legend_end_row = row + len(train_types) - 1
 
-        # 凡例見出し
-        header_cell = worksheet.cell(
+        label_fill = self._create_fill(
+            self.display_config.legend_label_fill
+        )
+        legend_fill = self._create_fill(
+            self.display_config.legend_fill
+        )
+
+        label_font_color = self._to_excel_color(
+            self.display_config.legend_label_font_color
+        )
+
+        # 左側の「凡例」ラベルを縦結合
+        worksheet.merge_cells(
+            start_row=row,
+            start_column=start_column,
+            end_row=legend_end_row,
+            end_column=start_column,
+        )
+
+        label_cell = worksheet.cell(
             row=row,
             column=start_column,
             value="凡例",
         )
-
-        header_cell.font = Font(
-            size=11,
-            bold=True,
+        label_cell.font = Font(
+            name=self.display_config.legend_label_font_name,
+            size=self.display_config.legend_label_font_size,
+            color=label_font_color,
         )
-
-        header_cell.fill = (
-            self._create_fill(
-                self.display_config.header_fill
-            )
-            or PatternFill()
-        )
-
-        header_cell.alignment = Alignment(
+        label_cell.alignment = Alignment(
             horizontal="center",
             vertical="center",
         )
+        label_cell.fill = label_fill or PatternFill()
 
-        header_cell.border = Border(
-            top=medium,
-            bottom=medium,
-            left=medium,
-            right=medium,
-        )
+        for index, train_type in enumerate(train_types):
+            current_row = row + index
 
-        row += 1
-
-        # 列車種別
-        for train_type in train_types:
-            color = self._to_excel_color(
-                self.display_config.get_train_type_color(
-                    train_type.index
-                )
-            )
-
-            fill = (
-                self._create_fill(
-                    self.display_config.get_train_type_fill(
-                        train_type.index
-                    )
-                )
-                or PatternFill()
+            # 右側の説明領域を時刻表全体の幅まで結合
+            worksheet.merge_cells(
+                start_row=current_row,
+                start_column=start_column + 1,
+                end_row=current_row,
+                end_column=end_column,
             )
 
             cell = worksheet.cell(
-                row=row,
-                column=start_column,
+                row=current_row,
+                column=start_column + 1,
                 value=train_type.name,
             )
 
             cell.font = Font(
-                size=11,
-                color=color,
-                bold=True,
+                name=self.display_config.legend_font_name,
+                size=self.display_config.legend_font_size,
+                color=self._to_excel_color(
+                    self.display_config.get_train_type_color(
+                        train_type.index
+                    )
+                ),
             )
-
-            cell.fill = fill
-
             cell.alignment = Alignment(
-                horizontal="center",
+                horizontal="left",
                 vertical="center",
             )
+            cell.fill = legend_fill or PatternFill()
 
-            cell.border = Border(
-                top=thin,
-                bottom=thin,
-                left=medium,
-                right=medium,
+            worksheet.row_dimensions[current_row].height = (
+                self.display_config.legend_row_height
             )
 
-            row += 1
-
-        # 最後の凡例セルの下端を太くする
-        last_cell = worksheet.cell(
-            row=row - 1,
-            column=start_column,
-        )
-
-        last_cell.border = Border(
-            top=last_cell.border.top,
-            bottom=medium,
-            left=medium,
-            right=medium,
-        )
-
-        return row
-
+        return legend_end_row + 1
 
 
 

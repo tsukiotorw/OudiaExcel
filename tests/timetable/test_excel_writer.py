@@ -1,4 +1,5 @@
 from openpyxl import load_workbook
+from openpyxl.utils import get_column_letter
 
 from src.models.railway import Railway
 from src.timetable.excel_writer import ExcelWriter
@@ -208,17 +209,73 @@ def test_write_station_timetable_legend(
 
     legend_row = 53
 
-    assert worksheet.cell(
+    # 「凡例」が出力される。
+    label_cell = worksheet.cell(
         row=legend_row,
         column=1,
-    ).value == "凡例"
+    )
+    assert label_cell.value == "凡例"
 
+    # 「普通」「快速」が凡例として出力される。
     assert worksheet.cell(
-        row=legend_row + 1,
-        column=1,
+        row=legend_row,
+        column=2,
     ).value == "普通"
 
     assert worksheet.cell(
-        row=legend_row + 2,
-        column=1,
+        row=legend_row + 1,
+        column=2,
     ).value == "快速"
+
+    # 「凡例」が列車種別の行数分、縦結合される。
+    assert f"A{legend_row}:A{legend_row + 1}" in {
+        str(cell_range)
+        for cell_range in worksheet.merged_cells.ranges
+    }
+
+    # 各列車種別の説明領域が、時刻表全体の横幅まで結合される。
+    down_width = writer._max_entry_count(timetable.down) + 1
+    up_width = writer._max_entry_count(timetable.up) + 1
+
+    down_start_column = 1
+    up_start_column = (
+        down_start_column
+        + down_width
+        + writer._DIRECTION_GAP
+    )
+    end_column = up_start_column + up_width - 1
+
+    assert (
+        f"B{legend_row}:{get_column_letter(end_column)}{legend_row}"
+        in {
+            str(cell_range)
+            for cell_range in worksheet.merged_cells.ranges
+        }
+    )
+
+    assert (
+        f"B{legend_row + 1}:{get_column_letter(end_column)}{legend_row + 1}"
+        in {
+            str(cell_range)
+            for cell_range in worksheet.merged_cells.ranges
+        }
+    )
+
+    # 「凡例」ラベルの外観。
+    assert label_cell.fill.fgColor.rgb == "FF000000"
+    assert label_cell.font.name == "源ノ角ゴシック JP Heavy"
+    assert label_cell.font.sz == 8
+
+    # 説明領域の外観。
+    legend_cell = worksheet.cell(
+        row=legend_row,
+        column=2,
+    )
+
+    assert legend_cell.fill.fgColor.rgb == "FFFAFAFA"
+    assert legend_cell.font.name == "源ノ角ゴシック JP"
+    assert legend_cell.font.sz == 8
+
+    # 凡例の行高。
+    assert worksheet.row_dimensions[legend_row].height == 24.2
+    assert worksheet.row_dimensions[legend_row + 1].height == 24.2
