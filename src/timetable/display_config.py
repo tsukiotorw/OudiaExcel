@@ -13,6 +13,21 @@ class TimetableDisplayConfig:
     header_fill: str | None = None
     hour_fill: str | None = None
 
+    # 時刻表本体
+    timetable_fill: str = "FAFAFA"
+    timetable_alt_fill: str = "C8E6C9"
+    timetable_border_color: str = "FAFAFA"
+    timetable_border_width: str = "thin"
+
+    hour_font_name: str = "源ノ角ゴシック JP Heavy"
+    hour_font_size: int = 10
+
+    metadata_font_name: str = "源ノ角ゴシック JP"
+    metadata_font_size: int = 6
+
+    minute_font_name: str = "源ノ角ゴシック JP"
+    minute_font_size: int = 10
+
     # 凡例
     legend_label_fill: str = "000000"
     legend_fill: str = "FAFAFA"

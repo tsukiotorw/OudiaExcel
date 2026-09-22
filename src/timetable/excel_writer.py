@@ -149,30 +149,27 @@ class ExcelWriter:
         hours: list[TimetableHour],
         width: int,
     ) -> int:
-        """指定方向の駅時刻表を書き込む。"""
         end_column = start_column + width - 1
 
-        # 方向見出し
+        # ヘッダ
         header_fill = self._create_fill(
             self.display_config.header_fill
         )
 
-        for column in range(
-            start_column,
-            end_column + 1,
-        ):
+        for column in range(start_column, end_column + 1):
             cell = worksheet.cell(
                 row=row,
                 column=column,
             )
-
             cell.fill = header_fill or PatternFill()
 
             if column == start_column:
                 cell.value = title
                 cell.font = Font(
+                    name="源ノ角ゴシック JP Heavy",
                     size=12,
                     bold=True,
+                    color=self._to_excel_color("FAFAFA"),
                 )
 
             cell.alignment = Alignment(
@@ -189,41 +186,39 @@ class ExcelWriter:
 
         row += 1
 
-        for hour in hours:
+        # 時刻表
+        for hour_index, hour in enumerate(hours):
             metadata_row = row
             minute_row = row + 1
 
-            # 時
+            timetable_fill = self._create_fill(
+                self.display_config.timetable_alt_fill
+                if hour_index % 2 == 0
+                else self.display_config.timetable_fill
+            )
+
+            # 時刻欄
             hour_cell = worksheet.cell(
                 row=metadata_row,
                 column=start_column,
                 value=hour.hour,
             )
-
             hour_cell.font = Font(
-                size=14,
+                name=self.display_config.hour_font_name,
+                size=self.display_config.hour_font_size,
                 bold=True,
             )
-
             hour_cell.alignment = Alignment(
                 horizontal="center",
                 vertical="center",
             )
+            hour_cell.fill = timetable_fill or PatternFill()
 
-            hour_fill = self._create_fill(
-                self.display_config.hour_fill
+            minute_hour_cell = worksheet.cell(
+                row=minute_row,
+                column=start_column,
             )
-
-            if hour_fill is not None:
-                worksheet.cell(
-                    row=metadata_row,
-                    column=start_column,
-                ).fill = hour_fill
-
-                worksheet.cell(
-                    row=minute_row,
-                    column=start_column,
-                ).fill = hour_fill
+            minute_hour_cell.fill = timetable_fill or PatternFill()
 
             worksheet.merge_cells(
                 start_row=metadata_row,
@@ -232,7 +227,7 @@ class ExcelWriter:
                 end_column=start_column,
             )
 
-            # 行先・種別
+            # 列車
             for column, entry in enumerate(
                 hour.entries,
                 start=start_column + 1,
@@ -245,53 +240,42 @@ class ExcelWriter:
                     )
                 )
 
-                train_type_fill = self._create_fill(
-                    self.display_config.get_train_type_fill(
-                        entry.train_type.index
-                    )
-                )
-
                 metadata_cell = worksheet.cell(
                     row=metadata_row,
                     column=column,
                     value=metadata,
                 )
-
                 metadata_cell.font = Font(
-                    size=11,
+                    name=self.display_config.metadata_font_name,
+                    size=self.display_config.metadata_font_size,
                     color=train_type_color,
                 )
-
                 metadata_cell.alignment = Alignment(
                     horizontal="center",
                     vertical="center",
                     wrap_text=True,
                 )
+                metadata_cell.fill = timetable_fill or PatternFill()
 
-                # 分
                 minute_cell = worksheet.cell(
                     row=minute_row,
                     column=column,
                     value=entry.minute,
                 )
-
                 minute_cell.font = Font(
-                    size=14,
+                    name=self.display_config.minute_font_name,
+                    size=self.display_config.minute_font_size,
                     bold=True,
                 )
-
                 minute_cell.alignment = Alignment(
                     horizontal="center",
                     vertical="center",
                 )
-
-                metadata_cell.fill = train_type_fill or PatternFill()
-                minute_cell.fill = train_type_fill or PatternFill()
+                minute_cell.fill = timetable_fill or PatternFill()
 
             row += self._HOUR_ROWS
 
         return row
-
 
     @staticmethod
     def _apply_layout(
@@ -302,15 +286,17 @@ class ExcelWriter:
         up_width: int,
         table_end_row: int,
     ) -> None:
-        """ワークシートの基本レイアウトを設定する。"""
+        """時刻表全体のレイアウトを設定する。"""
 
         alignment = Alignment(
             horizontal="center",
             vertical="center",
         )
 
-        thin = Side(style="thin")
-        medium = Side(style="medium")
+        border_side = Side(
+            style="thin",
+            color="FFFAFAFA",
+        )
 
         for start_column, width in (
             (down_start_column, down_width),
@@ -332,30 +318,21 @@ class ExcelWriter:
                     get_column_letter(column)
                 ].width = 7
 
-            # 方向見出し
-            worksheet.cell(
-                row=3,
-                column=start_column,
-            ).border = Border(
-                top=medium,
-                bottom=medium,
-                left=medium,
-                right=medium,
-            )
-
-            # 方向見出しの結合セルにも罫線を設定
+            # ヘッダ
             for column in range(
                 start_column,
                 end_column + 1,
             ):
-                worksheet.cell(
+                cell = worksheet.cell(
                     row=3,
                     column=column,
-                ).border = Border(
-                    top=medium,
-                    bottom=medium,
-                    left=medium if column == start_column else thin,
-                    right=medium if column == end_column else thin,
+                )
+                cell.alignment = alignment
+                cell.border = Border(
+                    left=border_side,
+                    right=border_side,
+                    top=border_side,
+                    bottom=border_side,
                 )
 
             # 時刻表本体
@@ -370,66 +347,12 @@ class ExcelWriter:
                     )
 
                     cell.alignment = alignment
-
-                    # 左右の縦罫線
-                    left = (
-                        medium
-                        if column == start_column
-                        else thin
-                    )
-
-                    right = (
-                        medium
-                        if column == end_column
-                        else thin
-                    )
-
-                    # 2行1時間ごとの横罫線
-                    hour_offset = row - 4
-
-                    if hour_offset % 2 == 0:
-                        top = medium
-                    else:
-                        top = thin
-
-                    if hour_offset % 2 == 1:
-                        bottom = thin
-                    else:
-                        bottom = thin
-
                     cell.border = Border(
-                        left=left,
-                        right=right,
-                        top=top,
-                        bottom=bottom,
+                        left=border_side,
+                        right=border_side,
+                        top=border_side,
+                        bottom=border_side,
                     )
-
-            # 最終行の下端を太くする
-            last_row = table_end_row - 1
-
-            for column in range(
-                start_column,
-                end_column + 1,
-            ):
-                cell = worksheet.cell(
-                    row=last_row,
-                    column=column,
-                )
-
-                cell.border = Border(
-                    left=(
-                        medium
-                        if column == start_column
-                        else thin
-                    ),
-                    right=(
-                        medium
-                        if column == end_column
-                        else thin
-                    ),
-                    top=cell.border.top,
-                    bottom=medium,
-                )
 
         # 行高
         worksheet.row_dimensions[1].height = 28
@@ -437,14 +360,9 @@ class ExcelWriter:
 
         for row in range(4, table_end_row):
             if (row - 4) % 2 == 0:
-                # 行先・種別
                 worksheet.row_dimensions[row].height = 18
             else:
-                # 分
                 worksheet.row_dimensions[row].height = 20
-
-        # タイトル
-        worksheet.row_dimensions[1].height = 28
 
 
     @staticmethod
