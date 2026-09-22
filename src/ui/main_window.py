@@ -1,6 +1,6 @@
-import tkinter as tk
 from pathlib import Path
-from tkinter import filedialog
+import tkinter as tk
+from tkinter import filedialog, messagebox
 
 from src.application.oud2_loader import load_oud2
 
@@ -11,7 +11,7 @@ class MainWindow:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
         self.root.title("OuDiaExcel")
-        self.root.geometry("600x180")
+        self.root.geometry("600x220")
 
         self.file_path = tk.StringVar()
 
@@ -51,6 +51,16 @@ class MainWindow:
             padx=(8, 0),
         )
 
+        load_button = tk.Button(
+            frame,
+            text="読み込み",
+            command=self._load_file,
+        )
+        load_button.pack(
+            anchor=tk.E,
+            pady=(15, 0),
+        )
+
     def _select_file(self) -> None:
         """OuDiaSecondファイルを選択する。"""
         selected_file = filedialog.askopenfilename(
@@ -64,6 +74,35 @@ class MainWindow:
         if selected_file:
             self.file_path.set(str(Path(selected_file)))
 
+    def _load_file(self) -> None:
+        """選択されたOuDiaSecondファイルを読み込む。"""
+        path = self.file_path.get()
+
+        if not path:
+            messagebox.showwarning(
+                "ファイル未選択",
+                "OuDiaSecondファイルを選択してください。",
+            )
+            return
+
+        try:
+            railway = load_oud2(Path(path))
+        except Exception as exc:
+            messagebox.showerror(
+                "読み込みエラー",
+                f"ファイルの読み込みに失敗しました。\n\n{exc}",
+            )
+            return
+
+        messagebox.showinfo(
+            "読み込み完了",
+            f"ファイルを読み込みました。\n\n"
+            f"路線名: {railway.name}\n"
+            f"駅数: {len(railway.stations)}\n"
+            f"列車種別数: {len(railway.train_types)}\n"
+            f"ダイヤ数: {len(railway.diagrams)}",
+        )
+
 
 def main() -> None:
     """アプリケーションを起動する。"""
@@ -74,3 +113,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+    
