@@ -56,7 +56,7 @@ class OperationParser:
 
             if match is None:
                 raise OperationParserError(
-                    f"不正なOperationキー形式です: {key}"
+                    f"不正なOperationキー形式です: {key} : {value}"
                 )
 
             order = int(match.group("order"))

@@ -151,6 +151,9 @@ class Parser:
 
                     diagrams.append(diagram)
 
+                case "OperationTable":
+                    continue
+
                 case _:
                     raise ParserError(
                         f"{child.line_number}行目: Dia配下に未対応のSection '{child.name}' があります。"
@@ -173,11 +176,11 @@ class Parser:
             match child.name:
 
                 case "Ressya":
+                    if not child.key_values:
+                        continue
+
                     diagram.trains.append(
-                        self._parse_train(
-                            child,
-                            diagram.direction,
-                        )
+                        self._parse_train(child, diagram.direction)
                     )
 
                 case _:
@@ -224,6 +227,9 @@ class Parser:
                         self._stations,
                         direction,
                     )
+
+                case key if key.startswith("OperationNumber"):
+                    continue
 
                 case key if key.startswith("Operation"):
                     operation_tokens.append((token.key, token.value))
