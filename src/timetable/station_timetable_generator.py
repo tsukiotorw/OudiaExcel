@@ -124,13 +124,13 @@ class StationTimetableGenerator:
 
         return None
 
+
     @staticmethod
     def _find_destination(
         train: Train,
     ) -> Station | None:
         """
         最後に到着時刻が存在する駅を行先として取得する。
-
         StopTimeのorderを基準として、arrival_timeが存在する
         最後の駅を行先とする。
         """
@@ -139,7 +139,6 @@ class StationTimetableGenerator:
             for stop_time in train.stop_times
             if stop_time.arrival_time is not None
         ]
-
         if not arrival_stops:
             return None
 
@@ -147,6 +146,7 @@ class StationTimetableGenerator:
             arrival_stops,
             key=lambda stop_time: stop_time.order,
         ).station
+
 
     @staticmethod
     def _parse_time(

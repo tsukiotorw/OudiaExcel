@@ -1,3 +1,4 @@
+from src.models.railway import Direction
 from src.models.station import Station
 from src.models.stop_time import StopTime
 
@@ -13,6 +14,7 @@ class RecordType(StrEnum):
 def parse_stop_times(
     value: str,
     stations: list[Station],
+    direction: Direction = Direction.DOWN,
 ) -> list[StopTime]:
     """
     EkiJikoku文字列を解析する。
@@ -33,14 +35,21 @@ def parse_stop_times(
     """
     records = value.split(",")
 
+    ordered_stations = (
+        stations
+        if direction == Direction.DOWN
+        else list(reversed(stations))
+    )
+
     return [
         TimeParser.parse(
             record,
-            stations[order],
+            ordered_stations[order],
             order,
         )
         for order, record in enumerate(records)
     ]
+
 
 class TimeParser:
 

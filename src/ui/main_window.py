@@ -7,6 +7,7 @@ from src.application.station_timetable import generate_station_timetable
 from src.models.railway import Railway
 from src.models.station import Station
 from src.models.timetable import StationTimetable
+from src.ui.timetable_view import TimetableView
 
 
 class MainWindow:
@@ -15,7 +16,7 @@ class MainWindow:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
         self.root.title("OuDiaExcel")
-        self.root.geometry("600x400")
+        self.root.geometry("800x700")
 
         self.file_path = tk.StringVar()
         self.railway: Railway | None = None
@@ -118,6 +119,13 @@ class MainWindow:
             pady=(10, 0),
         )
 
+        self.timetable_view = TimetableView(frame)
+        self.timetable_view.frame.pack(
+            fill=tk.BOTH,
+            expand=True,
+            pady=(15, 0),
+        )
+
 
     def _select_file(self) -> None:
         """OuDiaSecondファイルを選択する。"""
@@ -155,6 +163,7 @@ class MainWindow:
         self.selected_station = None
         self.station_timetable = None
         self.selected_station_text.set("未選択")
+        self.timetable_view.clear()
 
         self._update_station_list()
 
@@ -225,6 +234,10 @@ class MainWindow:
             )
             return
 
+        self.timetable_view.show(
+            self.station_timetable,
+        )
+
         messagebox.showinfo(
             "時刻表生成完了",
             f"時刻表を生成しました。\n\n"
@@ -232,6 +245,7 @@ class MainWindow:
             f"下り: {len(self.station_timetable.down)}時間\n"
             f"上り: {len(self.station_timetable.up)}時間",
         )
+
 
 def main() -> None:
     """アプリケーションを起動する。"""

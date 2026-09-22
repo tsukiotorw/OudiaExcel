@@ -79,6 +79,53 @@ def test_generate_station_timetable_destination(
     )
 
 
+def test_generate_station_timetable_destination_up(
+    parsed_railway: Railway,
+) -> None:
+    """上り列車の最終到着駅が行先として設定されること。"""
+    station = parsed_railway.stations[3]  # D
+    generator = StationTimetableGenerator(parsed_railway)
+    timetable = generator.generate(station)
+
+    up_entries = [
+        entry
+        for hour in timetable.up
+        for entry in hour.entries
+    ]
+
+    # D駅の上り列車の行先がA駅になることを確認する。
+    assert any(
+        entry.destination == "A"
+        for entry in up_entries
+    )
+
+
+def test_debug_up_train_stop_times(
+    parsed_railway: Railway,
+) -> None:
+    """上り列車のStopTimeの駅・order・到着時刻を確認する。"""
+    diagram = next(
+        diagram
+        for diagram in parsed_railway.diagrams
+        if diagram.direction == Direction.UP
+    )
+    train = diagram.trains[0]
+
+    for stop_time in train.stop_times:
+        print(
+            "order=",
+            stop_time.order,
+            "station=",
+            stop_time.station.name,
+            "station_index=",
+            stop_time.station.index,
+            "arrival=",
+            stop_time.arrival_time,
+            "departure=",
+            stop_time.departure_time,
+        )
+
+
 def test_generate_station_timetable_departure_time(
     parsed_railway: Railway,
 ) -> None:

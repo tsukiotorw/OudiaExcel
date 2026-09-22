@@ -174,7 +174,10 @@ class Parser:
 
                 case "Ressya":
                     diagram.trains.append(
-                        self._parse_train(child)
+                        self._parse_train(
+                            child,
+                            diagram.direction,
+                        )
                     )
 
                 case _:
@@ -187,6 +190,7 @@ class Parser:
     def _parse_train(
         self,
         section: SectionNode,
+        direction: Direction,
     ) -> Train:
         """
         Ressyaセクションを解析しTrainを生成する。
@@ -218,8 +222,9 @@ class Parser:
                     train.stop_times = parse_stop_times(
                         token.value,
                         self._stations,
+                        direction,
                     )
-                    
+
                 case key if key.startswith("Operation"):
                     operation_tokens.append((token.key, token.value))
 

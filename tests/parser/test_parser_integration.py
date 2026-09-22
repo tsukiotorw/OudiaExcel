@@ -166,10 +166,10 @@ def test_parse_real_oud2_up_train_stop_times(parsed_railway: Railway) -> None:
     train = parsed_railway.diagrams[1].trains[0]
 
     expected = [
-        (0, 0, "A", None, "030", False, 0),
-        (1, 1, "B", None, None, True, 1),
-        (2, 2, "C", None, None, True, 1),
-        (3, 3, "D", "100", None, False, 1),
+        (0, 3, "D", None, "030", False, 0),
+        (1, 2, "C", None, None, True, 1),
+        (2, 1, "B", None, None, True, 1),
+        (3, 0, "A", "100", None, False, 1),
     ]
 
     assert len(train.stop_times) == len(expected)

@@ -368,3 +368,126 @@ def test_parse_train_types():
     assert train_type.short_name == ""
 
 
+
+def test_parse_train_nobori_station_order() -> None:
+    """
+    上り列車ではStopTimeの駅が進行方向順になること。
+    """
+    root = SectionNode(
+        line_number=1,
+        name="Rosen",
+        key_values=[
+            KeyValueToken(
+                line_number=2,
+                raw_line="Rosenmei=中央線",
+                key="Rosenmei",
+                value="中央線",
+            )
+        ],
+        children=[
+            SectionNode(
+                line_number=3,
+                name="Eki",
+                key_values=[
+                    KeyValueToken(
+                        line_number=4,
+                        raw_line="Ekimei=A",
+                        key="Ekimei",
+                        value="A",
+                    )
+                ],
+            ),
+            SectionNode(
+                line_number=5,
+                name="Eki",
+                key_values=[
+                    KeyValueToken(
+                        line_number=6,
+                        raw_line="Ekimei=B",
+                        key="Ekimei",
+                        value="B",
+                    )
+                ],
+            ),
+            SectionNode(
+                line_number=7,
+                name="Eki",
+                key_values=[
+                    KeyValueToken(
+                        line_number=8,
+                        raw_line="Ekimei=C",
+                        key="Ekimei",
+                        value="C",
+                    )
+                ],
+            ),
+            SectionNode(
+                line_number=9,
+                name="Eki",
+                key_values=[
+                    KeyValueToken(
+                        line_number=10,
+                        raw_line="Ekimei=D",
+                        key="Ekimei",
+                        value="D",
+                    )
+                ],
+            ),
+            SectionNode(
+                line_number=11,
+                name="Dia",
+                key_values=[
+                    KeyValueToken(
+                        line_number=12,
+                        raw_line="DiaName=平日",
+                        key="DiaName",
+                        value="平日",
+                    )
+                ],
+                children=[
+                    SectionNode(
+                        line_number=13,
+                        name="Nobori",
+                        children=[
+                            SectionNode(
+                                line_number=14,
+                                name="Ressya",
+                                key_values=[
+                                    KeyValueToken(
+                                        line_number=15,
+                                        raw_line="Syubetsu=0",
+                                        key="Syubetsu",
+                                        value="0",
+                                    ),
+                                    KeyValueToken(
+                                        line_number=16,
+                                        raw_line="EkiJikoku=1;500$0,1;510$0,1;520$0,1;530$0",
+                                        key="EkiJikoku",
+                                        value="1;500$0,1;510$0,1;520$0,1;530$0",
+                                    ),
+                                ],
+                            )
+                        ],
+                    )
+                ],
+            ),
+        ],
+    )
+
+    railway = Parser().parse(root)
+
+    train = railway.diagrams[0].trains[0]
+
+    assert [stop_time.station.name for stop_time in train.stop_times] == [
+        "D",
+        "C",
+        "B",
+        "A",
+    ]
+
+    assert [stop_time.order for stop_time in train.stop_times] == [
+        0,
+        1,
+        2,
+        3,
+    ]
