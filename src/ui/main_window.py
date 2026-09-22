@@ -4,6 +4,7 @@ from tkinter import filedialog, messagebox
 
 from src.application.oud2_loader import load_oud2
 from src.models.railway import Railway
+from src.models.station import Station
 
 
 class MainWindow:
@@ -12,10 +13,12 @@ class MainWindow:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
         self.root.title("OuDiaExcel")
-        self.root.geometry("600x350")
+        self.root.geometry("600x400")
 
         self.file_path = tk.StringVar()
         self.railway: Railway | None = None
+        self.selected_station: Station | None = None
+        self.selected_station_text = tk.StringVar(value="未選択")
 
         self._create_widgets()
 
@@ -78,6 +81,29 @@ class MainWindow:
             expand=True,
         )
 
+        self.station_listbox.bind(
+            "<<ListboxSelect>>",
+            self._on_station_selected,
+        )
+
+        selected_frame = tk.Frame(frame)
+        selected_frame.pack(
+            fill=tk.X,
+            pady=(10, 0),
+        )
+
+        selected_label = tk.Label(
+            selected_frame,
+            text="選択駅:",
+        )
+        selected_label.pack(side=tk.LEFT)
+
+        selected_value = tk.Label(
+            selected_frame,
+            textvariable=self.selected_station_text,
+        )
+        selected_value.pack(side=tk.LEFT, padx=(8, 0))
+
     def _select_file(self) -> None:
         """OuDiaSecondファイルを選択する。"""
         selected_file = filedialog.askopenfilename(
@@ -111,6 +137,9 @@ class MainWindow:
             )
             return
 
+        self.selected_station = None
+        self.selected_station_text.set("未選択")
+
         self._update_station_list()
 
         messagebox.showinfo(
@@ -134,6 +163,23 @@ class MainWindow:
                 tk.END,
                 station.name,
             )
+
+    def _on_station_selected(self, _event: tk.Event) -> None:
+        """駅一覧から駅が選択されたときの処理。"""
+        if self.railway is None:
+            return
+
+        selection = self.station_listbox.curselection()
+
+        if not selection:
+            return
+
+        index = selection[0]
+
+        self.selected_station = self.railway.stations[index]
+        self.selected_station_text.set(
+            self.selected_station.name,
+        )
 
 
 def main() -> None:
