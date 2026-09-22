@@ -3,8 +3,10 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 
 from src.application.oud2_loader import load_oud2
+from src.application.station_timetable import generate_station_timetable
 from src.models.railway import Railway
 from src.models.station import Station
+from src.models.timetable import StationTimetable
 
 
 class MainWindow:
@@ -19,6 +21,8 @@ class MainWindow:
         self.railway: Railway | None = None
         self.selected_station: Station | None = None
         self.selected_station_text = tk.StringVar(value="未選択")
+
+        self.station_timetable: StationTimetable | None = None
 
         self._create_widgets()
 
@@ -104,6 +108,17 @@ class MainWindow:
         )
         selected_value.pack(side=tk.LEFT, padx=(8, 0))
 
+        generate_button = tk.Button(
+            frame,
+            text="時刻表生成",
+            command=self._generate_timetable,
+        )
+        generate_button.pack(
+            anchor=tk.E,
+            pady=(10, 0),
+        )
+
+
     def _select_file(self) -> None:
         """OuDiaSecondファイルを選択する。"""
         selected_file = filedialog.askopenfilename(
@@ -138,6 +153,7 @@ class MainWindow:
             return
 
         self.selected_station = None
+        self.station_timetable = None
         self.selected_station_text.set("未選択")
 
         self._update_station_list()
@@ -181,6 +197,41 @@ class MainWindow:
             self.selected_station.name,
         )
 
+    def _generate_timetable(self) -> None:
+        """選択された駅の駅時刻表を生成する。"""
+        if self.railway is None:
+            messagebox.showwarning(
+                "未読み込み",
+                "OuDiaSecondファイルを読み込んでください。",
+            )
+            return
+
+        if self.selected_station is None:
+            messagebox.showwarning(
+                "駅未選択",
+                "駅を選択してください。",
+            )
+            return
+
+        try:
+            self.station_timetable = generate_station_timetable(
+                self.railway,
+                self.selected_station,
+            )
+        except Exception as exc:
+            messagebox.showerror(
+                "時刻表生成エラー",
+                f"時刻表の生成に失敗しました。\n\n{exc}",
+            )
+            return
+
+        messagebox.showinfo(
+            "時刻表生成完了",
+            f"時刻表を生成しました。\n\n"
+            f"駅: {self.station_timetable.station_name}\n"
+            f"下り: {len(self.station_timetable.down)}時間\n"
+            f"上り: {len(self.station_timetable.up)}時間",
+        )
 
 def main() -> None:
     """アプリケーションを起動する。"""
