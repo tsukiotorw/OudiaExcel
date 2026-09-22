@@ -33,7 +33,7 @@ def test_write_station_timetable(
 
     worksheet = workbook[timetable.station_name]
 
-    assert worksheet["A1"].value == "B 時刻表"
+    assert worksheet["D1"].value == "B駅 時刻表"
     assert worksheet["A3"].value == "下り"
 
 
@@ -137,22 +137,14 @@ def test_write_train_type_colors(
     # 列車種別の文字色とセルの色塗りを設定する
     display_config = TimetableDisplayConfig(
         train_type_colors={
-            0: "008000",  # 普通：緑文字
-            1: "0000FF",  # 快速：青文字
-        },
-        train_type_fills={
-            0: "E2F0D9",  # 普通：薄緑
-            1: "DDEBF7",  # 快速：薄青
+            0: "008000",
+            1: "0000FF",
         },
         header_fill="D9EAD3",
         hour_fill="F2F2F2",
     )
 
     # ↓↓↓ ここにデバッグ出力を追加 ↓↓↓
-    entry = timetable.down[0].entries[0]
-    print(f"entry.train_type.index = {entry.train_type.index}")
-    print(f"display_config.train_type_colors = {display_config.train_type_colors}")
-    print(f"get_train_type_color result = {display_config.get_train_type_color(entry.train_type.index)}")
     # ↑↑↑ ここまで ↑↑↑
 
     output_path = tmp_path / "station_timetable.xlsx"
@@ -179,14 +171,163 @@ def test_write_train_type_colors(
     )
 
     # ↓↓↓ ここにもデバッグ出力を追加 ↓↓↓
-    print(f"expected_color = {expected_color}")
-    print(f"B4 font color = {worksheet['B4'].font.color}")
     # ↑↑↑ ここまで ↑↑↑
 
     assert worksheet["B4"].font.color.type == "rgb"
     assert worksheet["B4"].font.color.rgb == (
         "FF" + expected_color
     )
+
+
+def test_write_header_display_config(
+    parsed_railway: Railway,
+    tmp_path,
+) -> None:
+    """ヘッダの表示設定がExcelへ反映されること。"""
+    station = parsed_railway.stations[1]
+    generator = StationTimetableGenerator(parsed_railway)
+    timetable = generator.generate(station)
+
+    display_config = TimetableDisplayConfig(
+        header_fill="D9EAD3",
+        header_font_color="FF0000",
+        header_font_name="ＭＳ ゴシック",
+        header_font_size=14,
+    )
+
+    output_path = tmp_path / "station_timetable.xlsx"
+
+    writer = ExcelWriter(
+        display_config=display_config,
+    )
+    writer.write(
+        timetable,
+        output_path,
+    )
+
+    workbook = load_workbook(output_path)
+    worksheet = workbook[timetable.station_name]
+
+    cell = worksheet["A3"]
+
+    assert cell.fill.fgColor.rgb == "FFD9EAD3"
+    assert cell.font.color.type == "rgb"
+    assert cell.font.color.rgb == "FFFF0000"
+    assert cell.font.name == "ＭＳ ゴシック"
+    assert cell.font.sz == 14
+
+def test_write_hour_display_config(
+    parsed_railway: Railway,
+    tmp_path,
+) -> None:
+    """時刻欄の表示設定がExcelへ反映されること。"""
+    station = parsed_railway.stations[1]
+    generator = StationTimetableGenerator(parsed_railway)
+    timetable = generator.generate(station)
+
+    display_config = TimetableDisplayConfig(
+        hour_fill="F2F2F2",
+        hour_font_color="0000FF",
+        hour_font_name="ＭＳ ゴシック",
+        hour_font_size=11,
+    )
+
+    output_path = tmp_path / "station_timetable.xlsx"
+
+    writer = ExcelWriter(
+        display_config=display_config,
+    )
+    writer.write(
+        timetable,
+        output_path,
+    )
+
+    workbook = load_workbook(output_path)
+    worksheet = workbook[timetable.station_name]
+
+    cell = worksheet["A4"]
+
+    assert cell.fill.fgColor.rgb == "FFF2F2F2"
+    assert cell.font.color.type == "rgb"
+    assert cell.font.color.rgb == "FF0000FF"
+    assert cell.font.name == "ＭＳ ゴシック"
+    assert cell.font.sz == 11
+
+
+def test_write_train_display_config(
+    parsed_railway: Railway,
+    tmp_path,
+) -> None:
+    """列車欄の表示設定がExcelへ反映されること。"""
+    station = parsed_railway.stations[1]
+    generator = StationTimetableGenerator(parsed_railway)
+    timetable = generator.generate(station)
+
+    display_config = TimetableDisplayConfig(
+        train_fill="FFF2CC",
+        train_font_color="800080",
+    )
+
+    output_path = tmp_path / "station_timetable.xlsx"
+
+    writer = ExcelWriter(
+        display_config=display_config,
+    )
+    writer.write(
+        timetable,
+        output_path,
+    )
+
+    workbook = load_workbook(output_path)
+    worksheet = workbook[timetable.station_name]
+
+    cell = worksheet["B4"]
+
+    assert cell.fill.fgColor.rgb == "FFFFF2CC"
+    assert cell.font.color.type == "rgb"
+    assert cell.font.color.rgb == "FF800080"
+
+
+def test_train_type_color_takes_priority_over_train_font_color(
+    parsed_railway: Railway,
+    tmp_path,
+) -> None:
+    """列車種別の文字色が共通の列車文字色より優先されること。"""
+    station = parsed_railway.stations[1]
+    generator = StationTimetableGenerator(parsed_railway)
+    timetable = generator.generate(station)
+
+    display_config = TimetableDisplayConfig(
+        train_font_color="000000",
+        train_type_colors={
+            0: "008000",
+            1: "0000FF",
+        },
+    )
+
+    output_path = tmp_path / "station_timetable.xlsx"
+
+    writer = ExcelWriter(
+        display_config=display_config,
+    )
+    writer.write(
+        timetable,
+        output_path,
+    )
+
+    workbook = load_workbook(output_path)
+    worksheet = workbook[timetable.station_name]
+
+    entry = timetable.down[0].entries[0]
+    expected_color = display_config.get_train_type_color(
+        entry.train_type.index
+    )
+
+    cell = worksheet["B4"]
+
+    assert expected_color is not None
+    assert cell.font.color.type == "rgb"
+    assert cell.font.color.rgb == "FF" + expected_color
 
 
 def test_write_station_timetable_legend(

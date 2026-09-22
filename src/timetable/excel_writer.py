@@ -43,10 +43,6 @@ class ExcelWriter:
 
         worksheet.title = timetable.station_name
 
-        self._write_title(
-            worksheet=worksheet,
-            station_name=timetable.station_name,
-        )
 
         down_width = self._max_entry_count(timetable.down) + 1
         up_width = self._max_entry_count(timetable.up) + 1
@@ -60,6 +56,13 @@ class ExcelWriter:
         )
 
         start_row = 3
+
+        self._write_title(
+            worksheet=worksheet,
+            station_name=timetable.station_name,
+            title_column=up_start_column,
+        )
+
 
         down_end_row = self._write_direction(
             worksheet=worksheet,
@@ -121,12 +124,13 @@ class ExcelWriter:
     def _write_title(
         worksheet,
         station_name: str,
+        title_column: int = 11,
     ) -> None:
         """駅名タイトルを書き込む。"""
         cell = worksheet.cell(
             row=1,
-            column=1,
-            value=f"{station_name} 時刻表",
+            column=title_column-1,
+            value=f"{station_name}駅 時刻表",
         )
 
         cell.font = Font(
@@ -166,10 +170,12 @@ class ExcelWriter:
             if column == start_column:
                 cell.value = title
                 cell.font = Font(
-                    name="源ノ角ゴシック JP Heavy",
-                    size=12,
+                    name=self.display_config.header_font_name,
+                    size=self.display_config.header_font_size,
                     bold=True,
-                    color=self._to_excel_color("FAFAFA"),
+                    color=self._to_excel_color(
+                        self.display_config.header_font_color
+                    ),
                 )
 
             cell.alignment = Alignment(
@@ -197,6 +203,17 @@ class ExcelWriter:
                 else self.display_config.timetable_fill
             )
 
+            hour_fill = self._create_fill(
+                self.display_config.hour_fill
+            )
+
+            train_fill = self._create_fill(
+                self.display_config.train_fill
+            )
+
+            hour_cell_fill = hour_fill or timetable_fill
+            train_cell_fill = train_fill or timetable_fill
+
             # 時刻欄
             hour_cell = worksheet.cell(
                 row=metadata_row,
@@ -207,18 +224,21 @@ class ExcelWriter:
                 name=self.display_config.hour_font_name,
                 size=self.display_config.hour_font_size,
                 bold=True,
+                color=self._to_excel_color(
+                    self.display_config.hour_font_color
+                ),
             )
             hour_cell.alignment = Alignment(
                 horizontal="center",
                 vertical="center",
             )
-            hour_cell.fill = timetable_fill or PatternFill()
-
+            hour_cell.fill = hour_cell_fill or PatternFill()
+            
             minute_hour_cell = worksheet.cell(
                 row=minute_row,
                 column=start_column,
             )
-            minute_hour_cell.fill = timetable_fill or PatternFill()
+            minute_hour_cell.fill = hour_cell_fill or PatternFill()
 
             worksheet.merge_cells(
                 start_row=metadata_row,
@@ -234,10 +254,14 @@ class ExcelWriter:
             ):
                 metadata = self._format_entry_metadata(entry)
 
-                train_type_color = self._to_excel_color(
-                    self.display_config.get_train_type_color(
-                        entry.train_type.index
-                    )
+                train_type_color = self.display_config.get_train_type_color(
+                    entry.train_type.index
+                )
+
+                metadata_font_color = (
+                    train_type_color
+                    if train_type_color is not None
+                    else self.display_config.train_font_color
                 )
 
                 metadata_cell = worksheet.cell(
@@ -245,33 +269,42 @@ class ExcelWriter:
                     column=column,
                     value=metadata,
                 )
+
                 metadata_cell.font = Font(
                     name=self.display_config.metadata_font_name,
                     size=self.display_config.metadata_font_size,
-                    color=train_type_color,
+                    color=self._to_excel_color(metadata_font_color),
                 )
+
                 metadata_cell.alignment = Alignment(
                     horizontal="center",
                     vertical="center",
                     wrap_text=True,
                 )
-                metadata_cell.fill = timetable_fill or PatternFill()
+
+                metadata_cell.fill = train_cell_fill or PatternFill()
 
                 minute_cell = worksheet.cell(
                     row=minute_row,
                     column=column,
                     value=entry.minute,
                 )
+
                 minute_cell.font = Font(
                     name=self.display_config.minute_font_name,
                     size=self.display_config.minute_font_size,
                     bold=True,
+                    color=self._to_excel_color(
+                        self.display_config.train_font_color
+                    ),
                 )
+
                 minute_cell.alignment = Alignment(
                     horizontal="center",
                     vertical="center",
                 )
-                minute_cell.fill = timetable_fill or PatternFill()
+                
+                minute_cell.fill = train_cell_fill or PatternFill()
 
             row += self._HOUR_ROWS
 

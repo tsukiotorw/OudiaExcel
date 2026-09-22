@@ -33,5 +33,5 @@ def test_export_station_timetable(
     workbook = load_workbook(output_path)
     worksheet = workbook[timetable.station_name]
 
-    assert worksheet["A1"].value == "B 時刻表"
+    assert worksheet["D1"].value == "B駅 時刻表"
     assert worksheet["A3"].value == "下り"
