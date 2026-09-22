@@ -4,6 +4,7 @@ from tkinter import filedialog
 
 from src.application.oud2_loader import load_oud2
 from src.application.station_timetable import generate_station_timetable
+from src.application.excel_export import export_station_timetable
 from src.models.railway import Railway
 from src.models.station import Station
 from src.models.timetable import StationTimetable
@@ -109,14 +110,27 @@ class MainWindow:
         )
         selected_value.pack(side=tk.LEFT, padx=(8, 0))
 
+        button_frame = tk.Frame(frame)
+        button_frame.pack(
+            anchor=tk.E,
+            pady=(10, 0),
+        )
+
         generate_button = tk.Button(
-            frame,
+            button_frame,
             text="時刻表生成",
             command=self._generate_timetable,
         )
-        generate_button.pack(
-            anchor=tk.E,
-            pady=(10, 0),
+        generate_button.pack(side=tk.LEFT)
+
+        export_button = tk.Button(
+            button_frame,
+            text="Excel出力",
+            command=self._export_excel,
+        )
+        export_button.pack(
+            side=tk.LEFT,
+            padx=(8, 0),
         )
 
         self.timetable_view = TimetableView(frame)
@@ -245,6 +259,46 @@ class MainWindow:
             f"下り: {len(self.station_timetable.down)}時間\n"
             f"上り: {len(self.station_timetable.up)}時間",
         )
+
+
+    def _export_excel(self) -> None:
+        """生成済みの駅時刻表をExcelファイルへ出力する。"""
+        if self.station_timetable is None:
+            self._show_message(
+                "時刻表未生成",
+                "先に時刻表を生成してください。",
+            )
+            return
+
+        output_path = filedialog.asksaveasfilename(
+            title="Excelファイルを保存",
+            defaultextension=".xlsx",
+            filetypes=[
+                ("Excelファイル", "*.xlsx"),
+                ("すべてのファイル", "*.*"),
+            ],
+        )
+
+        if not output_path:
+            return
+
+        try:
+            export_station_timetable(
+                self.station_timetable,
+                Path(output_path),
+            )
+        except Exception as exc:
+            self._show_message(
+                "Excel出力エラー",
+                f"Excelファイルの出力に失敗しました。\n\n{exc}",
+            )
+            return
+
+        self._show_message(
+            "Excel出力完了",
+            f"Excelファイルを出力しました。\n\n{output_path}",
+        )
+
 
     def _show_message(
         self,
