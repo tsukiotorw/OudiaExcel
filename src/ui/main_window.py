@@ -1,6 +1,6 @@
 from pathlib import Path
 import tkinter as tk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog
 
 from src.application.oud2_loader import load_oud2
 from src.application.station_timetable import generate_station_timetable
@@ -145,7 +145,7 @@ class MainWindow:
         path = self.file_path.get()
 
         if not path:
-            messagebox.showwarning(
+            self._show_message(
                 "ファイル未選択",
                 "OuDiaSecondファイルを選択してください。",
             )
@@ -154,9 +154,9 @@ class MainWindow:
         try:
             self.railway = load_oud2(Path(path))
         except Exception as exc:
-            messagebox.showerror(
+            self._show_message(
                 "読み込みエラー",
-                f"ファイルの読み込みに失敗しました。\n\n{exc}",
+                f"ファイルの読み込みに失敗しました。\n\n{exc}"
             )
             return
 
@@ -167,7 +167,7 @@ class MainWindow:
 
         self._update_station_list()
 
-        messagebox.showinfo(
+        self._show_message(
             "読み込み完了",
             f"ファイルを読み込みました。\n\n"
             f"路線名: {self.railway.name}\n"
@@ -209,14 +209,14 @@ class MainWindow:
     def _generate_timetable(self) -> None:
         """選択された駅の駅時刻表を生成する。"""
         if self.railway is None:
-            messagebox.showwarning(
+            self._show_message(
                 "未読み込み",
                 "OuDiaSecondファイルを読み込んでください。",
             )
             return
 
         if self.selected_station is None:
-            messagebox.showwarning(
+            self._show_message(
                 "駅未選択",
                 "駅を選択してください。",
             )
@@ -228,9 +228,9 @@ class MainWindow:
                 self.selected_station,
             )
         except Exception as exc:
-            messagebox.showerror(
+            self._show_message(
                 "時刻表生成エラー",
-                f"時刻表の生成に失敗しました。\n\n{exc}",
+                f"時刻表の生成に失敗しました。\n\n{exc}"
             )
             return
 
@@ -238,13 +238,58 @@ class MainWindow:
             self.station_timetable,
         )
 
-        messagebox.showinfo(
+        self._show_message(
             "時刻表生成完了",
             f"時刻表を生成しました。\n\n"
             f"駅: {self.station_timetable.station_name}\n"
             f"下り: {len(self.station_timetable.down)}時間\n"
             f"上り: {len(self.station_timetable.up)}時間",
         )
+
+    def _show_message(
+        self,
+        title: str,
+        message: str,
+    ) -> None:
+        """メインウィンドウの近くにメッセージを表示する。"""
+        dialog = tk.Toplevel(self.root)
+        dialog.title(title)
+        dialog.transient(self.root)
+        dialog.resizable(False, False)
+
+        label = tk.Label(
+            dialog,
+            text=message,
+            justify=tk.LEFT,
+            padx=20,
+            pady=20,
+        )
+        label.pack()
+
+        button = tk.Button(
+            dialog,
+            text="OK",
+            width=10,
+            command=dialog.destroy,
+        )
+        button.pack(pady=(0, 15))
+
+        dialog.update_idletasks()
+
+        x = (
+            self.root.winfo_x()
+            + (self.root.winfo_width() - dialog.winfo_width()) // 2
+        )
+        y = (
+            self.root.winfo_y()
+            + (self.root.winfo_height() - dialog.winfo_height()) // 2
+        )
+
+        dialog.geometry(f"+{x}+{y}")
+
+        dialog.grab_set()
+        button.focus_set()
+        dialog.bind("<Return>", lambda _event: dialog.destroy())
 
 
 def main() -> None:
