@@ -3,6 +3,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 
 from src.application.oud2_loader import load_oud2
+from src.models.railway import Railway
 
 
 class MainWindow:
@@ -11,9 +12,10 @@ class MainWindow:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
         self.root.title("OuDiaExcel")
-        self.root.geometry("600x220")
+        self.root.geometry("600x350")
 
         self.file_path = tk.StringVar()
+        self.railway: Railway | None = None
 
         self._create_widgets()
 
@@ -58,7 +60,22 @@ class MainWindow:
         )
         load_button.pack(
             anchor=tk.E,
-            pady=(15, 0),
+            pady=(15, 10),
+        )
+
+        station_label = tk.Label(
+            frame,
+            text="駅",
+        )
+        station_label.pack(anchor=tk.W)
+
+        self.station_listbox = tk.Listbox(
+            frame,
+            height=8,
+        )
+        self.station_listbox.pack(
+            fill=tk.BOTH,
+            expand=True,
         )
 
     def _select_file(self) -> None:
@@ -86,7 +103,7 @@ class MainWindow:
             return
 
         try:
-            railway = load_oud2(Path(path))
+            self.railway = load_oud2(Path(path))
         except Exception as exc:
             messagebox.showerror(
                 "読み込みエラー",
@@ -94,14 +111,29 @@ class MainWindow:
             )
             return
 
+        self._update_station_list()
+
         messagebox.showinfo(
             "読み込み完了",
             f"ファイルを読み込みました。\n\n"
-            f"路線名: {railway.name}\n"
-            f"駅数: {len(railway.stations)}\n"
-            f"列車種別数: {len(railway.train_types)}\n"
-            f"ダイヤ数: {len(railway.diagrams)}",
+            f"路線名: {self.railway.name}\n"
+            f"駅数: {len(self.railway.stations)}\n"
+            f"列車種別数: {len(self.railway.train_types)}\n"
+            f"ダイヤ数: {len(self.railway.diagrams)}",
         )
+
+    def _update_station_list(self) -> None:
+        """駅一覧を更新する。"""
+        self.station_listbox.delete(0, tk.END)
+
+        if self.railway is None:
+            return
+
+        for station in self.railway.stations:
+            self.station_listbox.insert(
+                tk.END,
+                station.name,
+            )
 
 
 def main() -> None:
@@ -113,4 +145,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-    
