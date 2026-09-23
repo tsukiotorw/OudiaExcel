@@ -9,7 +9,8 @@ from src.models.railway import Railway
 from src.models.station import Station
 from src.models.timetable import StationTimetable
 from src.ui.timetable_view import TimetableView
-
+from src.ui.timetable_preview import TimetablePreview
+from src.timetable.display_config import TimetableDisplayConfig
 
 class MainWindow:
     """OuDiaExcelのメインウィンドウ。"""
@@ -17,7 +18,7 @@ class MainWindow:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
         self.root.title("OuDiaExcel")
-        self.root.geometry("800x700")
+        self.root.geometry("1100x750")
 
         self.file_path = tk.StringVar()
         self.railway: Railway | None = None
@@ -25,8 +26,10 @@ class MainWindow:
         self.selected_station_text = tk.StringVar(value="未選択")
 
         self.station_timetable: StationTimetable | None = None
+        self.display_config = TimetableDisplayConfig()
 
         self._create_widgets()
+
 
     def _create_widgets(self) -> None:
         """画面のウィジェットを作成する。"""
@@ -135,6 +138,16 @@ class MainWindow:
 
         self.timetable_view = TimetableView(frame)
         self.timetable_view.frame.pack(
+            fill=tk.BOTH,
+            expand=True,
+            pady=(15, 0),
+        )
+
+        self.timetable_preview = TimetablePreview(
+            frame,
+            display_config=self.display_config,
+        )
+        self.timetable_preview.pack(
             fill=tk.BOTH,
             expand=True,
             pady=(15, 0),
