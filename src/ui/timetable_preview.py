@@ -58,21 +58,22 @@ class TimetablePreview(tk.Frame):
         """ウィジェットサイズ変更時にプレビューを再描画する。"""
         self._draw()
 
+
     def _draw(self) -> None:
         """サンプル時刻表を描画する。"""
         self.canvas.delete("all")
 
         # サンプルの列車
         down_trains = [
-            ("仙台", "普通", "05"),
-            ("仙台", "快速", "15"),
-            ("松島", "普通", "25"),
+            ("仙台", 0, "普通", "05"),
+            ("仙台", 1, "快速", "15"),
+            ("松島", 0, "普通", "25"),
         ]
 
         up_trains = [
-            ("石巻", "普通", "10"),
-            ("石巻", "快速", "20"),
-            ("塩釜", "普通", "30"),
+            ("石巻", 0, "普通", "10"),
+            ("石巻", 1, "快速", "20"),
+            ("塩釜", 0, "普通", "30"),
         ]
 
         title = "B駅 時刻表"
@@ -149,6 +150,7 @@ class TimetablePreview(tk.Frame):
             width=total_width,
         )
 
+
     def _draw_title(
         self,
         x: float,
@@ -222,7 +224,12 @@ class TimetablePreview(tk.Frame):
         )
 
         # 列車列
-        for index, (destination, train_type, minute) in enumerate(trains):
+        for index, (
+            destination,
+            train_type_index,
+            train_type,
+            minute,
+        ) in enumerate(trains):
             train_x = (
                 x
                 + self._HOUR_WIDTH
@@ -235,9 +242,16 @@ class TimetablePreview(tk.Frame):
                 header_y,
                 train_x + self._CELL_WIDTH,
                 header_y + self._CELL_HEIGHT,
-                fill=self.display_config.train_fill or "#FAFAFA",
+                fill=self._to_tk_color(
+                    self.display_config.train_fill
+                ) or "#FAFAFA",
                 outline="black",
                 tags=(PreviewItem.TRAIN,),
+            )
+
+            train_type_color = (
+                self.display_config.get_train_type_color(train_type_index)
+                or self.display_config.train_font_color
             )
 
             self.canvas.create_text(
@@ -248,7 +262,7 @@ class TimetablePreview(tk.Frame):
                     self.display_config.metadata_font_name,
                     self.display_config.metadata_font_size,
                 ),
-                fill=self.display_config.train_fill,
+                fill=self._to_tk_color(train_type_color),
             )
 
             # 分
@@ -265,7 +279,13 @@ class TimetablePreview(tk.Frame):
                 train_x + self._CELL_WIDTH / 2,
                 header_y + self._CELL_HEIGHT * 1.5,
                 text=minute,
-                font=("源ノ角ゴシック JP", 10, "bold"),
+                font=(
+                    self.display_config.minute_font_name,
+                    self.display_config.minute_font_size,
+                ),
+                fill=self._to_tk_color(
+                    self.display_config.train_font_color
+                ),
             )
 
 
@@ -341,6 +361,28 @@ class TimetablePreview(tk.Frame):
                 )
 
                 return
+
+
+    @staticmethod
+    def _to_tk_color(color: str | None) -> str | None:
+        """6桁RGB色をTkinter用の色文字列へ変換する。"""
+        if color is None:
+            return None
+
+        if len(color) == 6:
+            return f"#{color}"
+
+        if len(color) == 7 and color.startswith("#"):
+            return color
+
+        raise ValueError(
+            f"色は6桁RGBで指定してください: {color}"
+        )
+
+
+    def redraw(self) -> None:
+        """プレビューを再描画する。"""
+        self._draw()
 
 
 if __name__ == "__main__":
