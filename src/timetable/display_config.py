@@ -10,6 +10,12 @@ class TimetableDisplayConfig:
     # 列車種別ごとの文字色
     train_type_colors: dict[int, str] = field(default_factory=dict)
 
+    # タイトル
+    title_fill: str | None = None
+    title_font_color: str = "000000"
+    title_font_name: str = "源ノ角ゴシック JP"
+    title_font_size: int = 14
+
     # ヘッダー
     header_fill: str | None = None
     header_font_color: str = "FAFAFA"

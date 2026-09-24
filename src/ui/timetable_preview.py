@@ -164,7 +164,9 @@ class TimetablePreview(tk.Frame):
             y,
             x + width,
             y + self._TITLE_HEIGHT,
-            fill="white",
+            fill=self._to_tk_color(
+                self.display_config.title_fill
+            ) or "#FFFFFF",
             outline="black",
             tags=(PreviewItem.TITLE,),
         )
@@ -173,8 +175,16 @@ class TimetablePreview(tk.Frame):
             x + width / 2,
             y + self._TITLE_HEIGHT / 2,
             text=title,
-            font=("源ノ角ゴシック JP", 14, "bold"),
+            font=(
+                self.display_config.title_font_name,
+                self.display_config.title_font_size,
+                "bold",
+            ),
+            fill=self._to_tk_color(
+                self.display_config.title_font_color
+            ),
         )
+
 
     def _draw_direction(
         self,
@@ -191,7 +201,9 @@ class TimetablePreview(tk.Frame):
             y,
             x + width,
             y + self._HEADER_HEIGHT,
-            fill="#D9EAD3",
+            fill=self._to_tk_color(
+                self.display_config.header_fill
+            ) or "#D9EAD3",
             outline="black",
             tags=(PreviewItem.HEADER,),
         )
@@ -200,7 +212,14 @@ class TimetablePreview(tk.Frame):
             x + width / 2,
             y + self._HEADER_HEIGHT / 2,
             text=title,
-            font=("源ノ角ゴシック JP", 11, "bold"),
+            font=(
+                self.display_config.header_font_name,
+                self.display_config.header_font_size,
+                "bold",
+            ),
+            fill=self._to_tk_color(
+                self.display_config.header_font_color
+            ),            
         )
 
         header_y = y + self._HEADER_HEIGHT
@@ -211,7 +230,9 @@ class TimetablePreview(tk.Frame):
             header_y,
             x + self._HOUR_WIDTH,
             header_y + self._CELL_HEIGHT * 2,
-            fill="#F2F2F2",
+            fill=self._to_tk_color(
+                self.display_config.hour_fill
+            ) or "#F2F2F2",
             outline="black",
             tags=(PreviewItem.HOUR,),
         )
@@ -220,7 +241,14 @@ class TimetablePreview(tk.Frame):
             x + self._HOUR_WIDTH / 2,
             header_y + self._CELL_HEIGHT,
             text="4",
-            font=("源ノ角ゴシック JP", 10, "bold"),
+            font=(
+                self.display_config.hour_font_name,
+                self.display_config.hour_font_size,
+                "bold",
+            ),
+            fill=self._to_tk_color(
+                self.display_config.hour_font_color
+            ),
         )
 
         # 列車列
