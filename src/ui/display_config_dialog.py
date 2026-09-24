@@ -71,9 +71,15 @@ class DisplayConfigDialog(tk.Toplevel):
 
     def _create_variables(self) -> None:
         """設定値を保持するTk変数を作成する。"""
-        if self.item != PreviewItem.TRAIN:
-            return
+        match self.item:
+            case PreviewItem.TRAIN:
+                self._create_train_variables()
+            case _:
+                pass
 
+
+    def _create_train_variables(self) -> None:
+        """列車情報の設定値を保持するTk変数を作成する。"""
         self.metadata_font_name = tk.StringVar(
             value=self.display_config.metadata_font_name,
         )
@@ -104,19 +110,24 @@ class DisplayConfigDialog(tk.Toplevel):
         )
         frame.pack()
 
-        if self.item != PreviewItem.TRAIN:
-            ttk.Label(
-                frame,
-                text=f"設定対象: {self._get_item_name()}",
-            ).pack(pady=(0, 15))
+        match self.item:
+            case PreviewItem.TRAIN:
+                self._create_train_widgets(frame)
+            case _:
+                ttk.Label(
+                    frame,
+                    text=f"設定対象: {self._get_item_name()}",
+                ).pack(pady=(0, 15))
 
-            ttk.Button(
-                frame,
-                text="閉じる",
-                command=self.destroy,
-            ).pack()
+                ttk.Button(
+                    frame,
+                    text="閉じる",
+                    command=self.destroy,
+                ).pack()
 
-            return
+
+    def _create_train_widgets(self, frame: ttk.Frame) -> None:
+        """列車情報のウィジェットを作成する。"""
 
         available_fonts = self._get_available_fonts()
 
@@ -327,27 +338,35 @@ class DisplayConfigDialog(tk.Toplevel):
 
     def _apply(self) -> None:
         """設定を適用する。"""
-        if self.item == PreviewItem.TRAIN:
-            self.display_config.metadata_font_name = (
-                self.metadata_font_name.get()
-            )
-            self.display_config.metadata_font_size = (
-                self.metadata_font_size.get()
-            )
-            self.display_config.minute_font_name = (
-                self.minute_font_name.get()
-            )
-            self.display_config.minute_font_size = (
-                self.minute_font_size.get()
-            )
-            self.display_config.train_font_color = (
-                self.font_color.get()
-            )
+        match self.item:
+            case PreviewItem.TRAIN:
+                self._apply_train()
+            case _:
+                pass
 
-            fill_color = self.fill_color.get().strip()
-            self.display_config.train_fill = (
-                fill_color if fill_color else None
-            )
+
+    def _apply_train(self) -> None:
+        """列車の表示設定を適用する。"""
+        self.display_config.metadata_font_name = (
+            self.metadata_font_name.get()
+        )
+        self.display_config.metadata_font_size = (
+            self.metadata_font_size.get()
+        )
+        self.display_config.minute_font_name = (
+            self.minute_font_name.get()
+        )
+        self.display_config.minute_font_size = (
+            self.minute_font_size.get()
+        )
+        self.display_config.train_font_color = (
+            self.font_color.get()
+        )
+
+        fill_color = self.fill_color.get().strip()
+        self.display_config.train_fill = (
+            fill_color if fill_color else None
+        )
 
         parent = self.master
 
