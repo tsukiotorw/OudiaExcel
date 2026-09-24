@@ -1,4 +1,5 @@
 import tkinter as tk
+import tkinter.font as tkfont
 from tkinter import colorchooser,ttk
 
 from src.ui.preview_item import PreviewItem
@@ -57,17 +58,36 @@ class DisplayConfigDialog(tk.Toplevel):
         return titles[self.item]
 
 
+    def _get_available_fonts(self) -> list[str]:
+        """インストール済みフォント名の一覧を取得する。"""
+        families = {
+            name
+            for name in tkfont.families()
+            if not name.startswith("@")
+        }
+
+        return sorted(families, key=str.lower)
+
+
     def _create_variables(self) -> None:
         """設定値を保持するTk変数を作成する。"""
         if self.item != PreviewItem.TRAIN:
             return
 
-        self.font_name = tk.StringVar(
+        self.metadata_font_name = tk.StringVar(
+            value=self.display_config.metadata_font_name,
+        )
+        self.metadata_font_size = tk.IntVar(
+            value=self.display_config.metadata_font_size,
+        )
+
+        self.minute_font_name = tk.StringVar(
             value=self.display_config.minute_font_name,
         )
-        self.font_size = tk.IntVar(
+        self.minute_font_size = tk.IntVar(
             value=self.display_config.minute_font_size,
         )
+
         self.font_color = tk.StringVar(
             value=self.display_config.train_font_color,
         )
@@ -98,6 +118,8 @@ class DisplayConfigDialog(tk.Toplevel):
 
             return
 
+        available_fonts = self._get_available_fonts()
+
         ttk.Label(
             frame,
             text="列車の表示設定",
@@ -111,13 +133,15 @@ class DisplayConfigDialog(tk.Toplevel):
 
         ttk.Label(
             frame,
-            text="フォント",
+            text="行先・種別フォント",
         ).grid(row=1, column=0, sticky=tk.W)
 
-        ttk.Entry(
+        ttk.Combobox(
             frame,
-            textvariable=self.font_name,
-            width=30,
+            textvariable=self.metadata_font_name,
+            values=available_fonts,
+            state="readonly",
+            width=28,
         ).grid(
             row=1,
             column=1,
@@ -128,14 +152,14 @@ class DisplayConfigDialog(tk.Toplevel):
 
         ttk.Label(
             frame,
-            text="サイズ",
+            text="行先・種別サイズ",
         ).grid(row=2, column=0, sticky=tk.W)
 
         ttk.Spinbox(
             frame,
             from_=6,
             to=72,
-            textvariable=self.font_size,
+            textvariable=self.metadata_font_size,
             width=8,
         ).grid(
             row=2,
@@ -147,15 +171,53 @@ class DisplayConfigDialog(tk.Toplevel):
 
         ttk.Label(
             frame,
-            text="文字色",
+            text="時刻フォント",
         ).grid(row=3, column=0, sticky=tk.W)
+
+        ttk.Combobox(
+            frame,
+            textvariable=self.minute_font_name,
+            values=available_fonts,
+            state="readonly",
+            width=28,
+        ).grid(
+            row=3,
+            column=1,
+            columnspan=2,
+            padx=(10, 0),
+            pady=4,
+        )
+        
+        ttk.Label(
+            frame,
+            text="時刻サイズ",
+        ).grid(row=4, column=0, sticky=tk.W)
+
+        ttk.Spinbox(
+            frame,
+            from_=6,
+            to=72,
+            textvariable=self.minute_font_size,
+            width=8,
+        ).grid(
+            row=4,
+            column=1,
+            sticky=tk.W,
+            padx=(10, 0),
+            pady=4,
+        )
+
+        ttk.Label(
+            frame,
+            text="文字色",
+        ).grid(row=5, column=0, sticky=tk.W)
 
         ttk.Entry(
             frame,
             textvariable=self.font_color,
             width=12,
         ).grid(
-            row=3,
+            row=5,
             column=1,
             padx=(10, 0),
             pady=4,
@@ -165,19 +227,19 @@ class DisplayConfigDialog(tk.Toplevel):
             frame,
             text="選択...",
             command=self._choose_font_color,
-        ).grid(row=3, column=2, padx=(5, 0))
+        ).grid(row=5, column=2, padx=(5, 0))
 
         ttk.Label(
             frame,
             text="塗りつぶし色",
-        ).grid(row=4, column=0, sticky=tk.W)
+        ).grid(row=6, column=0, sticky=tk.W)
 
         ttk.Entry(
             frame,
             textvariable=self.fill_color,
             width=12,
         ).grid(
-            row=4,
+            row=6,
             column=1,
             padx=(10, 0),
             pady=4,
@@ -187,11 +249,11 @@ class DisplayConfigDialog(tk.Toplevel):
             frame,
             text="選択...",
             command=self._choose_fill_color,
-        ).grid(row=4, column=2, padx=(5, 0))
+        ).grid(row=6, column=2, padx=(5, 0))
 
         button_frame = ttk.Frame(frame)
         button_frame.grid(
-            row=5,
+            row=7,
             column=0,
             columnspan=3,
             sticky=tk.E,
@@ -266,9 +328,21 @@ class DisplayConfigDialog(tk.Toplevel):
     def _apply(self) -> None:
         """設定を適用する。"""
         if self.item == PreviewItem.TRAIN:
-            self.display_config.train_font_name = self.font_name.get()
-            self.display_config.train_font_size = self.font_size.get()
-            self.display_config.train_font_color = self.font_color.get()
+            self.display_config.metadata_font_name = (
+                self.metadata_font_name.get()
+            )
+            self.display_config.metadata_font_size = (
+                self.metadata_font_size.get()
+            )
+            self.display_config.minute_font_name = (
+                self.minute_font_name.get()
+            )
+            self.display_config.minute_font_size = (
+                self.minute_font_size.get()
+            )
+            self.display_config.train_font_color = (
+                self.font_color.get()
+            )
 
             fill_color = self.fill_color.get().strip()
             self.display_config.train_fill = (
