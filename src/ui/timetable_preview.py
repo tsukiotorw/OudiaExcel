@@ -93,6 +93,7 @@ class TimetablePreview(tk.Frame):
 
     def _draw(self) -> None:
         """時刻表を描画する。"""
+
         self.canvas.delete("all")
 
         if self.timetable is None:
@@ -104,12 +105,15 @@ class TimetablePreview(tk.Frame):
                 ("仙台", 1, "快速", "15"),
                 ("松島", 0, "普通", "25"),
             ]
-
             up_trains = [
                 ("石巻", 0, "普通", "10"),
                 ("石巻", 1, "快速", "20"),
                 ("塩釜", 0, "普通", "30"),
             ]
+
+            down_hour = 4
+            up_hour = 4
+
         else:
             """実際の時刻表データを表示する。"""
             title = f"{self.timetable.station_name} 時刻表"
@@ -121,22 +125,58 @@ class TimetablePreview(tk.Frame):
                 self.timetable.up,
             )
 
+            down_hour = (
+                self.timetable.down[0].hour
+                if self.timetable.down
+                else 0
+            )
+            up_hour = (
+                self.timetable.up[0].hour
+                if self.timetable.up
+                else 0
+            )
+
         # 2方向の幅
-        direction_width = (
+        down_width = (
             self._HOUR_WIDTH
-            + self._CELL_WIDTH * 3
+            + self._CELL_WIDTH * max(len(down_trains), 1)
+        )
+        up_width = (
+            self._HOUR_WIDTH
+            + self._CELL_WIDTH * max(len(up_trains), 1)
         )
 
         total_width = (
-            direction_width * 2
+            down_width
+            + up_width
             + self._DIRECTION_GAP
+        )
+
+        # 凡例の高さ
+        if self.timetable is not None:
+            visible_train_types = [
+                train_type
+                for train_type in self.timetable.train_types
+                if self.display_config.train_type_visible.get(
+                    train_type.index,
+                    True,
+                )
+            ]
+            legend_rows = max(len(visible_train_types), 1)
+        else:
+            legend_rows = 1
+
+        legend_height = (
+            self.display_config.legend_row_height
+            * legend_rows
         )
 
         total_height = (
             self._TITLE_HEIGHT
             + self._HEADER_HEIGHT
-            + self._CELL_HEIGHT * 4
-            + 45
+            + self._CELL_HEIGHT * 2
+            + 10
+            + legend_height
         )
 
         canvas_width = self.canvas.winfo_width()
@@ -165,17 +205,19 @@ class TimetablePreview(tk.Frame):
         self._draw_direction(
             x=x0,
             y=direction_y,
-            width=direction_width,
+            width=down_width,
             title="下り",
+            hour=down_hour,
             trains=down_trains,
         )
 
         # 上り
         self._draw_direction(
-            x=x0 + direction_width + self._DIRECTION_GAP,
+            x=x0 + down_width + self._DIRECTION_GAP,
             y=direction_y,
-            width=direction_width,
+            width=up_width,
             title="上り",
+            hour=up_hour,
             trains=up_trains,
         )
 
@@ -183,7 +225,7 @@ class TimetablePreview(tk.Frame):
         legend_y = (
             direction_y
             + self._HEADER_HEIGHT
-            + self._CELL_HEIGHT * 4
+            + self._CELL_HEIGHT * 2
             + 10
         )
 
@@ -239,7 +281,8 @@ class TimetablePreview(tk.Frame):
         y: float,
         width: float,
         title: str,
-        trains: list[tuple[str, str, str]],
+        hour: int,
+        trains: list[tuple[str, int, str, str]],
     ) -> None:
         """下り・上りの時刻表を描画する。"""
         # ヘッダ
@@ -287,7 +330,7 @@ class TimetablePreview(tk.Frame):
         self.canvas.create_text(
             x + self._HOUR_WIDTH / 2,
             header_y + self._CELL_HEIGHT,
-            text="4",
+            text=str(hour),
             font=(
                 self.display_config.hour_font_name,
                 self.display_config.hour_font_size,
@@ -472,7 +515,7 @@ class TimetablePreview(tk.Frame):
             x,
             y,
         )
-        
+
         if not items:
             return
 
@@ -547,7 +590,7 @@ class TimetablePreview(tk.Frame):
                 entry.train_type.name,
                 f"{entry.minute:02d}",
             )
-            for entry in hour.entries[:3]
+            for entry in hour.entries
         ]
 
 
