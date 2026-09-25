@@ -11,7 +11,7 @@ class TimetableView:
 
         self.text = tk.Text(
             self.frame,
-            height=20,
+            height=5,
             width=60,
             state=tk.DISABLED,
         )

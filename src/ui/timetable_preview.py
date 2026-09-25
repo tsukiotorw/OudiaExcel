@@ -1,9 +1,14 @@
 import tkinter as tk
+from tkinter import ttk
 
 from src.ui.display_config_dialog import DisplayConfigDialog
 from src.ui.preview_item import PreviewItem
 
 from src.timetable.display_config import TimetableDisplayConfig
+from src.models.timetable import (
+    StationTimetable,
+    TimetableHour,
+)
 
 
 class TimetablePreview(tk.Frame):
@@ -30,15 +35,40 @@ class TimetablePreview(tk.Frame):
             else TimetableDisplayConfig()
         )
 
-        self.canvas = tk.Canvas(
-            self,
-            background="white",
-            highlightthickness=0,
-        )
-        self.canvas.pack(
+        container = ttk.Frame(self)
+        container.pack(
             fill=tk.BOTH,
             expand=True,
         )
+
+        self.canvas = tk.Canvas(
+            container,
+            background="white",
+            highlightthickness=0,
+        )
+        self.canvas.grid(
+            row=0,
+            column=0,
+            sticky="nsew",
+        )
+
+        scrollbar = ttk.Scrollbar(
+            container,
+            orient=tk.VERTICAL,
+            command=self.canvas.yview,
+        )
+        scrollbar.grid(
+            row=0,
+            column=1,
+            sticky="ns",
+        )
+
+        self.canvas.configure(
+            yscrollcommand=scrollbar.set,
+        )
+
+        container.rowconfigure(0, weight=1)
+        container.columnconfigure(0, weight=1)
 
         self.bind(
             "<Configure>",
@@ -50,6 +80,8 @@ class TimetablePreview(tk.Frame):
             self._on_click
         )
 
+        self.timetable: StationTimetable | None = None
+
 
     def _on_configure(
         self,
@@ -60,23 +92,34 @@ class TimetablePreview(tk.Frame):
 
 
     def _draw(self) -> None:
-        """サンプル時刻表を描画する。"""
+        """時刻表を描画する。"""
         self.canvas.delete("all")
 
-        # サンプルの列車
-        down_trains = [
-            ("仙台", 0, "普通", "05"),
-            ("仙台", 1, "快速", "15"),
-            ("松島", 0, "普通", "25"),
-        ]
+        if self.timetable is None:
+            """ダミーデータを表示する。"""
+            title = "B駅 時刻表"
 
-        up_trains = [
-            ("石巻", 0, "普通", "10"),
-            ("石巻", 1, "快速", "20"),
-            ("塩釜", 0, "普通", "30"),
-        ]
+            down_trains = [
+                ("仙台", 0, "普通", "05"),
+                ("仙台", 1, "快速", "15"),
+                ("松島", 0, "普通", "25"),
+            ]
 
-        title = "B駅 時刻表"
+            up_trains = [
+                ("石巻", 0, "普通", "10"),
+                ("石巻", 1, "快速", "20"),
+                ("塩釜", 0, "普通", "30"),
+            ]
+        else:
+            """実際の時刻表データを表示する。"""
+            title = f"{self.timetable.station_name} 時刻表"
+
+            down_trains = self._create_preview_trains(
+                self.timetable.down,
+            )
+            up_trains = self._create_preview_trains(
+                self.timetable.up,
+            )
 
         # 2方向の幅
         direction_width = (
@@ -148,6 +191,10 @@ class TimetablePreview(tk.Frame):
             x=x0,
             y=legend_y,
             width=total_width,
+        )
+
+        self.canvas.configure(
+            scrollregion=self.canvas.bbox("all")
         )
 
 
@@ -325,51 +372,107 @@ class TimetablePreview(tk.Frame):
     ) -> None:
         """凡例を描画する。"""
         label_width = 60
+        row_height = self.display_config.legend_row_height
 
+        visible_train_types = []
+
+        if self.timetable is not None:
+            visible_train_types = [
+                train_type
+                for train_type in self.timetable.train_types
+                if self.display_config.train_type_visible.get(
+                    train_type.index,
+                    True,
+                )
+            ]
+
+        legend_height = max(
+            row_height * len(visible_train_types),
+            row_height,
+        )
+
+        # 背景
         self.canvas.create_rectangle(
             x,
             y,
             x + width,
-            y + 30,
-            fill="black",
+            y + legend_height,
+            fill=self._to_tk_color(
+                self.display_config.legend_fill
+            ),
             outline="black",
             tags=(PreviewItem.LEGEND,),
         )
 
+        # ラベル部分
+        self.canvas.create_rectangle(
+            x,
+            y,
+            x + label_width,
+            y + legend_height,
+            fill=self._to_tk_color(
+                self.display_config.legend_label_fill
+            ),
+            outline="black",
+        )
+
         self.canvas.create_text(
             x + label_width / 2,
-            y + 15,
+            y + legend_height / 2,
             text="凡例",
-            fill="white",
-            font=("源ノ角ゴシック JP", 9, "bold"),
+            fill=self._to_tk_color(
+                self.display_config.legend_label_font_color
+            ),
+            font=(
+                self.display_config.legend_label_font_name,
+                self.display_config.legend_label_font_size,
+            ),
         )
 
-        self.canvas.create_text(
-            x + label_width + 60,
-            y + 15,
-            text="普通",
-            fill="#008000",
-            font=("源ノ角ゴシック JP", 9),
-        )
+        # 列車種別
+        if self.timetable is not None:
+            display_index = 0
 
-        self.canvas.create_text(
-            x + label_width + 140,
-            y + 15,
-            text="快速",
-            fill="#0000FF",
-            font=("源ノ角ゴシック JP", 9),
-        )
+            for train_type in self.timetable.train_types:
+                if not self.display_config.train_type_visible.get(
+                    train_type.index,
+                    True,
+                ):
+                    continue
+
+                color = (
+                    self.display_config.get_train_type_color(
+                        train_type.index,
+                    )
+                    or self.display_config.train_font_color
+                )
+
+                self.canvas.create_text(
+                    x + label_width + 60,
+                    y + row_height / 2 + display_index * row_height,
+                    text=train_type.name,
+                    fill=self._to_tk_color(color),
+                    font=(
+                        self.display_config.legend_font_name,
+                        self.display_config.legend_font_size,
+                    ),
+                )
+
+                display_index += 1
 
 
     def _on_click(self, event: tk.Event) -> None:
         """プレビュー上の設定対象をクリックしたときの処理。"""
-        items = self.canvas.find_overlapping(
-            event.x,
-            event.y,
-            event.x,
-            event.y,
-        )
+        x = self.canvas.canvasx(event.x)
+        y = self.canvas.canvasy(event.y)
 
+        items = self.canvas.find_overlapping(
+            x,
+            y,
+            x,
+            y,
+        )
+        
         if not items:
             return
 
@@ -386,6 +489,11 @@ class TimetablePreview(tk.Frame):
                     self,
                     item,
                     self.display_config,
+                    train_types=(
+                        self.timetable.train_types
+                        if self.timetable is not None
+                        else None
+                    ),
                 )
 
                 return
@@ -411,6 +519,36 @@ class TimetablePreview(tk.Frame):
     def redraw(self) -> None:
         """プレビューを再描画する。"""
         self._draw()
+
+
+    def set_timetable(
+        self,
+        timetable: StationTimetable,
+    ) -> None:
+        """表示する時刻表を設定する。"""
+        self.timetable = timetable
+        self.redraw()
+
+
+    def _create_preview_trains(
+        self,
+        hours: list[TimetableHour],
+    ) -> list[tuple[str, int, str, str]]:
+        """最初の1時間分をPreview表示用データへ変換する。"""
+        if not hours:
+            return []
+
+        hour = hours[0]
+
+        return [
+            (
+                entry.destination,
+                entry.train_type.index,
+                entry.train_type.name,
+                f"{entry.minute:02d}",
+            )
+            for entry in hour.entries[:3]
+        ]
 
 
 if __name__ == "__main__":

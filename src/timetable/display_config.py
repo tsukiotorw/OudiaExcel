@@ -7,8 +7,9 @@ from dataclasses import dataclass, field
 class TimetableDisplayConfig:
     """駅時刻表の表示設定。"""
 
-    # 列車種別ごとの文字色
+    # 列車種別ごとの文字色・表示有無
     train_type_colors: dict[int, str] = field(default_factory=dict)
+    train_type_visible: dict[int, bool] = field(default_factory=dict)
 
     # タイトル
     title_fill: str | None = None
@@ -51,6 +52,8 @@ class TimetableDisplayConfig:
     legend_font_size: int = 8
     legend_label_font_color: str = "FAFAFA"
     legend_row_height: float = 24.2
+
+
 
     def get_train_type_color(
         self,

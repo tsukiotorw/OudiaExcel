@@ -136,18 +136,18 @@ class MainWindow:
             padx=(8, 0),
         )
 
-        self.timetable_view = TimetableView(frame)
-        self.timetable_view.frame.pack(
-            fill=tk.BOTH,
-            expand=True,
-            pady=(15, 0),
-        )
-
         self.timetable_preview = TimetablePreview(
             frame,
             display_config=self.display_config,
         )
         self.timetable_preview.pack(
+            fill=tk.BOTH,
+            expand=True,
+            pady=(15, 0),
+        )
+
+        self.timetable_view = TimetableView(frame)
+        self.timetable_view.frame.pack(
             fill=tk.BOTH,
             expand=True,
             pady=(15, 0),
@@ -233,6 +233,7 @@ class MainWindow:
             self.selected_station.name,
         )
 
+
     def _generate_timetable(self) -> None:
         """選択された駅の駅時刻表を生成する。"""
         if self.railway is None:
@@ -262,6 +263,10 @@ class MainWindow:
             return
 
         self.timetable_view.show(
+            self.station_timetable,
+        )
+
+        self.timetable_preview.set_timetable(
             self.station_timetable,
         )
 

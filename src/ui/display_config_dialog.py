@@ -4,7 +4,7 @@ from tkinter import colorchooser,ttk
 
 from src.ui.preview_item import PreviewItem
 from src.timetable.display_config import TimetableDisplayConfig
-
+from src.models.train_type import TrainType
 
 
 class DisplayConfigDialog(tk.Toplevel):
@@ -15,11 +15,13 @@ class DisplayConfigDialog(tk.Toplevel):
         parent: tk.Misc,
         item: PreviewItem,
         display_config: TimetableDisplayConfig,
+        train_types: list[TrainType] | None = None,
     ) -> None:
         super().__init__(parent)
 
         self.item = item
         self.display_config = display_config
+        self.train_types = train_types or []
 
         self.title(self._get_title())
         self.resizable(False, False)
@@ -80,6 +82,8 @@ class DisplayConfigDialog(tk.Toplevel):
                 self._create_header_variables()
             case PreviewItem.HOUR:
                 self._create_hour_variables() 
+            case PreviewItem.LEGEND:
+                self._create_legend_variables()
             case _:
                 pass
 
@@ -157,6 +161,59 @@ class DisplayConfigDialog(tk.Toplevel):
         )
 
 
+    def _create_legend_variables(self) -> None:
+        """凡例の設定値を保持するTk変数を作成する。"""
+        self.legend_label_font_name = tk.StringVar(
+            value=self.display_config.legend_label_font_name,
+        )
+        self.legend_label_font_size = tk.IntVar(
+            value=self.display_config.legend_label_font_size,
+        )
+        self.legend_label_font_color = tk.StringVar(
+            value=self.display_config.legend_label_font_color,
+        )
+        self.legend_label_fill = tk.StringVar(
+            value=self.display_config.legend_label_fill,
+        )
+
+        self.legend_font_name = tk.StringVar(
+            value=self.display_config.legend_font_name,
+        )
+        self.legend_font_size = tk.IntVar(
+            value=self.display_config.legend_font_size,
+        )
+        self.legend_fill = tk.StringVar(
+            value=self.display_config.legend_fill,
+        )
+        self.legend_row_height = tk.DoubleVar(
+            value=self.display_config.legend_row_height,
+        )
+
+        self.train_type_colors = {}
+        self.train_type_visible = {}
+
+        for train_type in self.train_types:
+            color = self.display_config.get_train_type_color(
+                train_type.index
+            )
+
+            if color is None:
+                color = self.display_config.train_font_color
+
+            self.train_type_colors[train_type.index] = tk.StringVar(
+                value=color
+            )
+
+            visible = self.display_config.train_type_visible.get(
+                train_type.index,
+                True,
+            )
+
+            self.train_type_visible[train_type.index] = tk.BooleanVar(
+                value=visible
+            )
+
+
     def _create_widgets(self) -> None:
         """ダイアログのウィジェットを作成する。"""
         frame = ttk.Frame(
@@ -174,6 +231,8 @@ class DisplayConfigDialog(tk.Toplevel):
                 self._create_header_widgets(frame)
             case PreviewItem.HOUR:
                 self._create_hour_widgets(frame)
+            case PreviewItem.LEGEND:
+                self._create_legend_widgets(frame)
             case _:
                 ttk.Label(
                     frame,
@@ -786,6 +845,299 @@ class DisplayConfigDialog(tk.Toplevel):
         )
 
 
+    def _create_legend_widgets(self, frame: ttk.Frame) -> None:
+        """凡例設定用ウィジェットを作成する。"""
+        ttk.Label(frame, text="ラベルフォント").grid(
+            row=0,
+            column=0,
+            sticky="w",
+            padx=5,
+            pady=5,
+        )
+        ttk.Combobox(
+            frame,
+            textvariable=self.legend_label_font_name,
+            values=self._get_available_fonts(),
+            state="readonly",
+            width=30,
+        ).grid(
+            row=0,
+            column=1,
+            sticky="ew",
+            padx=5,
+            pady=5,
+        )
+
+        ttk.Label(frame, text="ラベルサイズ").grid(
+            row=1,
+            column=0,
+            sticky="w",
+            padx=5,
+            pady=5,
+        )
+        ttk.Spinbox(
+            frame,
+            from_=6,
+            to=72,
+            textvariable=self.legend_label_font_size,
+            width=8,
+        ).grid(
+            row=1,
+            column=1,
+            sticky="w",
+            padx=5,
+            pady=5,
+        )
+
+        ttk.Label(frame, text="ラベル文字色").grid(
+            row=2,
+            column=0,
+            sticky="w",
+            padx=5,
+            pady=5,
+        )
+        ttk.Entry(
+            frame,
+            textvariable=self.legend_label_font_color,
+            width=12,
+        ).grid(
+            row=2,
+            column=1,
+            sticky="w",
+            padx=5,
+            pady=5,
+        )
+        ttk.Button(
+            frame,
+            text="選択",
+            command=self._choose_legend_label_font_color,
+        ).grid(
+            row=2,
+            column=2,
+            padx=5,
+            pady=5,
+        )
+
+        ttk.Label(frame, text="ラベル背景色").grid(
+            row=3,
+            column=0,
+            sticky="w",
+            padx=5,
+            pady=5,
+        )
+        ttk.Entry(
+            frame,
+            textvariable=self.legend_label_fill,
+            width=12,
+        ).grid(
+            row=3,
+            column=1,
+            sticky="w",
+            padx=5,
+            pady=5,
+        )
+        ttk.Button(
+            frame,
+            text="選択",
+            command=self._choose_legend_label_fill,
+        ).grid(
+            row=3,
+            column=2,
+            padx=5,
+            pady=5,
+        )
+
+        ttk.Label(frame, text="凡例フォント").grid(
+            row=4,
+            column=0,
+            sticky="w",
+            padx=5,
+            pady=5,
+        )
+        ttk.Combobox(
+            frame,
+            textvariable=self.legend_font_name,
+            values=self._get_available_fonts(),
+            state="readonly",
+            width=30,
+        ).grid(
+            row=4,
+            column=1,
+            sticky="ew",
+            padx=5,
+            pady=5,
+        )
+
+        ttk.Label(frame, text="凡例サイズ").grid(
+            row=5,
+            column=0,
+            sticky="w",
+            padx=5,
+            pady=5,
+        )
+        ttk.Spinbox(
+            frame,
+            from_=6,
+            to=72,
+            textvariable=self.legend_font_size,
+            width=8,
+        ).grid(
+            row=5,
+            column=1,
+            sticky="w",
+            padx=5,
+            pady=5,
+        )
+
+        ttk.Label(frame, text="凡例背景色").grid(
+            row=6,
+            column=0,
+            sticky="w",
+            padx=5,
+            pady=5,
+        )
+        ttk.Entry(
+            frame,
+            textvariable=self.legend_fill,
+            width=12,
+        ).grid(
+            row=6,
+            column=1,
+            sticky="w",
+            padx=5,
+            pady=5,
+        )
+        ttk.Button(
+            frame,
+            text="選択",
+            command=self._choose_legend_fill,
+        ).grid(
+            row=6,
+            column=2,
+            padx=5,
+            pady=5,
+        )
+
+        ttk.Label(frame, text="行の高さ").grid(
+            row=7,
+            column=0,
+            sticky="w",
+            padx=5,
+            pady=5,
+        )
+        ttk.Spinbox(
+            frame,
+            from_=10.0,
+            to=100.0,
+            increment=0.1,
+            textvariable=self.legend_row_height,
+            width=8,
+        ).grid(
+            row=7,
+            column=1,
+            sticky="w",
+            padx=5,
+            pady=5,
+        )
+
+        row = 8
+
+        ttk.Label(
+            frame,
+            text="列車種別色",
+        ).grid(
+            row=row,
+            column=0,
+            sticky=tk.W,
+            pady=(10, 4),
+        )
+
+        row += 1
+
+        for train_type in self.train_types:
+            ttk.Checkbutton(
+                frame,
+                text=train_type.name,
+                variable=self.train_type_visible[train_type.index],
+            ).grid(
+                row=row,
+                column=0,
+                sticky=tk.W,
+                padx=(10, 0),
+                pady=2,
+            )
+
+            ttk.Button(
+                frame,
+                text="色を選択",
+                command=lambda index=train_type.index: self._choose_train_type_color(
+                    index
+                ),
+            ).grid(
+                row=row,
+                column=1,
+                sticky=tk.W,
+                padx=(8, 0),
+                pady=2,
+            )
+
+            ttk.Label(
+                frame,
+                textvariable=self.train_type_colors[train_type.index],
+                width=8,
+            ).grid(
+                row=row,
+                column=2,
+                sticky=tk.W,
+                padx=(8, 0),
+                pady=2,
+            )
+
+            row += 1
+
+        button_frame = ttk.Frame(frame)
+        button_frame.grid(
+            row=row,
+            column=0,
+            columnspan=3,
+            sticky=tk.E,
+            pady=(20, 0),
+        )
+
+        ttk.Button(
+            button_frame,
+            text="適用",
+            command=self._apply,
+        ).pack(side=tk.LEFT)
+
+        ttk.Button(
+            button_frame,
+            text="キャンセル",
+            command=self.destroy,
+        ).pack(
+            side=tk.LEFT,
+            padx=(8, 0),
+        )
+
+
+    def _choose_train_type_color(
+        self,
+        train_type_index: int,
+    ) -> None:
+        color = colorchooser.askcolor(
+            title="列車種別の色を選択",
+            initialcolor=f"#{self.train_type_colors[train_type_index].get()}",
+            parent=self,
+        )
+
+        if color[1] is None:
+            return
+
+        self.train_type_colors[train_type_index].set(
+            color[1].lstrip("#").upper()
+        )
+
+
     def _choose_font_color(self) -> None:
         """文字色を選択する。"""
         current_color = self.font_color.get().strip()
@@ -853,6 +1205,51 @@ class DisplayConfigDialog(tk.Toplevel):
 
         if color[1] is not None:
             self.hour_font_color.set(
+                color[1].lstrip("#").upper()
+            )
+
+
+    def _choose_legend_label_font_color(self) -> None:
+        current_color = self.legend_label_font_color.get().strip()
+        if current_color:
+            current_color = f"#{current_color.lstrip('#')}"
+
+        color = colorchooser.askcolor(
+            initialcolor=current_color or "#000000",
+            parent=self,
+        )
+        if color[1] is not None:
+            self.legend_label_font_color.set(
+                color[1].lstrip("#").upper()
+            )
+
+
+    def _choose_legend_label_fill(self) -> None:
+        current_color = self.legend_label_fill.get().strip()
+        if current_color:
+            current_color = f"#{current_color.lstrip('#')}"
+
+        color = colorchooser.askcolor(
+            initialcolor=current_color or "#000000",
+            parent=self,
+        )
+        if color[1] is not None:
+            self.legend_label_fill.set(
+                color[1].lstrip("#").upper()
+            )
+
+
+    def _choose_legend_fill(self) -> None:
+        current_color = self.legend_fill.get().strip()
+        if current_color:
+            current_color = f"#{current_color.lstrip('#')}"
+
+        color = colorchooser.askcolor(
+            initialcolor=current_color or "#FFFFFF",
+            parent=self,
+        )
+        if color[1] is not None:
+            self.legend_fill.set(
                 color[1].lstrip("#").upper()
             )
 
@@ -953,6 +1350,8 @@ class DisplayConfigDialog(tk.Toplevel):
                 self._apply_header()
             case PreviewItem.HOUR:
                 self._apply_hour()
+            case PreviewItem.LEGEND:
+                self._apply_legend()
             case _:
                 pass
 
@@ -1040,4 +1439,44 @@ class DisplayConfigDialog(tk.Toplevel):
         self.display_config.hour_fill = (
             fill_color if fill_color else None
         )
+
+
+    def _apply_legend(self) -> None:
+        """凡例の設定を表示設定へ反映する。"""
+        self.display_config.legend_label_font_name = (
+            self.legend_label_font_name.get()
+        )
+        self.display_config.legend_label_font_size = (
+            self.legend_label_font_size.get()
+        )
+        self.display_config.legend_label_font_color = (
+            self.legend_label_font_color.get().strip().lstrip("#").upper()
+        )
+        self.display_config.legend_label_fill = (
+            self.legend_label_fill.get().strip().lstrip("#").upper()
+        )
+
+        self.display_config.legend_font_name = (
+            self.legend_font_name.get()
+        )
+        self.display_config.legend_font_size = (
+            self.legend_font_size.get()
+        )
+        self.display_config.legend_fill = (
+            self.legend_fill.get().strip().lstrip("#").upper()
+        )
+        self.display_config.legend_row_height = (
+            self.legend_row_height.get()
+        )
+
+        for train_type_index, color_var in self.train_type_colors.items():
+            self.display_config.train_type_colors[train_type_index] = (
+                color_var.get().strip().lstrip("#").upper()
+            )
+
+        for train_type_index, visible_var in self.train_type_visible.items():
+            self.display_config.train_type_visible[train_type_index] = (
+                visible_var.get()
+            )
+
 
