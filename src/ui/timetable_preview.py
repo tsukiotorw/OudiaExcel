@@ -100,50 +100,52 @@ class TimetablePreview(tk.Frame):
             """ダミーデータを表示する。"""
             title = "B駅 時刻表"
 
-            down_trains = [
-                ("仙台", 0, "普通", "05"),
-                ("仙台", 1, "快速", "15"),
-                ("松島", 0, "普通", "25"),
-            ]
-            up_trains = [
-                ("石巻", 0, "普通", "10"),
-                ("石巻", 1, "快速", "20"),
-                ("塩釜", 0, "普通", "30"),
+            down_hours = [
+                TimetableHour(
+                    hour=4,
+                    entries=[],
+                ),
             ]
 
-            down_hour = 4
-            up_hour = 4
+            up_hours = [
+                TimetableHour(
+                    hour=4,
+                    entries=[],
+                ),
+            ]
 
         else:
             """実際の時刻表データを表示する。"""
-            title = f"{self.timetable.station_name} 時刻表"
+            title = f"{self.timetable.station_name}駅 時刻表"
 
-            down_trains = self._create_preview_trains(
-                self.timetable.down,
-            )
-            up_trains = self._create_preview_trains(
-                self.timetable.up,
-            )
+            down_hours = self.timetable.down
+            up_hours = self.timetable.up
 
-            down_hour = (
-                self.timetable.down[0].hour
-                if self.timetable.down
-                else 0
-            )
-            up_hour = (
-                self.timetable.up[0].hour
-                if self.timetable.up
-                else 0
-            )
+        down_train_count = max(
+            (
+                len(hour.entries)
+                for hour in down_hours
+            ),
+            default=0,
+        )
+
+        up_train_count = max(
+            (
+                len(hour.entries)
+                for hour in up_hours
+            ),
+            default=0,
+        )
 
         # 2方向の幅
         down_width = (
             self._HOUR_WIDTH
-            + self._CELL_WIDTH * max(len(down_trains), 1)
+            + self._CELL_WIDTH * max(down_train_count, 1)
         )
+
         up_width = (
             self._HOUR_WIDTH
-            + self._CELL_WIDTH * max(len(up_trains), 1)
+            + self._CELL_WIDTH * max(up_train_count, 1)
         )
 
         total_width = (
@@ -166,6 +168,17 @@ class TimetablePreview(tk.Frame):
         else:
             legend_rows = 1
 
+        max_hours = max(
+            len(down_hours),
+            len(up_hours),
+            1,
+        )
+
+        direction_height = (
+            self._HEADER_HEIGHT
+            + self._CELL_HEIGHT * 2 * max_hours
+        )
+
         legend_height = (
             self.display_config.legend_row_height
             * legend_rows
@@ -173,8 +186,7 @@ class TimetablePreview(tk.Frame):
 
         total_height = (
             self._TITLE_HEIGHT
-            + self._HEADER_HEIGHT
-            + self._CELL_HEIGHT * 2
+            + direction_height
             + 10
             + legend_height
         )
@@ -207,8 +219,7 @@ class TimetablePreview(tk.Frame):
             y=direction_y,
             width=down_width,
             title="下り",
-            hour=down_hour,
-            trains=down_trains,
+            hours=down_hours,
         )
 
         # 上り
@@ -217,15 +228,13 @@ class TimetablePreview(tk.Frame):
             y=direction_y,
             width=up_width,
             title="上り",
-            hour=up_hour,
-            trains=up_trains,
+            hours=up_hours,
         )
 
         # 凡例
         legend_y = (
             direction_y
-            + self._HEADER_HEIGHT
-            + self._CELL_HEIGHT * 2
+            + direction_height
             + 10
         )
 
@@ -281,8 +290,7 @@ class TimetablePreview(tk.Frame):
         y: float,
         width: float,
         title: str,
-        hour: int,
-        trains: list[tuple[str, int, str, str]],
+        hours: list[TimetableHour],
     ) -> None:
         """下り・上りの時刻表を描画する。"""
         # ヘッダ
@@ -314,97 +322,109 @@ class TimetablePreview(tk.Frame):
 
         header_y = y + self._HEADER_HEIGHT
 
-        # 時刻列
-        self.canvas.create_rectangle(
-            x,
-            header_y,
-            x + self._HOUR_WIDTH,
-            header_y + self._CELL_HEIGHT * 2,
-            fill=self._to_tk_color(
-                self.display_config.hour_fill
-            ) or "#F2F2F2",
-            outline="black",
-            tags=(PreviewItem.HOUR,),
-        )
+        for hour_index, hour in enumerate(hours):
 
-        self.canvas.create_text(
-            x + self._HOUR_WIDTH / 2,
-            header_y + self._CELL_HEIGHT,
-            text=str(hour),
-            font=(
-                self.display_config.hour_font_name,
-                self.display_config.hour_font_size,
-                "bold",
-            ),
-            fill=self._to_tk_color(
-                self.display_config.hour_font_color
-            ),
-        )
-
-        # 列車列
-        for index, (
-            destination,
-            train_type_index,
-            train_type,
-            minute,
-        ) in enumerate(trains):
-            train_x = (
-                x
-                + self._HOUR_WIDTH
-                + index * self._CELL_WIDTH
+            hour_y = (
+                header_y
+                + hour_index * self._CELL_HEIGHT * 2
             )
 
-            # 列車情報
+            trains = self._create_preview_trains(hour)
+
+            # 時刻列
             self.canvas.create_rectangle(
-                train_x,
-                header_y,
-                train_x + self._CELL_WIDTH,
-                header_y + self._CELL_HEIGHT,
+                x,
+                hour_y,
+                x + self._HOUR_WIDTH,
+                hour_y + self._CELL_HEIGHT * 2,
                 fill=self._to_tk_color(
-                    self.display_config.train_fill
-                ) or "#FAFAFA",
+                    self.display_config.hour_fill
+                ) or "#F2F2F2",
                 outline="black",
-                tags=(PreviewItem.TRAIN,),
-            )
-
-            train_type_color = (
-                self.display_config.get_train_type_color(train_type_index)
-                or self.display_config.train_font_color
+                tags=(PreviewItem.HOUR,),
             )
 
             self.canvas.create_text(
-                train_x + self._CELL_WIDTH / 2,
-                header_y + self._CELL_HEIGHT / 2,
-                text=f"{destination} {train_type}",
+                x + self._HOUR_WIDTH / 2,
+                hour_y + self._CELL_HEIGHT,
+                text=str(hour.hour),
                 font=(
-                    self.display_config.metadata_font_name,
-                    self.display_config.metadata_font_size,
-                ),
-                fill=self._to_tk_color(train_type_color),
-            )
-
-            # 分
-            self.canvas.create_rectangle(
-                train_x,
-                header_y + self._CELL_HEIGHT,
-                train_x + self._CELL_WIDTH,
-                header_y + self._CELL_HEIGHT * 2,
-                fill="white",
-                outline="black",
-            )
-
-            self.canvas.create_text(
-                train_x + self._CELL_WIDTH / 2,
-                header_y + self._CELL_HEIGHT * 1.5,
-                text=minute,
-                font=(
-                    self.display_config.minute_font_name,
-                    self.display_config.minute_font_size,
+                    self.display_config.hour_font_name,
+                    self.display_config.hour_font_size,
+                    "bold",
                 ),
                 fill=self._to_tk_color(
-                    self.display_config.train_font_color
+                    self.display_config.hour_font_color
                 ),
             )
+
+            # 列車列
+            for index, (
+                destination,
+                train_type_index,
+                train_type,
+                minute,
+            ) in enumerate(trains):
+
+                train_x = (
+                    x
+                    + self._HOUR_WIDTH
+                    + index * self._CELL_WIDTH
+                )
+
+                # 列車情報
+                self.canvas.create_rectangle(
+                    train_x,
+                    hour_y,
+                    train_x + self._CELL_WIDTH,
+                    hour_y + self._CELL_HEIGHT,
+                    fill=self._to_tk_color(
+                        self.display_config.train_fill
+                    ) or "#FAFAFA",
+                    outline="black",
+                    tags=(PreviewItem.TRAIN,),
+                )
+
+                train_type_color = (
+                    self.display_config.get_train_type_color(
+                        train_type_index
+                    )
+                    or self.display_config.train_font_color
+                )
+
+                self.canvas.create_text(
+                    train_x + self._CELL_WIDTH / 2,
+                    hour_y + self._CELL_HEIGHT / 2,
+                    text=f"{destination} {train_type}",
+                    font=(
+                        self.display_config.metadata_font_name,
+                        self.display_config.metadata_font_size,
+                    ),
+                    fill=self._to_tk_color(train_type_color),
+                )
+
+                # 分
+                self.canvas.create_rectangle(
+                    train_x,
+                    hour_y + self._CELL_HEIGHT,
+                    train_x + self._CELL_WIDTH,
+                    hour_y + self._CELL_HEIGHT * 2,
+                    fill="white",
+                    outline="black",
+                )
+
+                self.canvas.create_text(
+                    train_x + self._CELL_WIDTH / 2,
+                    hour_y + self._CELL_HEIGHT * 1.5,
+                    text=minute,
+                    font=(
+                        self.display_config.minute_font_name,
+                        self.display_config.minute_font_size,
+                    ),
+                    fill=self._to_tk_color(
+                        self.display_config.train_font_color
+                    ),
+                )
 
 
     def _draw_legend(
@@ -575,13 +595,9 @@ class TimetablePreview(tk.Frame):
 
     def _create_preview_trains(
         self,
-        hours: list[TimetableHour],
+        hour: TimetableHour,
     ) -> list[tuple[str, int, str, str]]:
-        """最初の1時間分をPreview表示用データへ変換する。"""
-        if not hours:
-            return []
-
-        hour = hours[0]
+        """1時間分の列車情報をPreview表示用データへ変換する。"""
 
         return [
             (
