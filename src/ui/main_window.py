@@ -1,6 +1,6 @@
 from pathlib import Path
 import tkinter as tk
-from tkinter import filedialog
+from tkinter import filedialog, ttk
 
 from src.application.oud2_loader import load_oud2
 from src.application.station_timetable import generate_station_timetable
@@ -55,24 +55,14 @@ class MainWindow:
             expand=True,
         )
 
-        browse_button = tk.Button(
+        open_button = tk.Button(
             file_frame,
-            text="参照...",
-            command=self._select_file,
+            text="ファイルを開く",
+            command=self._open_file,
         )
-        browse_button.pack(
+        open_button.pack(
             side=tk.LEFT,
             padx=(8, 0),
-        )
-
-        load_button = tk.Button(
-            frame,
-            text="読み込み",
-            command=self._load_file,
-        )
-        load_button.pack(
-            anchor=tk.E,
-            pady=(15, 10),
         )
 
         station_label = tk.Label(
@@ -81,20 +71,21 @@ class MainWindow:
         )
         station_label.pack(anchor=tk.W)
 
-        self.station_listbox = tk.Listbox(
+        self.station_combo = ttk.Combobox(
             frame,
-            height=8,
+            textvariable=self.selected_station_text,
+            state="readonly",
         )
-        self.station_listbox.pack(
-            fill=tk.BOTH,
-            expand=True,
+        self.station_combo.pack(
+            fill=tk.X,
+            pady=(8, 0),
         )
 
-        self.station_listbox.bind(
-            "<<ListboxSelect>>",
+        self.station_combo.bind(
+            "<<ComboboxSelected>>",
             self._on_station_selected,
         )
-
+ 
         selected_frame = tk.Frame(frame)
         selected_frame.pack(
             fill=tk.X,
@@ -119,22 +110,18 @@ class MainWindow:
             pady=(10, 0),
         )
 
-        generate_button = tk.Button(
-            button_frame,
-            text="時刻表生成",
-            command=self._generate_timetable,
+        button_frame = tk.Frame(frame)
+        button_frame.pack(
+            anchor=tk.E,
+            pady=(10, 0),
         )
-        generate_button.pack(side=tk.LEFT)
 
         export_button = tk.Button(
             button_frame,
             text="Excel出力",
             command=self._export_excel,
         )
-        export_button.pack(
-            side=tk.LEFT,
-            padx=(8, 0),
-        )
+        export_button.pack()
 
         self.timetable_preview = TimetablePreview(
             frame,
@@ -154,8 +141,8 @@ class MainWindow:
         )
 
 
-    def _select_file(self) -> None:
-        """OuDiaSecondファイルを選択する。"""
+    def _open_file(self) -> None:
+        """OuDiaSecondファイルを選択して読み込む。"""
         selected_file = filedialog.askopenfilename(
             title="OuDiaSecondファイルを選択",
             filetypes=[
@@ -164,26 +151,17 @@ class MainWindow:
             ],
         )
 
-        if selected_file:
-            self.file_path.set(str(Path(selected_file)))
-
-    def _load_file(self) -> None:
-        """選択されたOuDiaSecondファイルを読み込む。"""
-        path = self.file_path.get()
-
-        if not path:
-            self._show_message(
-                "ファイル未選択",
-                "OuDiaSecondファイルを選択してください。",
-            )
+        if not selected_file:
             return
 
+        self.file_path.set(str(Path(selected_file)))
+
         try:
-            self.railway = load_oud2(Path(path))
+            self.railway = load_oud2(Path(selected_file))
         except Exception as exc:
             self._show_message(
                 "読み込みエラー",
-                f"ファイルの読み込みに失敗しました。\n\n{exc}"
+                f"ファイルの読み込みに失敗しました。\n\n{exc}",
             )
             return
 
@@ -194,44 +172,46 @@ class MainWindow:
 
         self._update_station_list()
 
-        self._show_message(
-            "読み込み完了",
-            f"ファイルを読み込みました。\n\n"
-            f"路線名: {self.railway.name}\n"
-            f"駅数: {len(self.railway.stations)}\n"
-            f"列車種別数: {len(self.railway.train_types)}\n"
-            f"ダイヤ数: {len(self.railway.diagrams)}",
-        )
+        if self.railway.stations:
+            self.station_combo.current(0)
+            self._on_station_selected()
+
 
     def _update_station_list(self) -> None:
         """駅一覧を更新する。"""
-        self.station_listbox.delete(0, tk.END)
+        if self.railway is None:
+            self.station_combo["values"] = ()
+            return
 
+        self.station_combo["values"] = [
+            station.name
+            for station in self.railway.stations
+        ]
+
+
+    def _on_station_selected(
+        self,
+        _event: tk.Event | None = None,
+    ) -> None:
+        """駅が選択されたときに時刻表を生成する。"""
         if self.railway is None:
             return
 
-        for station in self.railway.stations:
-            self.station_listbox.insert(
-                tk.END,
-                station.name,
-            )
+        station_name = self.selected_station_text.get()
 
-    def _on_station_selected(self, _event: tk.Event) -> None:
-        """駅一覧から駅が選択されたときの処理。"""
-        if self.railway is None:
-            return
-
-        selection = self.station_listbox.curselection()
-
-        if not selection:
-            return
-
-        index = selection[0]
-
-        self.selected_station = self.railway.stations[index]
-        self.selected_station_text.set(
-            self.selected_station.name,
+        self.selected_station = next(
+            (
+                station
+                for station in self.railway.stations
+                if station.name == station_name
+            ),
+            None,
         )
+
+        if self.selected_station is None:
+            return
+
+        self._generate_timetable()
 
 
     def _generate_timetable(self) -> None:
@@ -268,14 +248,6 @@ class MainWindow:
 
         self.timetable_preview.set_timetable(
             self.station_timetable,
-        )
-
-        self._show_message(
-            "時刻表生成完了",
-            f"時刻表を生成しました。\n\n"
-            f"駅: {self.station_timetable.station_name}\n"
-            f"下り: {len(self.station_timetable.down)}時間\n"
-            f"上り: {len(self.station_timetable.up)}時間",
         )
 
 
