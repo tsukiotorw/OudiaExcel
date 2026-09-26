@@ -597,13 +597,20 @@ class TimetablePreview(tk.Frame):
         self,
         hour: TimetableHour,
     ) -> list[tuple[str, int, str, str]]:
-        """1時間分の列車情報をPreview表示用データへ変換する。"""
+        """1時間分の列車情報をPreview表示用データへ変換する."""
 
         return [
             (
                 entry.destination,
                 entry.train_type.index,
-                entry.train_type.name,
+                (
+                    entry.train_type.short_name
+                    if (
+                        self.display_config.use_train_type_short_name
+                        and entry.train_type.short_name
+                    )
+                    else entry.train_type.name
+                ),
                 f"{entry.minute:02d}",
             )
             for entry in hour.entries

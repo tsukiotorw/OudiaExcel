@@ -38,6 +38,10 @@ class TimetableDisplayConfig:
     # 列車欄
     train_fill: str | None = None
     train_font_color: str = "000000"
+
+    # 時刻表の列車種別に略称を使用する
+    use_train_type_short_name: bool = False
+    
     metadata_font_name: str = "源ノ角ゴシック JP"
     metadata_font_size: int = 6
     minute_font_name: str = "源ノ角ゴシック JP"

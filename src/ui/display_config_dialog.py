@@ -126,6 +126,10 @@ class DisplayConfigDialog(tk.Toplevel):
         self.fill_color = tk.StringVar(
             value=self.display_config.train_fill or "",
         )
+        
+        self.use_train_type_short_name = tk.BooleanVar(
+            value=self.display_config.use_train_type_short_name,
+        )
 
 
     def _create_header_variables(self) -> None:
@@ -526,11 +530,27 @@ class DisplayConfigDialog(tk.Toplevel):
             frame,
             text="選択...",
             command=self._choose_fill_color,
-        ).grid(row=6, column=2, padx=(5, 0))
+        ).grid(
+            row=6,
+            column=2,
+            padx=(5, 0),
+        )
+
+        ttk.Checkbutton(
+            frame,
+            text="列車種別に略称を使用",
+            variable=self.use_train_type_short_name,
+        ).grid(
+            row=7,
+            column=0,
+            columnspan=3,
+            sticky=tk.W,
+            pady=(8, 0),
+        )
 
         button_frame = ttk.Frame(frame)
         button_frame.grid(
-            row=7,
+            row=8,
             column=0,
             columnspan=3,
             sticky=tk.E,
@@ -1057,7 +1077,11 @@ class DisplayConfigDialog(tk.Toplevel):
         for train_type in self.train_types:
             ttk.Checkbutton(
                 frame,
-                text=train_type.name,
+                text=(
+                    f"{train_type.name}（{train_type.short_name}）"
+                    if train_type.short_name
+                    else train_type.name
+                ),
                 variable=self.train_type_visible[train_type.index],
             ).grid(
                 row=row,
@@ -1402,6 +1426,10 @@ class DisplayConfigDialog(tk.Toplevel):
         fill_color = self.fill_color.get().strip()
         self.display_config.train_fill = (
             fill_color if fill_color else None
+        )
+
+        self.display_config.use_train_type_short_name = (
+            self.use_train_type_short_name.get()
         )
 
 
