@@ -6,6 +6,15 @@ from src.ui.preview_item import PreviewItem
 from src.timetable.display_config import TimetableDisplayConfig
 from src.models.train_type import TrainType
 
+BORDER_STYLES = {
+    "細線": "thin",
+    "中線": "medium",
+    "太線": "thick",
+    "破線": "dashed",
+    "点線": "dotted",
+    "二重線": "double",
+}
+
 
 class DisplayConfigDialog(tk.Toplevel):
     """時刻表表示設定ダイアログ。"""
@@ -86,6 +95,7 @@ class DisplayConfigDialog(tk.Toplevel):
                 self._create_legend_variables()
             case _:
                 pass
+        self._create_border_variables()
 
 
     def _create_title_variables(self) -> None:
@@ -371,9 +381,14 @@ class DisplayConfigDialog(tk.Toplevel):
             padx=(5, 0),
         )
 
+        border_row = self._create_border_widgets(
+            frame,
+            start_row=5,
+        )
+
         button_frame = ttk.Frame(frame)
         button_frame.grid(
-            row=5,
+            row=border_row,
             column=0,
             columnspan=3,
             sticky=tk.E,
@@ -548,9 +563,14 @@ class DisplayConfigDialog(tk.Toplevel):
             pady=(8, 0),
         )
 
+        border_row = self._create_border_widgets(
+            frame,
+            start_row=8,
+        )
+
         button_frame = ttk.Frame(frame)
         button_frame.grid(
-            row=8,
+            row=border_row,
             column=0,
             columnspan=3,
             sticky=tk.E,
@@ -694,9 +714,14 @@ class DisplayConfigDialog(tk.Toplevel):
             padx=(5, 0),
         )
 
+        border_row = self._create_border_widgets(
+            frame,
+            start_row=5,
+        )
+
         button_frame = ttk.Frame(frame)
         button_frame.grid(
-            row=5,
+            row=border_row,
             column=0,
             columnspan=3,
             sticky=tk.E,
@@ -840,9 +865,14 @@ class DisplayConfigDialog(tk.Toplevel):
             padx=(5, 0),
         )
 
+        border_row = self._create_border_widgets(
+            frame,
+            start_row=5,
+        )
+
         button_frame = ttk.Frame(frame)
         button_frame.grid(
-            row=5,
+            row=border_row,
             column=0,
             columnspan=3,
             sticky=tk.E,
@@ -1119,9 +1149,14 @@ class DisplayConfigDialog(tk.Toplevel):
 
             row += 1
 
+        border_row = self._create_border_widgets(
+            frame,
+            start_row=row,
+        )
+
         button_frame = ttk.Frame(frame)
         button_frame.grid(
-            row=row,
+            row=border_row,
             column=0,
             columnspan=3,
             sticky=tk.E,
@@ -1142,6 +1177,173 @@ class DisplayConfigDialog(tk.Toplevel):
             side=tk.LEFT,
             padx=(8, 0),
         )
+
+
+    def _create_border_widgets(
+        self,
+        frame: ttk.Frame,
+        start_row: int,
+    ) -> int:
+        """罫線設定用ウィジェットを作成する。"""
+        border_frame = ttk.LabelFrame(
+            frame,
+            text="罫線",
+            padding=10,
+        )
+        border_frame.grid(
+            row=start_row,
+            column=0,
+            columnspan=3,
+            sticky=tk.EW,
+            pady=(15, 0),
+        )
+
+        ttk.Label(
+            border_frame,
+            text="",
+        ).grid(row=0, column=0, padx=5)
+
+        ttk.Label(
+            border_frame,
+            text="設定",
+        ).grid(row=0, column=1, padx=5)
+
+        ttk.Label(
+            border_frame,
+            text="色",
+        ).grid(row=0, column=2, padx=5)
+
+        ttk.Label(
+            border_frame,
+            text="",
+        ).grid(row=0, column=3, padx=5)
+
+        ttk.Label(
+            border_frame,
+            text="線種",
+        ).grid(row=0, column=4, padx=5)
+
+        side_names = {
+            "top": "上",
+            "bottom": "下",
+            "left": "左",
+            "right": "右",
+        }
+
+        for row, side in enumerate(
+            ("top", "bottom", "left", "right"),
+            start=1,
+        ):
+            ttk.Label(
+                border_frame,
+                text=side_names[side],
+            ).grid(
+                row=row,
+                column=0,
+                sticky=tk.W,
+                padx=5,
+                pady=2,
+            )
+
+            ttk.Checkbutton(
+                border_frame,
+                variable=self.border_enabled[side],
+            ).grid(
+                row=row,
+                column=1,
+                padx=5,
+                pady=2,
+            )
+
+            ttk.Label(
+                border_frame,
+                textvariable=self.border_colors[side],
+                width=8,
+            ).grid(
+                row=row,
+                column=2,
+                padx=5,
+                pady=2,
+            )
+
+            ttk.Button(
+                border_frame,
+                text="選択...",
+                command=lambda s=side: self._choose_border_color(s),
+            ).grid(
+                row=row,
+                column=3,
+                padx=5,
+                pady=2,
+            )
+
+            ttk.Combobox(
+                border_frame,
+                textvariable=self.border_styles[side],
+                values=list(BORDER_STYLES.keys()),
+                state="readonly",
+                width=10,
+            ).grid(
+                row=row,
+                column=4,
+                padx=5,
+                pady=2,
+            )
+
+        return start_row + 1
+
+
+    def _get_border_config(self):
+        """現在の設定対象に対応する罫線設定を返す。"""
+        border_configs = {
+            PreviewItem.TITLE: self.display_config.title_border,
+            PreviewItem.HEADER: self.display_config.header_border,
+            PreviewItem.HOUR: self.display_config.hour_border,
+            PreviewItem.TRAIN: self.display_config.train_border,
+            PreviewItem.LEGEND: self.display_config.legend_border,
+        }
+
+        return border_configs[self.item]
+    
+
+    def _create_border_variables(self) -> None:
+        """罫線設定用のTk変数を作成する。"""
+        border_config = self._get_border_config()
+
+        self.border_enabled: dict[str, tk.BooleanVar] = {}
+        self.border_colors: dict[str, tk.StringVar] = {}
+        self.border_styles: dict[str, tk.StringVar] = {}
+
+        for side in ("top", "bottom", "left", "right"):
+            side_config = getattr(border_config, side)
+
+            self.border_enabled[side] = tk.BooleanVar(
+                value=side_config.enabled,
+            )
+            self.border_colors[side] = tk.StringVar(
+                value=side_config.color,
+            )
+            self.border_styles[side] = tk.StringVar(
+                value=side_config.style,
+            )
+
+
+    def _choose_border_color(self, side: str) -> None:
+        """指定した辺の罫線色を選択する。"""
+        current_color = self.border_colors[side].get().strip()
+
+        if current_color:
+            current_color = f"#{current_color.lstrip('#')}"
+
+        color = colorchooser.askcolor(
+            initialcolor=current_color or "#000000",
+            parent=self,
+        )
+
+        if color[1] is not None:
+            self.border_colors[side].set(
+                color[1].lstrip("#").upper()
+            )
 
 
     def _choose_train_type_color(
@@ -1379,6 +1581,8 @@ class DisplayConfigDialog(tk.Toplevel):
             case _:
                 pass
 
+        self._apply_border()
+
         parent = self.master
 
         if hasattr(parent, "redraw"):
@@ -1507,4 +1711,38 @@ class DisplayConfigDialog(tk.Toplevel):
                 visible_var.get()
             )
 
+
+    def _apply_border(self) -> None:
+        """罫線設定を表示設定へ反映する。"""
+        border_config = self._get_border_config()
+
+        for side in ("top", "bottom", "left", "right"):
+            side_config = getattr(border_config, side)
+
+            side_config.enabled = (
+                self.border_enabled[side].get()
+            )
+            side_config.color = (
+                self.border_colors[side].get()
+                .strip()
+                .lstrip("#")
+                .upper()
+            )
+            side_config.style = self._label_to_style(
+                self.border_styles[side].get()
+            )
+
+
+    def _style_to_label(self, style: str) -> str:
+        """OpenPyXLの線種を表示名へ変換する。"""
+        for label, value in BORDER_STYLES.items():
+            if value == style:
+                return label
+
+        return "細線"
+
+
+    def _label_to_style(self, label: str) -> str:
+        """表示名をOpenPyXLの線種へ変換する。"""
+        return BORDER_STYLES.get(label, "thin")
 

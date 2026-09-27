@@ -4,12 +4,56 @@ from dataclasses import dataclass, field
 
 
 @dataclass
+class BorderSideConfig:
+    """罫線の片側に対する表示設定。"""
+
+    enabled: bool = False
+    color: str = "000000"
+    style: str = "thin"
+
+
+@dataclass
+class BorderConfig:
+    """罫線の上下左右に対する設定。"""
+
+    top: BorderSideConfig = field(
+        default_factory=BorderSideConfig,
+    )
+    bottom: BorderSideConfig = field(
+        default_factory=BorderSideConfig,
+    )
+    left: BorderSideConfig = field(
+        default_factory=BorderSideConfig,
+    )
+    right: BorderSideConfig = field(
+        default_factory=BorderSideConfig,
+    )
+
+
+@dataclass
 class TimetableDisplayConfig:
     """駅時刻表の表示設定。"""
 
     # 列車種別ごとの文字色・表示有無
     train_type_colors: dict[int, str] = field(default_factory=dict)
     train_type_visible: dict[int, bool] = field(default_factory=dict)
+
+    # 罫線
+    title_border: BorderConfig = field(
+        default_factory=BorderConfig,
+    )
+    header_border: BorderConfig = field(
+        default_factory=BorderConfig,
+    )
+    hour_border: BorderConfig = field(
+        default_factory=BorderConfig,
+    )
+    train_border: BorderConfig = field(
+        default_factory=BorderConfig,
+    )
+    legend_border: BorderConfig = field(
+        default_factory=BorderConfig,
+    )
 
     # タイトル
     title_fill: str | None = None

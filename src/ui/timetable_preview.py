@@ -4,7 +4,11 @@ from tkinter import ttk
 from src.ui.display_config_dialog import DisplayConfigDialog
 from src.ui.preview_item import PreviewItem
 
-from src.timetable.display_config import TimetableDisplayConfig
+from src.timetable.display_config import (
+    BorderConfig,
+    TimetableDisplayConfig,
+)
+
 from src.models.timetable import (
     StationTimetable,
     TimetableHour,
@@ -249,6 +253,69 @@ class TimetablePreview(tk.Frame):
         )
 
 
+    def _draw_border(
+        self,
+        x1: float,
+        y1: float,
+        x2: float,
+        y2: float,
+        border: BorderConfig,
+    ) -> None:
+        """指定された範囲に罫線を描画する。"""
+
+        if border.top.enabled:
+            self.canvas.create_line(
+                x1,
+                y1,
+                x2,
+                y1,
+                fill=self._to_tk_color(border.top.color),
+                width=self._border_width(border.top.style),
+            )
+
+        if border.bottom.enabled:
+            self.canvas.create_line(
+                x1,
+                y2,
+                x2,
+                y2,
+                fill=self._to_tk_color(border.bottom.color),
+                width=self._border_width(border.bottom.style),
+            )
+
+        if border.left.enabled:
+            self.canvas.create_line(
+                x1,
+                y1,
+                x1,
+                y2,
+                fill=self._to_tk_color(border.left.color),
+                width=self._border_width(border.left.style),
+            )
+
+        if border.right.enabled:
+            self.canvas.create_line(
+                x2,
+                y1,
+                x2,
+                y2,
+                fill=self._to_tk_color(border.right.color),
+                width=self._border_width(border.right.style),
+            )
+
+    @staticmethod
+    def _border_width(style: str) -> int:
+        """罫線種別をCanvasの線幅へ変換する。"""
+
+        widths = {
+            "thin": 1,
+            "medium": 2,
+            "thick": 3,
+        }
+
+        return widths.get(style, 1)
+
+
     def _draw_title(
         self,
         x: float,
@@ -265,8 +332,16 @@ class TimetablePreview(tk.Frame):
             fill=self._to_tk_color(
                 self.display_config.title_fill
             ) or "#FFFFFF",
-            outline="black",
+            outline="",
             tags=(PreviewItem.TITLE,),
+        )
+
+        self._draw_border(
+            x,
+            y,
+            x + width,
+            y + self._TITLE_HEIGHT,
+            self.display_config.title_border,
         )
 
         self.canvas.create_text(
@@ -302,8 +377,16 @@ class TimetablePreview(tk.Frame):
             fill=self._to_tk_color(
                 self.display_config.header_fill
             ) or "#D9EAD3",
-            outline="black",
+            outline="",
             tags=(PreviewItem.HEADER,),
+        )
+
+        self._draw_border(
+            x,
+            y,
+            x + width,
+            y + self._HEADER_HEIGHT,
+            self.display_config.header_border,
         )
 
         self.canvas.create_text(
@@ -340,8 +423,16 @@ class TimetablePreview(tk.Frame):
                 fill=self._to_tk_color(
                     self.display_config.hour_fill
                 ) or "#F2F2F2",
-                outline="black",
+                outline="",
                 tags=(PreviewItem.HOUR,),
+            )
+
+            self._draw_border(
+                x,
+                hour_y,
+                x + self._HOUR_WIDTH,
+                hour_y + self._CELL_HEIGHT * 2,
+                self.display_config.hour_border,
             )
 
             self.canvas.create_text(
@@ -381,7 +472,7 @@ class TimetablePreview(tk.Frame):
                     fill=self._to_tk_color(
                         self.display_config.train_fill
                     ) or "#FAFAFA",
-                    outline="black",
+                    outline="",
                     tags=(PreviewItem.TRAIN,),
                 )
 
@@ -410,7 +501,7 @@ class TimetablePreview(tk.Frame):
                     train_x + self._CELL_WIDTH,
                     hour_y + self._CELL_HEIGHT * 2,
                     fill="white",
-                    outline="black",
+                    outline="",
                 )
 
                 self.canvas.create_text(
@@ -426,6 +517,22 @@ class TimetablePreview(tk.Frame):
                     ),
                 )
 
+                self._draw_border(
+                    train_x,
+                    hour_y,
+                    train_x + self._CELL_WIDTH,
+                    hour_y + self._CELL_HEIGHT * 2,
+                    self.display_config.train_border,
+                )
+
+                self.canvas.create_line(
+                    train_x,
+                    hour_y + self._CELL_HEIGHT,
+                    train_x + self._CELL_WIDTH,
+                    hour_y + self._CELL_HEIGHT,
+                    fill="black",
+                    width=1,
+                )
 
     def _draw_legend(
         self,
@@ -463,8 +570,16 @@ class TimetablePreview(tk.Frame):
             fill=self._to_tk_color(
                 self.display_config.legend_fill
             ),
-            outline="black",
+            outline="",
             tags=(PreviewItem.LEGEND,),
+        )
+
+        self._draw_border(
+            x,
+            y,
+            x + width,
+            y + legend_height,
+            self.display_config.legend_border,
         )
 
         # ラベル部分
@@ -476,7 +591,7 @@ class TimetablePreview(tk.Frame):
             fill=self._to_tk_color(
                 self.display_config.legend_label_fill
             ),
-            outline="black",
+            outline="",
         )
 
         self.canvas.create_text(
