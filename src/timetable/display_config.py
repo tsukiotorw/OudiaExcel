@@ -51,6 +51,9 @@ class TimetableDisplayConfig:
     train_border: BorderConfig = field(
         default_factory=BorderConfig,
     )
+    train_separator: BorderSideConfig = field(
+        default_factory=BorderSideConfig
+    )
     legend_border: BorderConfig = field(
         default_factory=BorderConfig,
     )

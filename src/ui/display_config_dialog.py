@@ -568,6 +568,11 @@ class DisplayConfigDialog(tk.Toplevel):
             start_row=8,
         )
 
+        border_row = self._create_train_separator_widgets(
+            frame,
+            border_row,
+        )
+
         button_frame = ttk.Frame(frame)
         button_frame.grid(
             row=border_row,
@@ -1293,6 +1298,90 @@ class DisplayConfigDialog(tk.Toplevel):
         return start_row + 1
 
 
+    def _create_train_separator_widgets(
+        self,
+        parent: tk.Misc,
+        row: int,
+    ) -> int:
+        """列車欄の上下段の境界線設定を作成する。"""
+
+        frame = ttk.LabelFrame(
+            parent,
+            text="行先・列車種別と分の境界",
+            padding=10,
+        )
+        frame.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="ew",
+            pady=(10, 0),
+        )
+
+        ttk.Checkbutton(
+            frame,
+            text="設定",
+            variable=self.train_separator_enabled,
+        ).grid(
+            row=0,
+            column=0,
+            padx=(0, 10),
+        )
+
+        ttk.Label(
+            frame,
+            text="色",
+        ).grid(
+            row=0,
+            column=1,
+            padx=(0, 5),
+        )
+
+        color_label = ttk.Label(
+            frame,
+            textvariable=self.train_separator_color,
+            width=8,
+            relief="solid",
+        )
+        color_label.grid(
+            row=0,
+            column=2,
+            padx=(0, 5),
+        )
+
+        ttk.Button(
+            frame,
+            text="選択...",
+            command=self._choose_train_separator_color,
+        ).grid(
+            row=0,
+            column=3,
+            padx=(0, 10),
+        )
+
+        ttk.Label(
+            frame,
+            text="線種",
+        ).grid(
+            row=0,
+            column=4,
+            padx=(0, 5),
+        )
+
+        ttk.Combobox(
+            frame,
+            textvariable=self.train_separator_style,
+            values=list(BORDER_STYLES.keys()),
+            state="readonly",
+            width=10,
+        ).grid(
+            row=0,
+            column=5,
+        )
+
+        return row + 1
+
+
     def _get_border_config(self):
         """現在の設定対象に対応する罫線設定を返す。"""
         border_configs = {
@@ -1327,6 +1416,29 @@ class DisplayConfigDialog(tk.Toplevel):
                 value=side_config.style,
             )
 
+        self.train_separator_enabled = tk.BooleanVar(
+            value=False
+        )
+        self.train_separator_color = tk.StringVar(
+            value="000000"
+        )
+        self.train_separator_style = tk.StringVar(
+            value=self._style_to_label("thin")
+        )
+
+        if self.item == PreviewItem.TRAIN:
+            separator = self.display_config.train_separator
+
+            self.train_separator_enabled.set(
+                separator.enabled
+            )
+            self.train_separator_color.set(
+                separator.color
+            )
+            self.train_separator_style.set(
+                self._style_to_label(separator.style)
+            )
+
 
     def _choose_border_color(self, side: str) -> None:
         """指定した辺の罫線色を選択する。"""
@@ -1342,6 +1454,20 @@ class DisplayConfigDialog(tk.Toplevel):
 
         if color[1] is not None:
             self.border_colors[side].set(
+                color[1].lstrip("#").upper()
+            )
+
+
+    def _choose_train_separator_color(self) -> None:
+        """列車欄の上下段境界線の色を選択する。"""
+
+        color = colorchooser.askcolor(
+            initialcolor=f"#{self.train_separator_color.get()}",
+            parent=self,
+        )
+
+        if color[1]:
+            self.train_separator_color.set(
                 color[1].lstrip("#").upper()
             )
 
@@ -1582,6 +1708,7 @@ class DisplayConfigDialog(tk.Toplevel):
                 pass
 
         self._apply_border()
+        self._apply_train_separator()
 
         parent = self.master
 
@@ -1731,6 +1858,21 @@ class DisplayConfigDialog(tk.Toplevel):
             side_config.style = self._label_to_style(
                 self.border_styles[side].get()
             )
+
+
+    def _apply_train_separator(self) -> None:
+        """列車欄の上下段境界線設定を保存する。"""
+
+        if self.item != PreviewItem.TRAIN:
+            return
+
+        separator = self.display_config.train_separator
+
+        separator.enabled = self.train_separator_enabled.get()
+        separator.color = self.train_separator_color.get()
+        separator.style = self._label_to_style(
+            self.train_separator_style.get()
+        )
 
 
     def _style_to_label(self, style: str) -> str:

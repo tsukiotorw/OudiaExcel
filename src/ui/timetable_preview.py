@@ -525,14 +525,18 @@ class TimetablePreview(tk.Frame):
                     self.display_config.train_border,
                 )
 
-                self.canvas.create_line(
-                    train_x,
-                    hour_y + self._CELL_HEIGHT,
-                    train_x + self._CELL_WIDTH,
-                    hour_y + self._CELL_HEIGHT,
-                    fill="black",
-                    width=1,
-                )
+                separator = self.display_config.train_separator
+
+                if separator.enabled:
+                    self.canvas.create_line(
+                        train_x,
+                        hour_y + self._CELL_HEIGHT,
+                        train_x + self._CELL_WIDTH,
+                        hour_y + self._CELL_HEIGHT,
+                        fill=self._to_tk_color(separator.color),
+                        width=self._border_width(separator.style),
+                    )
+
 
     def _draw_legend(
         self,
