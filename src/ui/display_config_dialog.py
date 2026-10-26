@@ -141,6 +141,10 @@ class DisplayConfigDialog(tk.Toplevel):
             value=self.display_config.use_train_type_short_name,
         )
 
+        self.show_destination = tk.BooleanVar(
+            value=self.display_config.show_destination,
+        )
+
 
     def _create_header_variables(self) -> None:
         """ヘッダ情報の設定値を保持するTk変数を作成する。"""
@@ -177,6 +181,10 @@ class DisplayConfigDialog(tk.Toplevel):
 
     def _create_legend_variables(self) -> None:
         """凡例の設定値を保持するTk変数を作成する。"""
+        self.show_destination_legend = tk.BooleanVar(
+            value=self.display_config.show_destination_legend,
+        )
+
         self.legend_label_font_name = tk.StringVar(
             value=self.display_config.legend_label_font_name,
         )
@@ -563,9 +571,21 @@ class DisplayConfigDialog(tk.Toplevel):
             pady=(8, 0),
         )
 
+        ttk.Checkbutton(
+            frame,
+            text="行先を表示する",
+            variable=self.show_destination,
+        ).grid(
+            row=8,
+            column=0,
+            columnspan=3,
+            sticky=tk.W,
+            pady=(4, 0),
+        )
+
         border_row = self._create_border_widgets(
             frame,
-            start_row=8,
+            start_row=9,
         )
 
         border_row = self._create_train_separator_widgets(
@@ -1095,7 +1115,20 @@ class DisplayConfigDialog(tk.Toplevel):
             pady=5,
         )
 
-        row = 8
+        ttk.Checkbutton(
+            frame,
+            text="駅略称の行先凡例を表示する",
+            variable=self.show_destination_legend,
+        ).grid(
+            row=8,
+            column=0,
+            columnspan=3,
+            sticky=tk.W,
+            padx=5,
+            pady=(6, 4),
+        )
+
+        row = 9
 
         ttk.Label(
             frame,
@@ -1715,6 +1748,11 @@ class DisplayConfigDialog(tk.Toplevel):
         if hasattr(parent, "redraw"):
             parent.redraw()
 
+        if hasattr(parent, "on_display_config_changed"):
+            callback = parent.on_display_config_changed
+            if callback is not None:
+                callback()
+
         self.destroy()
 
 
@@ -1761,6 +1799,10 @@ class DisplayConfigDialog(tk.Toplevel):
 
         self.display_config.use_train_type_short_name = (
             self.use_train_type_short_name.get()
+        )
+
+        self.display_config.show_destination = (
+            self.show_destination.get()
         )
 
 
@@ -1837,6 +1879,10 @@ class DisplayConfigDialog(tk.Toplevel):
             self.display_config.train_type_visible[train_type_index] = (
                 visible_var.get()
             )
+
+        self.display_config.show_destination_legend = (
+            self.show_destination_legend.get()
+        )
 
 
     def _apply_border(self) -> None:

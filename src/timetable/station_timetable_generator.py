@@ -94,7 +94,7 @@ class StationTimetableGenerator:
                         hour,
                         TimetableEntry(
                             minute=minute,
-                            destination=destination.name,
+                            destination=destination,
                             train_type=train_type,
                             train_number=train.number,
                         ),

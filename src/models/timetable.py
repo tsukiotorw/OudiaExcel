@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from src.models.station import Station
 from src.models.train_type import TrainType
 
 
@@ -10,7 +11,7 @@ class TimetableEntry:
     """駅時刻表に掲載する列車情報。"""
 
     minute: int
-    destination: str
+    destination: Station
     train_type: TrainType
     train_number: str
 

@@ -401,7 +401,7 @@ class ExcelWriter:
     @staticmethod
     def _format_entry_metadata(entry) -> str:
         """列車の行先・種別を駅時刻表用の文字列に変換する。"""
-        metadata = entry.destination
+        metadata = entry.destination.display_name
 
         if entry.train_type.short_name:
             metadata += f" {entry.train_type.short_name}"

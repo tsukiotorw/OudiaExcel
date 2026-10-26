@@ -74,7 +74,7 @@ def test_generate_station_timetable_destination(
 
     # B駅の下り列車の行先がD駅になることを確認する。
     assert any(
-        entry.destination == "D"
+        entry.destination.display_name == "D"
         for entry in down_entries
     )
 
@@ -95,7 +95,7 @@ def test_generate_station_timetable_destination_up(
 
     # D駅の上り列車の行先がA駅になることを確認する。
     assert any(
-        entry.destination == "A"
+        entry.destination.display_name == "A"
         for entry in up_entries
     )
 
@@ -148,7 +148,7 @@ def test_generate_station_timetable_departure_time(
         entry
         for entry in down_entries
         if entry.minute == 6
-        and entry.destination == "D"
+        and entry.destination.name == "D"
     )
 
     assert entry.minute == 6

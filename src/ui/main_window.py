@@ -4,6 +4,12 @@ from tkinter import filedialog, ttk
 
 from src.application.oud2_loader import load_oud2
 from src.application.station_timetable import generate_station_timetable
+from src.application.station_alias_settings import (
+    load_station_aliases,
+    load_display_config,
+    save_station_settings,
+    load_station_no_mark
+)
 from src.application.excel_export import export_station_timetable
 from src.models.railway import Railway
 from src.models.station import Station
@@ -11,6 +17,7 @@ from src.models.timetable import StationTimetable
 from src.ui.timetable_view import TimetableView
 from src.ui.timetable_preview import TimetablePreview
 from src.timetable.display_config import TimetableDisplayConfig
+
 
 class MainWindow:
     """OuDiaExcelのメインウィンドウ。"""
@@ -110,22 +117,24 @@ class MainWindow:
             pady=(10, 0),
         )
 
-        button_frame = tk.Frame(frame)
-        button_frame.pack(
-            anchor=tk.E,
-            pady=(10, 0),
+        alias_button = tk.Button(
+            button_frame,
+            text="駅略称設定",
+            command=self._open_station_alias_editor,
         )
+        alias_button.pack(side=tk.LEFT, padx=(0, 8))
 
         export_button = tk.Button(
             button_frame,
             text="Excel出力",
             command=self._export_excel,
         )
-        export_button.pack()
+        export_button.pack(side=tk.LEFT)
 
         self.timetable_preview = TimetablePreview(
             frame,
             display_config=self.display_config,
+            on_display_config_changed=self._save_display_config,
         )
         self.timetable_preview.pack(
             fill=tk.BOTH,
@@ -156,6 +165,7 @@ class MainWindow:
 
         self.file_path.set(str(Path(selected_file)))
 
+        # OuDiaSecondファイルを読み込む
         try:
             self.railway = load_oud2(Path(selected_file))
         except Exception as exc:
@@ -164,6 +174,52 @@ class MainWindow:
                 f"ファイルの読み込みに失敗しました。\n\n{exc}",
             )
             return
+
+        # 駅略称設定を復元する
+        try:
+            aliases = load_station_aliases(Path(selected_file))
+        except ValueError as exc:
+            self._show_message(
+                "駅略称設定エラー",
+                f"駅略称設定を読み込めませんでした。\n\n{exc}",
+            )
+            aliases = {}
+
+        for station in self.railway.stations:
+            station.short_name = aliases.get(station.name, "")
+
+        # 無印設定を復元する
+        try:
+            station_no_mark = load_station_no_mark(
+                Path(selected_file)
+            )
+        except (OSError, ValueError) as exc:
+            self._show_message(
+                "無印設定エラー",
+                f"無印設定を読み込めませんでした。\n\n{exc}",
+            )
+            station_no_mark = {}
+
+        for station in self.railway.stations:
+            station.is_no_mark = station_no_mark.get(
+                station.name,
+                False,
+            )
+
+        # 表示設定を復元する
+        try:
+            self.display_config = load_display_config(
+                Path(selected_file)
+            )
+        except (OSError, ValueError) as exc:
+            self._show_message(
+                "表示設定エラー",
+                f"表示設定を読み込めませんでした。\n\n{exc}",
+            )
+            self.display_config = TimetableDisplayConfig()
+
+        # プレビューにも復元した設定を反映する
+        self.timetable_preview.display_config = self.display_config
 
         self.selected_station = None
         self.station_timetable = None
@@ -197,19 +253,15 @@ class MainWindow:
         if self.railway is None:
             return
 
-        station_name = self.selected_station_text.get()
+        station_index = self.station_combo.current()
 
-        self.selected_station = next(
-            (
-                station
-                for station in self.railway.stations
-                if station.name == station_name
-            ),
-            None,
-        )
-
-        if self.selected_station is None:
+        if not 0 <= station_index < len(self.railway.stations):
             return
+
+        self.selected_station = self.railway.stations[station_index]
+        self.selected_station_text.set(
+            self.selected_station.name
+        )
 
         self._generate_timetable()
 
@@ -290,6 +342,215 @@ class MainWindow:
         )
 
 
+    def _open_station_alias_editor(self) -> None:
+        """駅略称の編集ウィンドウを開く。"""
+        if self.railway is None:
+            self._show_message(
+                "未読み込み",
+                "先にOuDiaSecondファイルを読み込んでください。",
+            )
+            return
+
+        try:
+            station_no_mark_settings = load_station_no_mark(
+                Path(self.file_path.get())
+            )
+        except (OSError, ValueError) as exc:
+            self._show_message(
+                "設定読み込みエラー",
+                f"無印設定を読み込めませんでした。\n\n{exc}",
+            )
+            return
+
+        dialog = tk.Toplevel(self.root)
+        dialog.title("駅略称設定")
+        dialog.transient(self.root)
+
+        container = ttk.Frame(dialog, padding=12)
+        container.pack(fill=tk.BOTH, expand=True)
+
+        ttk.Label(
+            container,
+            text="略称を空欄にすると、正式駅名が使用されます。",
+        ).pack(anchor=tk.W, pady=(0, 8))
+
+        # 駅数が多い場合に備えてスクロール可能にする
+        canvas = tk.Canvas(container, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(
+            container,
+            orient=tk.VERTICAL,
+            command=canvas.yview,
+        )
+        rows_frame = ttk.Frame(canvas)
+
+        rows_frame.bind(
+            "<Configure>",
+            lambda _event: canvas.configure(
+                scrollregion=canvas.bbox("all")
+            ),
+        )
+
+        canvas_window = canvas.create_window(
+            (0, 0),
+            window=rows_frame,
+            anchor=tk.NW,
+        )
+
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        canvas.bind(
+            "<Configure>",
+            lambda event: canvas.itemconfigure(
+                canvas_window,
+                width=event.width,
+            ),
+        )
+
+        entries: list[
+            tuple[Station, tk.Entry, tk.BooleanVar]
+        ] = []
+
+        for row, station in enumerate(self.railway.stations):
+            ttk.Label(
+                rows_frame,
+                text=station.name,
+                width=20,
+            ).grid(
+                row=row,
+                column=0,
+                sticky=tk.W,
+                padx=(0, 8),
+                pady=3,
+            )
+
+            entry = ttk.Entry(rows_frame)
+            entry.insert(0, station.short_name)
+            entry.grid(
+                row=row,
+                column=1,
+                sticky=tk.EW,
+                pady=3,
+            )
+
+            no_mark_var = tk.BooleanVar(
+                value=station_no_mark_settings.get(
+                    station.name,
+                    station.is_no_mark,
+                )
+            )
+            ttk.Checkbutton(
+                rows_frame,
+                text="無印",
+                variable=no_mark_var,
+            ).grid(
+                row=row,
+                column=2,
+                sticky=tk.W,
+                padx=(8, 0),
+                pady=3,
+            )
+
+            entries.append((station, entry, no_mark_var))
+
+        rows_frame.columnconfigure(1, weight=1)
+
+        button_frame = ttk.Frame(container)
+        button_frame.pack(
+            fill=tk.X,
+            pady=(10, 0),
+        )
+
+        def save() -> None:
+            aliases = {
+                station.name: entry.get().strip()
+                for station, entry, _no_mark_var in entries
+            }
+
+            station_no_mark = {
+                station.name: no_mark_var.get()
+                for station, _entry, no_mark_var in entries
+            }
+
+            try:
+                save_station_settings(
+                    Path(self.file_path.get()),
+                    aliases,
+                    self.display_config,
+                    station_no_mark=station_no_mark,
+                )
+            except (OSError, ValueError) as exc:
+                self._show_message(
+                    "保存エラー",
+                    f"駅設定を保存できませんでした。\n\n{exc}",
+                )
+                return
+
+            for station, entry, no_mark_var in entries:
+                station.short_name = entry.get().strip()
+                station.is_no_mark = no_mark_var.get()
+
+            selected_index = self.station_combo.current()
+            self._update_station_list()
+
+            if (
+                0 <= selected_index < len(self.railway.stations)
+            ):
+                self.station_combo.current(selected_index)
+                self.selected_station = (
+                    self.railway.stations[selected_index]
+                )
+                self.selected_station_text.set(
+                    self.selected_station.name
+                )
+                self._generate_timetable()
+
+            dialog.destroy()
+
+        ttk.Button(
+            button_frame,
+            text="保存",
+            command=save,
+        ).pack(side=tk.RIGHT)
+
+        ttk.Button(
+            button_frame,
+            text="キャンセル",
+            command=dialog.destroy,
+        ).pack(side=tk.RIGHT, padx=(0, 8))
+
+        dialog.update_idletasks()
+
+        # メインウィンドウの位置・サイズを基準に配置する
+        self.root.update_idletasks()
+
+        dialog_width = dialog.winfo_reqwidth()
+        dialog_height = dialog.winfo_reqheight()
+
+        root_x = self.root.winfo_rootx()
+        root_y = self.root.winfo_rooty()
+        root_width = self.root.winfo_width()
+        root_height = self.root.winfo_height()
+
+        x = root_x + (root_width - dialog_width) // 2
+        y = root_y + (root_height - dialog_height) // 2
+
+        # 画面の表示範囲からはみ出さないように調整する
+        screen_width = dialog.winfo_screenwidth()
+        screen_height = dialog.winfo_screenheight()
+
+        x = max(0, min(x, screen_width - dialog_width))
+        y = max(0, min(y, screen_height - dialog_height))
+
+        dialog.geometry(
+            f"{dialog_width}x{dialog_height}+{x}+{y}"
+        )
+
+        dialog.grab_set()
+
+
     def _show_message(
         self,
         title: str,
@@ -334,6 +595,30 @@ class MainWindow:
         dialog.grab_set()
         button.focus_set()
         dialog.bind("<Return>", lambda _event: dialog.destroy())
+
+
+    def _save_display_config(self) -> None:
+        """表示設定を設定ファイルへ保存する。"""
+        if self.railway is None:
+            return
+
+        try:
+            aliases = {
+                station.name: station.short_name
+                for station in self.railway.stations
+                if station.short_name
+            }
+
+            save_station_settings(
+                Path(self.file_path.get()),
+                aliases,
+                self.display_config,
+            )
+        except (OSError, ValueError) as exc:
+            self._show_message(
+                "表示設定保存エラー",
+                f"表示設定を保存できませんでした。\n\n{exc}",
+            )
 
 
 def main() -> None:

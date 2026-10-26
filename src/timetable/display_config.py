@@ -88,7 +88,13 @@ class TimetableDisplayConfig:
 
     # 時刻表の列車種別に略称を使用する
     use_train_type_short_name: bool = False
-    
+
+    # 列車欄に行先を表示するか
+    show_destination: bool = True
+
+    # 行先凡例を表示するか
+    show_destination_legend: bool = True
+
     metadata_font_name: str = "源ノ角ゴシック JP"
     metadata_font_size: int = 6
     minute_font_name: str = "源ノ角ゴシック JP"

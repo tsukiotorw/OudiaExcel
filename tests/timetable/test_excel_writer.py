@@ -119,7 +119,12 @@ def test_write_station_timetable_entry(
 
     # A列が時なので、最初の列車はB列
     assert worksheet["B4"].value == (
-        entry.destination + entry.train_type.short_name
+        entry.destination.display_name
+        + (
+            f" {entry.train_type.short_name}"
+            if entry.train_type.short_name
+            else ""
+        )
     )
     assert worksheet["B5"].value == entry.minute
 
