@@ -1,0 +1,150 @@
+
+body {
+    margin: 0;
+    background: #f4f6f8;
+    color: #263238;
+    font-family: "Yu Gothic UI", "Meiryo", sans-serif;
+}
+
+.container {
+    max-width: 900px;
+    margin: 40px auto;
+    padding: 0 24px;
+}
+
+h1 {
+    margin-bottom: 8px;
+}
+
+.description {
+    color: #546e7a;
+    margin-bottom: 28px;
+}
+
+.panel,
+.message {
+    margin-bottom: 24px;
+    padding: 24px;
+    background: #ffffff;
+    border: 1px solid #dce3e8;
+    border-radius: 8px;
+}
+
+label,
+input {
+    display: block;
+    margin-bottom: 16px;
+}
+
+button {
+    padding: 10px 24px;
+    border: 0;
+    border-radius: 5px;
+    background: #245b8f;
+    color: white;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #19446d;
+}
+
+.railway-name {
+    font-size: 1.25rem;
+    font-weight: bold;
+}
+
+.station-list {
+    padding-left: 28px;
+}
+
+.station-list li {
+    padding: 5px 0;
+}
+
+.error {
+    border-color: #c62828;
+    color: #b71c1c;
+}
+
+select {
+    display: block;
+    width: 100%;
+    max-width: 420px;
+    margin-bottom: 16px;
+    padding: 10px;
+    border: 1px solid #b0bec5;
+    border-radius: 5px;
+    background: white;
+    font-size: 1rem;
+}
+
+h3 {
+    margin-top: 28px;
+}
+
+.table-scroll {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    white-space: nowrap;
+}
+
+th,
+td {
+    padding: 8px 12px;
+    border: 1px solid #dce3e8;
+    text-align: left;
+}
+
+th {
+    background: #eaf0f5;
+}
+
+.timetable-legend {
+    margin-top: 1.5rem;
+    padding: 0.75rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.timetable-legend > strong {
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.legend-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+}
+
+.legend-items span {
+    white-space: nowrap;
+}
+
+
+/* 列車種別の色設定 */
+.color-settings-table .color-input {
+    display: block;
+    width: 56px;
+    height: 36px;
+    margin: 0;
+    padding: 2px;
+    border: 1px solid #b0bec5;
+    border-radius: 5px;
+    background: #ffffff;
+    cursor: pointer;
+}
+
+.color-settings-table td {
+    vertical-align: middle;
+}
+
+.color-preview {
+    font-weight: bold;
+}
