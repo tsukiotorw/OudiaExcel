@@ -1,0 +1,484 @@
+<mxfile host="65bd71144e">
+    <diagram id="overview" name="全体構成">
+        <mxGraphModel dx="1530" dy="896" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="o1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;" value="入力&#xa;OudiaSecond .oud2" vertex="1">
+                    <mxGeometry height="60" width="150" x="30" y="300" as="geometry"/>
+                </mxCell>
+                <mxCell id="o2" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" value="application.oud2_loader&#xa;load_oud2(path)" vertex="1">
+                    <mxGeometry height="60" width="180" x="220" y="300" as="geometry"/>
+                </mxCell>
+                <mxCell id="o3" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;" value="Parser pipeline&#xa;Reader → Tokenizer → SectionBuilder → Parser" vertex="1">
+                    <mxGeometry height="100" width="250" x="450" y="280" as="geometry"/>
+                </mxCell>
+                <mxCell id="o4" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;" value="Domain model&#xa;Railway / Station / Diagram / Train&#xa;StopTime / TrainType / Operation" vertex="1">
+                    <mxGeometry height="100" width="230" x="760" y="280" as="geometry"/>
+                </mxCell>
+                <mxCell id="o5" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" value="application.station_timetable&#xa;StationTimetableGenerator" vertex="1">
+                    <mxGeometry height="80" width="210" x="1050" y="185" as="geometry"/>
+                </mxCell>
+                <mxCell id="o6" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;" value="StationTimetable&#xa;TimetableHour / TimetableEntry" vertex="1">
+                    <mxGeometry height="70" width="210" x="1050" y="330" as="geometry"/>
+                </mxCell>
+                <mxCell id="o7" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;" value="UI&#xa;MainWindow / TimetablePreview&#xa;DisplayConfigDialog" vertex="1">
+                    <mxGeometry height="90" width="230" x="750" y="570" as="geometry"/>
+                </mxCell>
+                <mxCell id="o8" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" value="application.excel_export&#xa;ExcelWriter" vertex="1">
+                    <mxGeometry height="70" width="190" x="1330" y="300" as="geometry"/>
+                </mxCell>
+                <mxCell id="o9" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;" value="出力&#xa;Excel .xlsx" vertex="1">
+                    <mxGeometry height="60" width="190" x="1330" y="480" as="geometry"/>
+                </mxCell>
+                <mxCell id="o10" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" value="表示設定 / 駅名設定&#xa;application.station_alias_settings" vertex="1">
+                    <mxGeometry height="80" width="250" x="430" y="570" as="geometry"/>
+                </mxCell>
+                <mxCell id="oe1" edge="1" parent="1" source="o1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;" target="o2" value="load_oud2">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="oe2" edge="1" parent="1" source="o2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;" target="o3" value="read → parse">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="oe3" edge="1" parent="1" source="o3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;" target="o4" value="Railway">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="oe4" edge="1" parent="1" source="o4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;" target="o5" value="Railway + Station">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="oe5" edge="1" parent="1" source="o5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;" target="o6" value="generates">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="oe6" edge="1" parent="1" source="o6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;" target="o7" value="display / export">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="oe7" edge="1" parent="1" source="o7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;" target="o8" value="export_station_timetable">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="oe8" edge="1" parent="1" source="o8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;" target="o9" value="writes">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="oe9" edge="1" parent="1" source="o7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;dashed=1;" target="o10" value="settings">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="domain" name="ドメインモデル">
+        <mxGraphModel dx="1587" dy="930" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="1100" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="d1" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;" value="Railway&#xa;name: str" vertex="1">
+                    <mxGeometry height="60" width="220" x="680" y="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="d2" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" value="Station&#xa;index: int&#xa;name, short_name: str&#xa;is_no_mark: bool" vertex="1">
+                    <mxGeometry height="95" width="230" x="110" y="250" as="geometry"/>
+                </mxCell>
+                <mxCell id="d3" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" value="TrainType&#xa;index: int&#xa;name, short_name: str" vertex="1">
+                    <mxGeometry height="80" width="230" x="410" y="250" as="geometry"/>
+                </mxCell>
+                <mxCell id="d4" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" value="Diagram&#xa;name: str&#xa;direction: Direction" vertex="1">
+                    <mxGeometry height="80" width="230" x="820" y="250" as="geometry"/>
+                </mxCell>
+                <mxCell id="d5" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" value="Train&#xa;number: str&#xa;train_type_index: int" vertex="1">
+                    <mxGeometry height="80" width="230" x="820" y="440" as="geometry"/>
+                </mxCell>
+                <mxCell id="d6" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" value="StopTime&#xa;station: Station&#xa;order, times, is_pass&#xa;track_index: int | None" vertex="1">
+                    <mxGeometry height="95" width="250" x="1110" y="440" as="geometry"/>
+                </mxCell>
+                <mxCell id="d7" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" value="Direction (railway.py)&#xa;UP / DOWN" vertex="1">
+                    <mxGeometry height="60" width="200" x="1110" y="250" as="geometry"/>
+                </mxCell>
+                <mxCell id="d8" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" value="Direction (direction.py)&#xa;UP / DOWN&#xa;separate enum definition" vertex="1">
+                    <mxGeometry height="75" width="240" x="1400" y="250" as="geometry"/>
+                </mxCell>
+                <mxCell id="d9" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" value="StationTimetable&#xa;station_name: str&#xa;down / up: list[TimetableHour]&#xa;train_types: list[TrainType]" vertex="1">
+                    <mxGeometry height="100" width="300" x="250" y="740" as="geometry"/>
+                </mxCell>
+                <mxCell id="d10" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" value="TimetableHour&#xa;hour: int&#xa;entries: list[TimetableEntry]" vertex="1">
+                    <mxGeometry height="80" width="250" x="680" y="740" as="geometry"/>
+                </mxCell>
+                <mxCell id="d11" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" value="TimetableEntry&#xa;minute: int&#xa;destination: Station&#xa;train_type: TrainType&#xa;train_number: str" vertex="1">
+                    <mxGeometry height="100" width="260" x="1080" y="740" as="geometry"/>
+                </mxCell>
+                <mxCell id="de1" edge="1" parent="1" source="d1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;startArrow=diamond;startFill=1;endArrow=none;" target="d2" value="stations 0..*">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="de2" edge="1" parent="1" source="d1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;startArrow=diamond;startFill=1;endArrow=none;" target="d3" value="train_types 0..*">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="de3" edge="1" parent="1" source="d1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;startArrow=diamond;startFill=1;endArrow=none;" target="d4" value="diagrams 0..*">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="de4" edge="1" parent="1" source="d4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;startArrow=diamond;startFill=1;endArrow=none;" target="d5" value="trains 0..*">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="de5" edge="1" parent="1" source="d5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;startArrow=diamond;startFill=1;endArrow=none;" target="d6" value="stop_times 0..*">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="de6" edge="1" parent="1" source="d6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;dashed=1;" target="d2" value="station 1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="de7" edge="1" parent="1" source="d4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;dashed=1;" target="d7" value="direction">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="de8" edge="1" parent="1" source="d9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;startArrow=diamond;startFill=1;" target="d10" value="down / up">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="de9" edge="1" parent="1" source="d10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;startArrow=diamond;startFill=1;endArrow=none;" target="d11" value="entries 0..*">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="de10" edge="1" parent="1" source="d11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;dashed=1;" target="d2" value="destination">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="de11" edge="1" parent="1" source="d11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;dashed=1;" target="d3" value="train_type">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="de12" edge="1" parent="1" source="d9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;startArrow=diamond;startFill=1;endArrow=none;" target="d3" value="train_types">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="operations" name="運用情報">
+        <mxGraphModel dx="1360" dy="797" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1000" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="p1" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" value="OperationRecord&#xa;order: int&#xa;is_before: bool" vertex="1">
+                    <mxGeometry height="75" width="240" x="550" y="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="p11" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" value="Train&#xa;operations: list[OperationRecord]" vertex="1">
+                    <mxGeometry height="65" width="250" x="80" y="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" value="Operation&#xa;type: OperationType&#xa;detail: OperationDetail&#xa;before_children / after_children" vertex="1">
+                    <mxGeometry height="95" width="260" x="550" y="250" as="geometry"/>
+                </mxCell>
+                <mxCell id="p3" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" value="OperationType&#xa;SHUNT / CONNECT / RELEASE&#xa;OUT_IN / OUTER / JUNCTION&#xa;NUMBER_CHANGE" vertex="1">
+                    <mxGeometry height="90" width="260" x="1000" y="250" as="geometry"/>
+                </mxCell>
+                <mxCell id="p4" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="ShuntDetail&#xa;linked_track_index&#xa;departure_time / arrival_time" vertex="1">
+                    <mxGeometry height="80" width="230" x="40" y="500" as="geometry"/>
+                </mxCell>
+                <mxCell id="p5" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="ConnectDetail&#xa;connect_position / connect_time" vertex="1">
+                    <mxGeometry height="70" width="230" x="320" y="500" as="geometry"/>
+                </mxCell>
+                <mxCell id="p6" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="ReleaseDetail&#xa;release_position / release_count&#xa;release_time" vertex="1">
+                    <mxGeometry height="80" width="240" x="600" y="500" as="geometry"/>
+                </mxCell>
+                <mxCell id="p7" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="OutInDetail&#xa;time / train_number" vertex="1">
+                    <mxGeometry height="70" width="220" x="900" y="500" as="geometry"/>
+                </mxCell>
+                <mxCell id="p8" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="OuterDetail&#xa;outer_station_index&#xa;departure_time / arrival_time" vertex="1">
+                    <mxGeometry height="80" width="230" x="40" y="720" as="geometry"/>
+                </mxCell>
+                <mxCell id="p9" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="JunctionDetail&#xa;time / value" vertex="1">
+                    <mxGeometry height="70" width="220" x="360" y="720" as="geometry"/>
+                </mxCell>
+                <mxCell id="p10" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="NumberChangeDetail&#xa;train_number" vertex="1">
+                    <mxGeometry height="70" width="230" x="680" y="720" as="geometry"/>
+                </mxCell>
+                <mxCell id="pe1" edge="1" parent="1" source="p1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;startArrow=diamond;startFill=1;endArrow=none;" target="p2" value="operations 0..*">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="pe2" edge="1" parent="1" source="p2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;dashed=1;" target="p3" value="type">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="pe3" edge="1" parent="1" source="p2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;" target="p4" value="detail: one of">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="pe4" edge="1" parent="1" source="p2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;" target="p5" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="pe5" edge="1" parent="1" source="p2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;" target="p6" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="pe6" edge="1" parent="1" source="p2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;" target="p7" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="pe7" edge="1" parent="1" source="p2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;" target="p8" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="pe8" edge="1" parent="1" source="p2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;" target="p9" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="pe9" edge="1" parent="1" source="p2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;" target="p10" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="pe10" edge="1" parent="1" source="p2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;startArrow=diamond;startFill=1;endArrow=none;entryX=0;entryY=0.5;" target="p2" value="before_children / after_children 0..*">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="900" y="190"/>
+                            <mxPoint x="900" y="300"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="pe11" edge="1" parent="1" source="p11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;startArrow=diamond;startFill=1;endArrow=none;" target="p1" value="operations 0..*">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="parser" name="Parser">
+        <mxGraphModel dx="1785" dy="1046" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="1250" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="r1" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="SourceFile&#xa;path: Path&#xa;encoding: str&#xa;lines: list[str]" vertex="1">
+                    <mxGeometry height="85" width="210" x="40" y="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="r2" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" value="ReaderError&#xa;Exception" vertex="1">
+                    <mxGeometry height="55" width="210" x="40" y="185" as="geometry"/>
+                </mxCell>
+                <mxCell id="r3" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="Token&#xa;line_number: int&#xa;raw_line: str" vertex="1">
+                    <mxGeometry height="70" width="210" x="340" y="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="r4" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="KeyValueToken&#xa;key / value: str" vertex="1">
+                    <mxGeometry height="60" width="190" x="300" y="200" as="geometry"/>
+                </mxCell>
+                <mxCell id="r5" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="SectionStartToken&#xa;name: str" vertex="1">
+                    <mxGeometry height="60" width="190" x="510" y="200" as="geometry"/>
+                </mxCell>
+                <mxCell id="r6" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="SectionEndToken" vertex="1">
+                    <mxGeometry height="50" width="190" x="300" y="300" as="geometry"/>
+                </mxCell>
+                <mxCell id="r7" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="BlankToken" vertex="1">
+                    <mxGeometry height="50" width="190" x="510" y="300" as="geometry"/>
+                </mxCell>
+                <mxCell id="r8" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="CommentToken&#xa;currently unused" vertex="1">
+                    <mxGeometry height="55" width="190" x="400" y="380" as="geometry"/>
+                </mxCell>
+                <mxCell id="r9" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="SectionNode&#xa;line_number / name&#xa;key_values: list[KeyValueToken]&#xa;children: list[SectionNode]" vertex="1">
+                    <mxGeometry height="90" width="260" x="800" y="220" as="geometry"/>
+                </mxCell>
+                <mxCell id="r10" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" value="Parser&#xa;parse(SectionNode) → Railway" vertex="1">
+                    <mxGeometry height="70" width="240" x="1200" y="220" as="geometry"/>
+                </mxCell>
+                <mxCell id="r11" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="OperationParser&#xa;parse(key/value tokens)&#xa;→ OperationRecord list" vertex="1">
+                    <mxGeometry height="75" width="240" x="1200" y="380" as="geometry"/>
+                </mxCell>
+                <mxCell id="r12" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="TimeParser&#xa;parse(record, Station, order)&#xa;→ StopTime" vertex="1">
+                    <mxGeometry height="75" width="240" x="1200" y="520" as="geometry"/>
+                </mxCell>
+                <mxCell id="r13" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" value="RecordType&#xa;EMPTY / TIME" vertex="1">
+                    <mxGeometry height="55" width="190" x="1550" y="520" as="geometry"/>
+                </mxCell>
+                <mxCell id="r14" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" value="Parser output&#xa;Railway" vertex="1">
+                    <mxGeometry height="60" width="190" x="1550" y="220" as="geometry"/>
+                </mxCell>
+                <mxCell id="r15" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" value="TokenizerError&#xa;Exception" vertex="1">
+                    <mxGeometry height="55" width="170" x="790" y="650" as="geometry"/>
+                </mxCell>
+                <mxCell id="r20" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" value="SectionBuilderError&#xa;Exception" vertex="1">
+                    <mxGeometry height="55" width="180" x="980" y="650" as="geometry"/>
+                </mxCell>
+                <mxCell id="r21" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" value="ParserError&#xa;Exception" vertex="1">
+                    <mxGeometry height="55" width="160" x="1180" y="650" as="geometry"/>
+                </mxCell>
+                <mxCell id="r22" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" value="OperationParserError&#xa;Exception" vertex="1">
+                    <mxGeometry height="55" width="210" x="1360" y="650" as="geometry"/>
+                </mxCell>
+                <mxCell id="r23" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" value="TimeParserError&#xa;Exception" vertex="1">
+                    <mxGeometry height="55" width="170" x="1590" y="650" as="geometry"/>
+                </mxCell>
+                <mxCell id="r16" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" value="Reader&#xa;read_file(path)" vertex="1">
+                    <mxGeometry height="55" width="210" x="40" y="500" as="geometry"/>
+                </mxCell>
+                <mxCell id="r17" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" value="Tokenizer&#xa;tokenize(SourceFile)" vertex="1">
+                    <mxGeometry height="55" width="210" x="340" y="500" as="geometry"/>
+                </mxCell>
+                <mxCell id="r18" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" value="SectionBuilder&#xa;build_sections(Token list)" vertex="1">
+                    <mxGeometry height="55" width="230" x="650" y="500" as="geometry"/>
+                </mxCell>
+                <mxCell id="r19" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;" value="Token subclasses are specialized Token records." vertex="1">
+                    <mxGeometry height="30" width="390" x="300" y="450" as="geometry"/>
+                </mxCell>
+                <mxCell id="re1" edge="1" parent="1" source="r16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;" target="r1" value="reads">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="re2" edge="1" parent="1" source="r16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;" target="r17" value="tokenize">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="re3" edge="1" parent="1" source="r1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;" target="r17" value="SourceFile">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="re4" edge="1" parent="1" source="r17" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;" target="r18" value="Token list">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="re5" edge="1" parent="1" source="r18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;" target="r9" value="creates">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="re6" edge="1" parent="1" source="r9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;" target="r10" value="SectionNode">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="re7" edge="1" parent="1" source="r10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;" target="r11" value="Operation keys">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="re8" edge="1" parent="1" source="r10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;" target="r12" value="EkiJikoku">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="re9" edge="1" parent="1" source="r10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;" target="r14" value="returns">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="re10" edge="1" parent="1" source="r12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;dashed=1;" target="r13" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="re11" edge="1" parent="1" source="r9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;startArrow=diamond;startFill=1;endArrow=none;" target="r4" value="key_values 0..*">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="re12" edge="1" parent="1" source="r9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;startArrow=diamond;startFill=1;endArrow=none;entryX=0;entryY=0.5;" target="r9" value="children 0..*">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1100" y="180"/>
+                            <mxPoint x="1100" y="270"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="re13" edge="1" parent="1" source="r4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=0;dashed=1;" target="r3" value="extends">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="re14" edge="1" parent="1" source="r5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=0;dashed=1;" target="r3" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="re15" edge="1" parent="1" source="r6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=0;dashed=1;" target="r3" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="re16" edge="1" parent="1" source="r7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=0;dashed=1;" target="r3" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="re17" edge="1" parent="1" source="r8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=0;dashed=1;" target="r3" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="application" name="アプリケーション/UI">
+        <mxGraphModel dx="1785" dy="1046" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="1200" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="a1" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" value="MainWindow&#xa;railway: Railway&#xa;selected_station: Station&#xa;station_timetable: StationTimetable&#xa;display_config: TimetableDisplayConfig" vertex="1">
+                    <mxGeometry height="115" width="300" x="700" y="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="a2" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" value="TimetablePreview&#xa;«tk.Frame»&#xa;timetable: StationTimetable&#xa;display_config: TimetableDisplayConfig" vertex="1">
+                    <mxGeometry height="100" width="280" x="1120" y="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="a3" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" value="DisplayConfigDialog&#xa;«tk.Toplevel»&#xa;item: PreviewItem&#xa;display_config / train_types" vertex="1">
+                    <mxGeometry height="100" width="280" x="1500" y="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="a4" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" value="TimetableView&#xa;show(StationTimetable)&#xa;independent text view" vertex="1">
+                    <mxGeometry height="75" width="280" x="1120" y="200" as="geometry"/>
+                </mxCell>
+                <mxCell id="a5" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" value="PreviewItem&#xa;TITLE / HEADER / HOUR&#xa;TRAIN / LEGEND" vertex="1">
+                    <mxGeometry height="65" width="280" x="1500" y="200" as="geometry"/>
+                </mxCell>
+                <mxCell id="a6" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="StationTimetableGenerator&#xa;railway: Railway&#xa;generate(Station) → StationTimetable" vertex="1">
+                    <mxGeometry height="80" width="300" x="700" y="300" as="geometry"/>
+                </mxCell>
+                <mxCell id="a7" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="BorderSideConfig&#xa;enabled / color / style" vertex="1">
+                    <mxGeometry height="60" width="220" x="40" y="390" as="geometry"/>
+                </mxCell>
+                <mxCell id="a8" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="BorderConfig&#xa;top / bottom / left / right&#xa;BorderSideConfig" vertex="1">
+                    <mxGeometry height="75" width="240" x="340" y="390" as="geometry"/>
+                </mxCell>
+                <mxCell id="a9" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="TimetableDisplayConfig&#xa;colors / fonts / visibility&#xa;border settings" vertex="1">
+                    <mxGeometry height="80" width="260" x="40" y="230" as="geometry"/>
+                </mxCell>
+                <mxCell id="a10" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="ExcelWriter&#xa;src/timetable/excel_writer.py&#xa;write(StationTimetable, Path)" vertex="1">
+                    <mxGeometry height="75" width="270" x="40" y="600" as="geometry"/>
+                </mxCell>
+                <mxCell id="a11" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" value="ExcelWriter (legacy stub)&#xa;src/excel/writer.py&#xa;write(data, filename)" vertex="1">
+                    <mxGeometry height="75" width="270" x="360" y="600" as="geometry"/>
+                </mxCell>
+                <mxCell id="a12" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="«module» oud2_loader&#xa;load_oud2(path)" vertex="1">
+                    <mxGeometry height="60" width="220" x="700" y="470" as="geometry"/>
+                </mxCell>
+                <mxCell id="a13" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="«module» station_timetable&#xa;generate_station_timetable(...)" vertex="1">
+                    <mxGeometry height="65" width="250" x="700" y="570" as="geometry"/>
+                </mxCell>
+                <mxCell id="a14" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="«module» excel_export&#xa;export_station_timetable(...)" vertex="1">
+                    <mxGeometry height="65" width="250" x="700" y="680" as="geometry"/>
+                </mxCell>
+                <mxCell id="a15" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="«module» station_alias_settings&#xa;load / save aliases and config" vertex="1">
+                    <mxGeometry height="65" width="260" x="700" y="800" as="geometry"/>
+                </mxCell>
+                <mxCell id="a16" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" value="Domain types&#xa;Railway / Station / TrainType&#xa;StationTimetable / TimetableHour" vertex="1">
+                    <mxGeometry height="80" width="280" x="1120" y="480" as="geometry"/>
+                </mxCell>
+                <mxCell id="a17" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" value="StationTimetable / TimetableHour" vertex="1">
+                    <mxGeometry height="55" width="280" x="1120" y="620" as="geometry"/>
+                </mxCell>
+                <mxCell id="a18" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="TimetableDisplayConfig" vertex="1">
+                    <mxGeometry height="55" width="280" x="1120" y="760" as="geometry"/>
+                </mxCell>
+                <mxCell id="a19" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" value="«module» src/main.py&#xa;legacy entry point" vertex="1">
+                    <mxGeometry height="60" width="270" x="360" y="720" as="geometry"/>
+                </mxCell>
+                <mxCell id="ae1" edge="1" parent="1" source="a1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;" target="a2" value="creates / updates">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ae2" edge="1" parent="1" source="a2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;" target="a3" value="opens for editing">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ae3" edge="1" parent="1" source="a3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;dashed=1;" target="a5" value="item">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ae4" edge="1" parent="1" source="a2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;dashed=1;" target="a9" value="config">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ae5" edge="1" parent="1" source="a9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;startArrow=diamond;startFill=1;endArrow=none;" target="a8" value="border settings">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ae6" edge="1" parent="1" source="a8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;startArrow=diamond;startFill=1;endArrow=none;" target="a7" value="four sides">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ae7" edge="1" parent="1" source="a1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;" target="a12" value="loads Railway">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ae8" edge="1" parent="1" source="a1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;" target="a13" value="calls">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ae9" edge="1" parent="1" source="a1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;" target="a14" value="calls">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ae10" edge="1" parent="1" source="a1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;dashed=1;" target="a15" value="loads / saves">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ae11" edge="1" parent="1" source="a6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;dashed=1;" target="a16" value="uses">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ae12" edge="1" parent="1" source="a6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;" target="a17" value="produces">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ae13" edge="1" parent="1" source="a14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;" target="a10" value="writes">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ae14" edge="1" parent="1" source="a10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;dashed=1;" target="a18" value="config">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ae15" edge="1" parent="1" source="a19" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;dashed=1;" target="a11" value="legacy import">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ae16" edge="1" parent="1" source="a1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;dashed=1;" target="a9" value="configuration">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ae17" edge="1" parent="1" source="a1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;dashed=1;" target="a16" value="domain references">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ae18" edge="1" parent="1" source="a2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;dashed=1;" target="a17" value="StationTimetable">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ae19" edge="1" parent="1" source="a4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;dashed=1;" target="a17" value="StationTimetable">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ae20" edge="1" parent="1" source="a13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;" target="a6" value="delegates to">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ae21" edge="1" parent="1" source="a10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;dashed=1;" target="a17" value="receives data">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

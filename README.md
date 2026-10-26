@@ -24,6 +24,7 @@ OudiaSecond (*.oud2) の解析ライブラリ。
 |ファイル|内容|
 |---|---|
 |`docs/design/domain_model.md`|ドメインモデル設計|
+|`docs/design/class_dsign.md` / `docs/design/class_dsign.drawio`|プロジェクト全体のクラス関連図と編集用draw.ioファイル|
 |`docs/design/parser_design.md`|Parser設計|
 |`docs/design/tokenizer_design.md`|Tokenizer設計|
 |`docs/design/section_builder_design.md`|SectionBuilder設計|

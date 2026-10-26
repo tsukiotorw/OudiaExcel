@@ -2,6 +2,8 @@ from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, ttk
 
+from src.ui.timetable_image_exporter import TimetableImageExporter
+
 from src.application.oud2_loader import load_oud2
 from src.application.station_timetable import generate_station_timetable
 from src.application.station_alias_settings import (
@@ -128,7 +130,14 @@ class MainWindow:
             text="Excel出力",
             command=self._export_excel,
         )
-        export_button.pack(side=tk.LEFT)
+        export_button.pack(side=tk.LEFT, padx=(0, 8))
+
+        png_export_button = tk.Button(
+            button_frame,
+            text="PNG出力",
+            command=self._export_png,
+        )
+        png_export_button.pack(side=tk.LEFT)
 
         self.timetable_preview = TimetablePreview(
             frame,
@@ -329,6 +338,43 @@ class MainWindow:
             f"Excelファイルを出力しました。\n\n{output_path}",
         )
 
+    def _export_png(self) -> None:
+        """プレビューの時刻表をPNG画像として出力する。"""
+        if self.station_timetable is None:
+            self._show_message(
+                "時刻表未生成",
+                "先に時刻表を生成してください。",
+            )
+            return
+
+        output_path = filedialog.asksaveasfilename(
+            title="PNG画像を保存",
+            defaultextension=".png",
+            filetypes=[
+                ("PNG画像", "*.png"),
+                ("すべてのファイル", "*.*"),
+            ],
+        )
+
+        if not output_path:
+            return
+
+        try:
+            TimetableImageExporter.export(
+                self.timetable_preview.canvas,
+                Path(output_path),
+            )
+        except Exception as exc:
+            self._show_message(
+                "PNG出力エラー",
+                f"PNG画像の出力に失敗しました。\n\n{exc}",
+            )
+            return
+
+        self._show_message(
+            "PNG出力完了",
+            f"PNG画像を出力しました。\n\n{output_path}",
+        )
 
     def _open_station_alias_editor(self) -> None:
         """駅略称の編集ウィンドウを開く。"""
