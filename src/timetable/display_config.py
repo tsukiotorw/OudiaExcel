@@ -38,6 +38,11 @@ class TimetableDisplayConfig:
     train_type_colors: dict[int, str] = field(default_factory=dict)
     train_type_visible: dict[int, bool] = field(default_factory=dict)
 
+    # 列車欄での列車種別ごとの表示有無
+    train_type_column_visible: dict[int, bool] = field(
+        default_factory=dict
+    )
+
     # 罫線
     title_border: BorderConfig = field(
         default_factory=BorderConfig,

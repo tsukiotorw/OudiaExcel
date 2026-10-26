@@ -145,6 +145,16 @@ class DisplayConfigDialog(tk.Toplevel):
             value=self.display_config.show_destination,
         )
 
+        self.train_type_column_visible = {
+            train_type.index: tk.BooleanVar(
+                value=self.display_config.train_type_column_visible.get(
+                    train_type.index,
+                    True,
+                )
+            )
+            for train_type in self.train_types
+        }
+
 
     def _create_header_variables(self) -> None:
         """ヘッダ情報の設定値を保持するTk変数を作成する。"""
@@ -583,9 +593,35 @@ class DisplayConfigDialog(tk.Toplevel):
             pady=(4, 0),
         )
 
+        ttk.Label(
+            frame,
+            text="列車欄に表示する列車種別",
+        ).grid(
+            row=9,
+            column=0,
+            columnspan=3,
+            sticky=tk.W,
+            pady=(8, 0),
+        )
+
+        for index, train_type in enumerate(self.train_types):
+            ttk.Checkbutton(
+                frame,
+                text=train_type.name,
+                variable=self.train_type_column_visible[train_type.index],
+            ).grid(
+                row=10 + index // 3,
+                column=index % 3,
+                sticky=tk.W,
+                padx=(0, 8),
+                pady=2,
+            )
+
+        border_start_row = 10 + (len(self.train_types) + 2) // 3
+
         border_row = self._create_border_widgets(
             frame,
-            start_row=9,
+            start_row=border_start_row,
         )
 
         border_row = self._create_train_separator_widgets(
@@ -1804,6 +1840,11 @@ class DisplayConfigDialog(tk.Toplevel):
         self.display_config.show_destination = (
             self.show_destination.get()
         )
+
+        self.display_config.train_type_column_visible = {
+            index: variable.get()
+            for index, variable in self.train_type_column_visible.items()
+        }
 
 
     def _apply_header(self) -> None:

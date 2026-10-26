@@ -495,10 +495,23 @@ class TimetablePreview(tk.Frame):
                     or self.display_config.train_font_color
                 )
 
+                show_train_type = (
+                    self.display_config.train_type_column_visible.get(
+                        train_type_index,
+                        True,
+                    )
+                )
+
+                train_text = (
+                    f"{destination} {train_type}"
+                    if show_train_type
+                    else destination
+                ).strip()
+
                 self.canvas.create_text(
                     train_x + self._CELL_WIDTH / 2,
                     hour_y + self._CELL_HEIGHT / 2,
-                    text=f"{destination} {train_type}".strip(),
+                    text=train_text,
                     font=(
                         self.display_config.metadata_font_name,
                         self.display_config.metadata_font_size,
@@ -548,6 +561,7 @@ class TimetablePreview(tk.Frame):
                         fill=self._to_tk_color(separator.color),
                         width=self._border_width(separator.style),
                     )
+
 
     def _get_destination_legend_items(self) -> list[tuple[str, str]]:
         """略称または無印が設定されている行先駅の凡例項目を取得する。"""
