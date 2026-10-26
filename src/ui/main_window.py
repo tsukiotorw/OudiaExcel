@@ -14,7 +14,6 @@ from src.application.excel_export import export_station_timetable
 from src.models.railway import Railway
 from src.models.station import Station
 from src.models.timetable import StationTimetable
-from src.ui.timetable_view import TimetableView
 from src.ui.timetable_preview import TimetablePreview
 from src.timetable.display_config import TimetableDisplayConfig
 
@@ -25,7 +24,7 @@ class MainWindow:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
         self.root.title("OuDiaExcel")
-        self.root.geometry("1100x750")
+        self.root.geometry("1200x750")
 
         self.file_path = tk.StringVar()
         self.railway: Railway | None = None
@@ -92,7 +91,7 @@ class MainWindow:
             "<<ComboboxSelected>>",
             self._on_station_selected,
         )
- 
+
         selected_frame = tk.Frame(frame)
         selected_frame.pack(
             fill=tk.X,
@@ -137,13 +136,6 @@ class MainWindow:
             on_display_config_changed=self._save_display_config,
         )
         self.timetable_preview.pack(
-            fill=tk.BOTH,
-            expand=True,
-            pady=(15, 0),
-        )
-
-        self.timetable_view = TimetableView(frame)
-        self.timetable_view.frame.pack(
             fill=tk.BOTH,
             expand=True,
             pady=(15, 0),
@@ -224,7 +216,6 @@ class MainWindow:
         self.selected_station = None
         self.station_timetable = None
         self.selected_station_text.set("未選択")
-        self.timetable_view.clear()
 
         self._update_station_list()
 
@@ -294,10 +285,6 @@ class MainWindow:
             )
             return
 
-        self.timetable_view.show(
-            self.station_timetable,
-        )
-
         self.timetable_preview.set_timetable(
             self.station_timetable,
         )
@@ -328,6 +315,7 @@ class MainWindow:
             export_station_timetable(
                 self.station_timetable,
                 Path(output_path),
+                self.display_config,
             )
         except Exception as exc:
             self._show_message(

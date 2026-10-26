@@ -118,14 +118,38 @@ def test_write_station_timetable_entry(
     entry = hour.entries[0]
 
     # A列が時なので、最初の列車はB列
-    assert worksheet["B4"].value == (
+    expected_destination = (
         entry.destination.display_name
-        + (
-            f" {entry.train_type.short_name}"
-            if entry.train_type.short_name
-            else ""
+        if (
+            writer.display_config.show_destination
+            and not entry.destination.is_no_mark
         )
+        else ""
     )
+
+    expected_train_type = (
+        entry.train_type.short_name
+        if (
+            writer.display_config.use_train_type_short_name
+            and entry.train_type.short_name
+        )
+        else entry.train_type.name
+    )
+
+    if not writer.display_config.train_type_column_visible.get(
+        entry.train_type.index,
+        True,
+    ):
+        expected_train_type = ""
+
+    expected_metadata = " ".join(
+        part
+        for part in (expected_destination, expected_train_type)
+        if part
+    )
+
+    assert worksheet["B4"].value == expected_metadata
+
     assert worksheet["B5"].value == entry.minute
 
 
@@ -362,50 +386,22 @@ def test_write_station_timetable_legend(
     )
     assert label_cell.value == "凡例"
 
-    # 「普通」「快速」が凡例として出力される。
+    # 「普通」「快速」が同じ行に横並びで出力される。
     assert worksheet.cell(
         row=legend_row,
         column=2,
     ).value == "普通"
 
     assert worksheet.cell(
-        row=legend_row + 1,
-        column=2,
+        row=legend_row,
+        column=3,
     ).value == "快速"
 
-    # 「凡例」が列車種別の行数分、縦結合される。
-    assert f"A{legend_row}:A{legend_row + 1}" in {
+    # 列車種別だけの場合、「凡例」ラベルは縦結合しない。
+    assert f"A{legend_row}:A{legend_row}" not in {
         str(cell_range)
         for cell_range in worksheet.merged_cells.ranges
     }
-
-    # 各列車種別の説明領域が、時刻表全体の横幅まで結合される。
-    down_width = writer._max_entry_count(timetable.down) + 1
-    up_width = writer._max_entry_count(timetable.up) + 1
-
-    down_start_column = 1
-    up_start_column = (
-        down_start_column
-        + down_width
-        + writer._DIRECTION_GAP
-    )
-    end_column = up_start_column + up_width - 1
-
-    assert (
-        f"B{legend_row}:{get_column_letter(end_column)}{legend_row}"
-        in {
-            str(cell_range)
-            for cell_range in worksheet.merged_cells.ranges
-        }
-    )
-
-    assert (
-        f"B{legend_row + 1}:{get_column_letter(end_column)}{legend_row + 1}"
-        in {
-            str(cell_range)
-            for cell_range in worksheet.merged_cells.ranges
-        }
-    )
 
     # 「凡例」ラベルの外観。
     assert label_cell.fill.fgColor.rgb == "FF000000"
@@ -424,4 +420,3 @@ def test_write_station_timetable_legend(
 
     # 凡例の行高。
     assert worksheet.row_dimensions[legend_row].height == 24.2
-    assert worksheet.row_dimensions[legend_row + 1].height == 24.2
