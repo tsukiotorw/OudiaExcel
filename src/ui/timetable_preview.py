@@ -1,6 +1,8 @@
 import tkinter as tk
 from tkinter import ttk
 
+import tkinter.font as tkfont
+
 from src.ui.display_config_dialog import DisplayConfigDialog
 from src.ui.preview_item import PreviewItem
 
@@ -161,28 +163,15 @@ class TimetablePreview(tk.Frame):
             + self._DIRECTION_GAP
         )
 
-        # 凡例の高さ
-        if self.timetable is not None:
-            visible_train_types = [
-                train_type
-                for train_type in self.timetable.train_types
-                if self.display_config.train_type_visible.get(
-                    train_type.index,
-                    True,
-                )
-            ]
-            destination_legend_items = (
-                self._get_destination_legend_items()
-            )
-
-            # 列車種別と駅略称の両方があれば2段にする
-            legend_rows = (
-                2
-                if visible_train_types and destination_legend_items
-                else 1
-            )
-        else:
-            legend_rows = 1
+        # 凡例の高さを、下り・上りそれぞれの項目数から計算
+        down_legend_rows, up_legend_rows, _, _ = (
+            self._get_legend_layout(down_width, up_width)
+        )
+        legend_rows = max(
+            len(down_legend_rows),
+            len(up_legend_rows),
+            1,
+        )
 
         max_hours = max(
             len(down_hours),
@@ -257,7 +246,8 @@ class TimetablePreview(tk.Frame):
         self._draw_legend(
             x=x0,
             y=legend_y,
-            width=total_width,
+            down_width=down_width,
+            up_width=up_width,
         )
 
         self.canvas.configure(
@@ -592,156 +582,212 @@ class TimetablePreview(tk.Frame):
         ]
 
 
+    def _get_legend_layout(
+        self,
+        down_width: float,
+        up_width: float,
+    ):
+        """下り・上り別に凡例項目を横並びに配置し、必要なら折り返す。"""
+        config = self.display_config
+
+        font = tkfont.Font(
+            family=config.legend_font_name,
+            size=config.legend_font_size,
+        )
+
+        def build_rows(
+            width: float,
+            station_items: list[tuple[str, str]],
+        ) -> tuple[list[list[tuple[str, str]]], float]:
+            label_width = min(60, width * 0.35)
+            available_width = max(
+                1,
+                width - label_width - 16,
+            )
+
+            # 列車種別の項目
+            items: list[tuple[str, str]] = []
+
+            if self.timetable is not None:
+                for train_type in self.timetable.train_types:
+                    if not config.train_type_visible.get(
+                        train_type.index, True
+                    ):
+                        continue
+
+                    name = (
+                        train_type.short_name
+                        if (
+                            config.use_train_type_short_name
+                            and train_type.short_name
+                        )
+                        else train_type.name
+                    )
+
+                    if name:
+                        color = (
+                            config.get_train_type_color(train_type.index)
+                            or config.train_font_color
+                        )
+                        items.append((name, color))
+
+            rows: list[list[tuple[str, str]]] = []
+
+            def append_wrapped(
+                group: list[tuple[str, str]],
+            ) -> None:
+                current_row: list[tuple[str, str]] = []
+                current_width = 0
+
+                for text, color in group:
+                    item_width = font.measure(text) + 16
+
+                    if (
+                        current_row
+                        and current_width + item_width > available_width
+                    ):
+                        rows.append(current_row)
+                        current_row = []
+                        current_width = 0
+
+                    current_row.append((text, color))
+                    current_width += item_width
+
+                if current_row:
+                    rows.append(current_row)
+
+            # 列車種別を横並びにし、幅を超えたら折り返す
+            append_wrapped(items)
+
+            # 行先の略称・無印も別の段で横並びにする
+            destinations = [
+                (
+                    f"{short_name}＝{station_name}",
+                    config.train_font_color,
+                )
+                for short_name, station_name in station_items
+            ]
+            append_wrapped(destinations)
+
+            return rows, label_width
+
+        down_items = (
+            self._get_destination_legend_items(self.timetable.down)
+            if self.timetable is not None
+            else []
+        )
+        up_items = (
+            self._get_destination_legend_items(self.timetable.up)
+            if self.timetable is not None
+            else []
+        )
+
+        down_rows, down_label_width = build_rows(
+            down_width, down_items
+        )
+        up_rows, up_label_width = build_rows(
+            up_width, up_items
+        )
+
+        return (
+            down_rows,
+            up_rows,
+            down_label_width,
+            up_label_width,
+        )
+
+
     def _draw_legend(
         self,
         x: float,
         y: float,
-        width: float,
+        down_width: float,
+        up_width: float,
     ) -> None:
-        """列車種別と下り・上り別の行先凡例を描画する。"""
-        label_width = 60
+        """下り・上りそれぞれの時刻表位置に凡例を描画する。"""
         row_height = self.display_config.legend_row_height
 
-        visible_train_types = []
-        if self.timetable is not None:
-            visible_train_types = [
-                train_type
-                for train_type in self.timetable.train_types
-                if self.display_config.train_type_visible.get(
-                    train_type.index,
-                    True,
-                )
-            ]
+        (
+            down_rows,
+            up_rows,
+            down_label_width,
+            up_label_width,
+        ) = self._get_legend_layout(down_width, up_width)
 
-        down_items = self._get_destination_legend_items(
-            self.timetable.down
-        ) if self.timetable is not None else []
-
-        up_items = self._get_destination_legend_items(
-            self.timetable.up
-        ) if self.timetable is not None else []
-
-        has_train_types = bool(visible_train_types)
-        has_destinations = bool(down_items or up_items)
-
-        # 列車種別と行先凡例の両方がある場合は2段にする。
-        legend_rows = (
-            2 if has_train_types and has_destinations else 1
-        )
+        legend_rows = max(len(down_rows), len(up_rows), 1)
         legend_height = row_height * legend_rows
 
-        # 凡例全体の背景
-        self.canvas.create_rectangle(
-            x,
-            y,
-            x + width,
-            y + legend_height,
-            fill=self._to_tk_color(
-                self.display_config.legend_fill
-            ),
-            outline="",
-            tags=(PreviewItem.LEGEND,),
-        )
-
-        # 凡例全体の罫線
-        self._draw_border(
-            x,
-            y,
-            x + width,
-            y + legend_height,
-            self.display_config.legend_border,
-        )
-
-        # 左側の「凡例」ラベル
-        self.canvas.create_rectangle(
-            x,
-            y,
-            x + label_width,
-            y + legend_height,
-            fill=self._to_tk_color(
-                self.display_config.legend_label_fill
-            ),
-            outline="",
-        )
-
-        self.canvas.create_text(
-            x + label_width / 2,
-            y + legend_height / 2,
-            text="凡例",
-            fill=self._to_tk_color(
-                self.display_config.legend_label_font_color
-            ),
-            font=(
-                self.display_config.legend_label_font_name,
-                self.display_config.legend_label_font_size,
+        directions = (
+            (x, down_width, down_label_width, down_rows),
+            (
+                x + down_width + self._DIRECTION_GAP,
+                up_width,
+                up_label_width,
+                up_rows,
             ),
         )
 
-        content_x = x + label_width + 12
-        content_width = width - label_width - 24
-
-        # 列車種別の凡例を上段に横方向に並べる。
-        if has_train_types:
-            train_type_y = (
-                y + row_height / 2
-                if not has_destinations
-                else y + row_height / 2
-            )
-            text_x = content_x
-
-            for train_type in visible_train_types:
-                color = (
-                    self.display_config.get_train_type_color(
-                        train_type.index,
-                    )
-                    or self.display_config.train_font_color
-                )
-
-                item_id = self.canvas.create_text(
-                    text_x,
-                    train_type_y,
-                    anchor=tk.W,
-                    text=train_type.name,
-                    fill=self._to_tk_color(color),
-                    font=(
-                        self.display_config.legend_font_name,
-                        self.display_config.legend_font_size,
-                    ),
-                )
-
-                bbox = self.canvas.bbox(item_id)
-                if bbox is not None:
-                    text_x = bbox[2] + 16
-
-        # 行先凡例を下段の左右に分ける。
-        if has_destinations:
-            destination_y = (
-                y + row_height * 1.5
-                if has_train_types
-                else y + row_height / 2
+        for direction_x, width, label_width, rows in directions:
+            # 方向ごとの凡例背景と罫線
+            self.canvas.create_rectangle(
+                direction_x,
+                y,
+                direction_x + width,
+                y + legend_height,
+                fill=self._to_tk_color(
+                    self.display_config.legend_fill
+                ) or "#FFFFFF",
+                outline="",
+                tags=(PreviewItem.LEGEND,),
             )
 
-            half_width = content_width / 2
-            directions = (
-                (down_items, content_x),
-                (up_items, content_x + half_width),
+            self._draw_border(
+                direction_x,
+                y,
+                direction_x + width,
+                y + legend_height,
+                self.display_config.legend_border,
             )
 
-            for items, start_x in directions:
-                text_x = start_x
-                right_limit = start_x + half_width - 8
+            # 「凡例」ラベルは各方向の左端に配置
+            self.canvas.create_rectangle(
+                direction_x,
+                y,
+                direction_x + label_width,
+                y + legend_height,
+                fill=self._to_tk_color(
+                    self.display_config.legend_label_fill
+                ) or "#FFFFFF",
+                outline="",
+            )
 
-                for short_name, station_name in items:
-                    item_text = f"{short_name}＝{station_name}"
+            self.canvas.create_text(
+                direction_x + label_width / 2,
+                y + legend_height / 2,
+                text="凡例",
+                fill=self._to_tk_color(
+                    self.display_config.legend_label_font_color
+                ),
+                font=(
+                    self.display_config.legend_label_font_name,
+                    self.display_config.legend_label_font_size,
+                ),
+            )
 
+            # 各段の項目を横並びに描画
+            content_x = direction_x + label_width + 8
+
+            for row_index, items in enumerate(rows):
+                text_x = content_x
+                text_y = y + row_height * (row_index + 0.5)
+
+                for text, color in items:
                     item_id = self.canvas.create_text(
                         text_x,
-                        destination_y,
+                        text_y,
                         anchor=tk.W,
-                        text=item_text,
-                        fill=self._to_tk_color(
-                            self.display_config.train_font_color
-                        ),
+                        text=text,
+                        fill=self._to_tk_color(color),
                         font=(
                             self.display_config.legend_font_name,
                             self.display_config.legend_font_size,
@@ -750,10 +796,7 @@ class TimetablePreview(tk.Frame):
 
                     bbox = self.canvas.bbox(item_id)
                     if bbox is not None:
-                        # 各方向の区画からはみ出さないようにする。
                         text_x = bbox[2] + 16
-                        if text_x >= right_limit:
-                            break
 
 
     def _on_click(self, event: tk.Event) -> None:
