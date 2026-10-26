@@ -312,7 +312,7 @@ def _save_railway_settings(
         raise ValueError(
             f"設定ファイルを保存できません: {settings_path}"
         ) from exc
-
+    
 
 def save_station_aliases(
     oud2_path: Path,

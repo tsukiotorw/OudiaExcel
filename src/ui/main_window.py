@@ -363,6 +363,7 @@ class MainWindow:
             return
 
         dialog = tk.Toplevel(self.root)
+        dialog.withdraw()
         dialog.title("駅略称設定")
         dialog.transient(self.root)
 
@@ -413,6 +414,10 @@ class MainWindow:
             tuple[Station, tk.Entry, tk.BooleanVar]
         ] = []
 
+        # 同名駅は同じ略称を共有する。
+        alias_vars: dict[str, tk.StringVar] = {}
+        dialog._alias_vars = alias_vars  # StringVarがGCされないよう保持する
+
         for row, station in enumerate(self.railway.stations):
             ttk.Label(
                 rows_frame,
@@ -426,8 +431,17 @@ class MainWindow:
                 pady=3,
             )
 
-            entry = ttk.Entry(rows_frame)
-            entry.insert(0, station.short_name)
+            # 最初に出現した駅の略称を初期値として採用する。
+            if station.name not in alias_vars:
+                alias_vars[station.name] = tk.StringVar(
+                    value=station.short_name
+                )
+
+            # 同名駅では同じStringVarを共有する。
+            entry = ttk.Entry(
+                rows_frame,
+                textvariable=alias_vars[station.name],
+            )
             entry.grid(
                 row=row,
                 column=1,
@@ -547,6 +561,9 @@ class MainWindow:
         dialog.geometry(
             f"{dialog_width}x{dialog_height}+{x}+{y}"
         )
+
+        dialog.deiconify()
+        dialog.update()
 
         dialog.grab_set()
 

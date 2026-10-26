@@ -563,23 +563,25 @@ class TimetablePreview(tk.Frame):
                     )
 
 
-    def _get_destination_legend_items(self) -> list[tuple[str, str]]:
-        """略称または無印が設定されている行先駅の凡例項目を取得する。"""
-        if (
-            self.timetable is None
-            or not self.display_config.show_destination_legend
-        ):
+    def _get_destination_legend_items(
+        self,
+        hours: list[TimetableHour] | None = None,
+    ) -> list[tuple[str, str]]:
+        """指定された時刻表から行先凡例を取得する。"""
+        if self.timetable is None or not self.display_config.show_destination_legend:
             return []
+
+        if hours is None:
+            hours = self.timetable.down + self.timetable.up
 
         stations = {}
 
-        for hours in (self.timetable.down, self.timetable.up):
-            for hour in hours:
-                for entry in hour.entries:
-                    station = entry.destination
+        for hour in hours:
+            for entry in hour.entries:
+                station = entry.destination
 
-                    if station.is_no_mark or station.short_name:
-                        stations[station.name] = station
+                if station.is_no_mark or station.short_name:
+                    stations[station.name] = station
 
         return [
             (
@@ -596,7 +598,7 @@ class TimetablePreview(tk.Frame):
         y: float,
         width: float,
     ) -> None:
-        """列車種別と駅略称を横方向に並べて凡例を描画する。"""
+        """列車種別と下り・上り別の行先凡例を描画する。"""
         label_width = 60
         row_height = self.display_config.legend_row_height
 
@@ -611,15 +613,21 @@ class TimetablePreview(tk.Frame):
                 )
             ]
 
-        destination_legend_items = (
-            self._get_destination_legend_items()
-        )
+        down_items = self._get_destination_legend_items(
+            self.timetable.down
+        ) if self.timetable is not None else []
 
-        # 2種類の凡例がある場合は2段にする
-        has_two_rows = bool(
-            visible_train_types and destination_legend_items
+        up_items = self._get_destination_legend_items(
+            self.timetable.up
+        ) if self.timetable is not None else []
+
+        has_train_types = bool(visible_train_types)
+        has_destinations = bool(down_items or up_items)
+
+        # 列車種別と行先凡例の両方がある場合は2段にする。
+        legend_rows = (
+            2 if has_train_types and has_destinations else 1
         )
-        legend_rows = 2 if has_two_rows else 1
         legend_height = row_height * legend_rows
 
         # 凡例全体の背景
@@ -669,12 +677,17 @@ class TimetablePreview(tk.Frame):
             ),
         )
 
-        # 右側の描画開始位置
-        text_x = x + label_width + 12
+        content_x = x + label_width + 12
+        content_width = width - label_width - 24
 
-        # 1段目：列車種別を横方向に並べる
-        if visible_train_types:
-            train_type_y = y + row_height / 2
+        # 列車種別の凡例を上段に横方向に並べる。
+        if has_train_types:
+            train_type_y = (
+                y + row_height / 2
+                if not has_destinations
+                else y + row_height / 2
+            )
+            text_x = content_x
 
             for train_type in visible_train_types:
                 color = (
@@ -696,39 +709,51 @@ class TimetablePreview(tk.Frame):
                     ),
                 )
 
-                # 描画した文字の幅を取得して次の項目を配置
                 bbox = self.canvas.bbox(item_id)
                 if bbox is not None:
                     text_x = bbox[2] + 16
 
-        # 2段目：駅略称を横方向に並べる
-        if destination_legend_items:
+        # 行先凡例を下段の左右に分ける。
+        if has_destinations:
             destination_y = (
                 y + row_height * 1.5
-                if visible_train_types
+                if has_train_types
                 else y + row_height / 2
             )
 
-            text_x = x + label_width + 12
+            half_width = content_width / 2
+            directions = (
+                (down_items, content_x),
+                (up_items, content_x + half_width),
+            )
 
-            for short_name, station_name in destination_legend_items:
-                item_id = self.canvas.create_text(
-                    text_x,
-                    destination_y,
-                    anchor=tk.W,
-                    text=f"{short_name}＝{station_name}",
-                    fill=self._to_tk_color(
-                        self.display_config.train_font_color
-                    ),
-                    font=(
-                        self.display_config.legend_font_name,
-                        self.display_config.legend_font_size,
-                    ),
-                )
+            for items, start_x in directions:
+                text_x = start_x
+                right_limit = start_x + half_width - 8
 
-                bbox = self.canvas.bbox(item_id)
-                if bbox is not None:
-                    text_x = bbox[2] + 16
+                for short_name, station_name in items:
+                    item_text = f"{short_name}＝{station_name}"
+
+                    item_id = self.canvas.create_text(
+                        text_x,
+                        destination_y,
+                        anchor=tk.W,
+                        text=item_text,
+                        fill=self._to_tk_color(
+                            self.display_config.train_font_color
+                        ),
+                        font=(
+                            self.display_config.legend_font_name,
+                            self.display_config.legend_font_size,
+                        ),
+                    )
+
+                    bbox = self.canvas.bbox(item_id)
+                    if bbox is not None:
+                        # 各方向の区画からはみ出さないようにする。
+                        text_x = bbox[2] + 16
+                        if text_x >= right_limit:
+                            break
 
 
     def _on_click(self, event: tk.Event) -> None:
