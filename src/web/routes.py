@@ -116,6 +116,72 @@ def _render_page(
     if not isinstance(display_settings, dict):
         display_settings = {}
 
+    # 列車欄の表示設定
+    train_display_defaults = {
+        "metadata_font_name": "源ノ角ゴシック JP",
+        "metadata_font_size": 9,
+        "minute_font_name": "源ノ角ゴシック JP",
+        "minute_font_size": 9,
+        "train_font_color": "000000",
+        "train_fill": "FAFAFA",
+        "use_train_type_short_name": False,
+        "show_destination": True,
+    }
+
+    train_display_settings = {}
+
+    saved_train_display = display_settings.get("train", {})
+    if not isinstance(saved_train_display, dict):
+        saved_train_display = {}
+
+    train_display_settings.update(train_display_defaults)
+    train_display_settings.update(saved_train_display)
+
+    # フォントサイズを検証
+    for key in ("metadata_font_size", "minute_font_size"):
+        try:
+            size = int(train_display_settings[key])
+        except (TypeError, ValueError):
+            size = train_display_defaults[key]
+
+        if not 6 <= size <= 72:
+            size = train_display_defaults[key]
+
+        train_display_settings[key] = size
+
+    # 色を検証
+    for key in ("train_font_color", "train_fill"):
+        color = str(train_display_settings.get(key, ""))
+
+        if not re.fullmatch(r"[0-9A-Fa-f]{6}", color):
+            train_display_settings[key] = train_display_defaults[key]
+        else:
+            train_display_settings[key] = color.upper()
+
+    # 真偽値を検証
+    for key in ("use_train_type_short_name", "show_destination"):
+        if not isinstance(train_display_settings[key], bool):
+            train_display_settings[key] = train_display_defaults[key]
+
+    # 列車種別ごとの表示・非表示
+    saved_column_visibility = display_settings.get(
+        "train_type_column_visible", {}
+    )
+    if not isinstance(saved_column_visibility, dict):
+        saved_column_visibility = {}
+
+    train_type_column_visible = {}
+
+    if railway is not None:
+        for train_type in railway.train_types:
+            value = saved_column_visibility.get(
+                str(train_type.index),
+                saved_column_visibility.get(train_type.index, True),
+            )
+            train_type_column_visible[train_type.index] = (
+                value if isinstance(value, bool) else True
+            )
+
     # タイトルの表示設定（未設定の場合は既定値を使用）
     title_settings = {
         "fill": None,
@@ -365,6 +431,8 @@ def _render_page(
             "hour_border": hour_border,
             "train_border": train_border,
             "train_minute_border": train_minute_border,
+            "train_display_settings": train_display_settings,
+            "train_type_column_visible": train_type_column_visible,
         },
     )
 
@@ -514,6 +582,74 @@ async def save_settings(
 
     if not isinstance(display_settings, dict):
         display_settings = {}
+
+    # 列車欄の表示設定を取得・保存する
+    saved_train_display = display_settings.get("train", {})
+    if not isinstance(saved_train_display, dict):
+        saved_train_display = {}
+
+    train_display_settings = {}
+
+    for key, default in (
+        ("metadata_font_name", "源ノ角ゴシック JP"),
+        ("minute_font_name", "源ノ角ゴシック JP"),
+    ):
+        submitted = str(form_data.get(key, "")).strip()
+        train_display_settings[key] = (
+            submitted[:100]
+            if submitted
+            else saved_train_display.get(key, default)
+        )
+
+    for key, default in (
+        ("metadata_font_size", 9),
+        ("minute_font_size", 9),
+    ):
+        try:
+            size = int(form_data.get(key, default))
+        except (TypeError, ValueError):
+            size = saved_train_display.get(key, default)
+
+        if not 6 <= size <= 72:
+            size = saved_train_display.get(key, default)
+
+        train_display_settings[key] = size
+
+    for key, default in (
+        ("train_font_color", "000000"),
+        ("train_fill", "FAFAFA"),
+    ):
+        submitted = str(form_data.get(key, "")).strip()
+
+        if re.fullmatch(r"#[0-9A-Fa-f]{6}", submitted):
+            train_display_settings[key] = submitted[1:].upper()
+        else:
+            train_display_settings[key] = saved_train_display.get(
+                key, default
+            )
+
+    train_display_settings["use_train_type_short_name"] = (
+        form_data.get("use_train_type_short_name") == "true"
+    )
+    train_display_settings["show_destination"] = (
+        form_data.get("show_destination") == "true"
+    )
+
+    display_settings["train"] = train_display_settings
+
+    # 列車種別ごとの表示・非表示
+    train_type_column_visible = {}
+
+    for train_type in railway.train_types:
+        train_type_column_visible[str(train_type.index)] = (
+            form_data.get(
+                f"train_type_column_visible_{train_type.index}"
+            ) == "true"
+        )
+
+    display_settings["train_type_column_visible"] = (
+        train_type_column_visible
+    )
 
     # タイトル設定を取得する
     title_settings = display_settings.get("title", {})

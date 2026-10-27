@@ -466,12 +466,93 @@
                         </details>
 
                         <details class="settings-group">
+                            <summary><h3>列車欄の表示設定</h3></summary>
+
+                            <div class="title-settings">
+                                <label for="metadata_font_name">列車情報のフォント名</label>
+                                <input
+                                    type="text"
+                                    id="metadata_font_name"
+                                    name="metadata_font_name"
+                                    value="{{ train_display_settings.metadata_font_name }}"
+                                >
+
+                                <label for="metadata_font_size">列車情報のフォントサイズ</label>
+                                <input
+                                    type="number"
+                                    id="metadata_font_size"
+                                    name="metadata_font_size"
+                                    min="6"
+                                    max="72"
+                                    value="{{ train_display_settings.metadata_font_size }}"
+                                >
+
+                                <label for="minute_font_name">分のフォント名</label>
+                                <input
+                                    type="text"
+                                    id="minute_font_name"
+                                    name="minute_font_name"
+                                    value="{{ train_display_settings.minute_font_name }}"
+                                >
+
+                                <label for="minute_font_size">分のフォントサイズ</label>
+                                <input
+                                    type="number"
+                                    id="minute_font_size"
+                                    name="minute_font_size"
+                                    min="6"
+                                    max="72"
+                                    value="{{ train_display_settings.minute_font_size }}"
+                                >
+
+                                <label for="train_font_color">分の文字色</label>
+                                <input
+                                    type="color"
+                                    id="train_font_color"
+                                    name="train_font_color"
+                                    value="#{{ train_display_settings.train_font_color }}"
+                                >
+
+                                <label for="train_fill">列車情報の背景色</label>
+                                <input
+                                    type="color"
+                                    id="train_fill"
+                                    name="train_fill"
+                                    value="#{{ train_display_settings.train_fill }}"
+                                >
+
+                                <label>
+                                    <input
+                                        type="checkbox"
+                                        id="use_train_type_short_name"
+                                        name="use_train_type_short_name"
+                                        value="true"
+                                        {% if train_display_settings.use_train_type_short_name %}checked{% endif %}
+                                    >
+                                    列車種別に略称を使用
+                                </label>
+
+                                <label>
+                                    <input
+                                        type="checkbox"
+                                        id="show_destination"
+                                        name="show_destination"
+                                        value="true"
+                                        {% if train_display_settings.show_destination %}checked{% endif %}
+                                    >
+                                    行先を表示
+                                </label>
+                            </div>
+                        </details>
+
+                        <details class="settings-group">
                             <summary><h3>列車種別の文字色</h3></summary>
                             <div class="table-scroll">
                                 <table class="color-settings-table">
                                     <thead>
                                         <tr>
                                             <th>列車種別</th>
+                                            <th>表示</th>
                                             <th>文字色</th>
                                             <th>プレビュー</th>
                                         </tr>
@@ -480,6 +561,15 @@
                                         {% for train_type in railway.train_types %}
                                         <tr>
                                             <td>{{ train_type.name }}</td>
+                                            <td>
+                                                <input
+                                                    type="checkbox"
+                                                    name="train_type_column_visible_{{ train_type.index }}"
+                                                    value="true"
+                                                    {% if train_type_column_visible.get(train_type.index, true) %}checked{% endif %}
+                                                    aria-label="{{ train_type.name }}を表示"
+                                                >
+                                            </td>
                                             <td>
                                                 <input
                                                     class="color-input"
@@ -566,7 +656,14 @@
                                             </th>
 
                                             {% for entry in hour.entries %}
-                                            <td class="train-info-cell">
+                                            <td
+                                                class="train-info-cell"
+                                                style="
+                                                    font-family: '{{ train_display_settings.metadata_font_name }}', sans-serif;
+                                                    font-size: {{ train_display_settings.metadata_font_size }}px;
+                                                    background-color: #{{ train_display_settings.train_fill }};
+                                                "
+                                            >
                                                 {% if not entry.destination.is_no_mark %}
                                                 <span class="destination">
                                                     {{ entry.destination.display_name }}
@@ -574,24 +671,48 @@
                                                 {% endif %}
                                                 <span
                                                     class="train-type"
+                                                    data-train-type-index="{{ entry.train_type.index }}"
+                                                    data-full-name="{{ entry.train_type.name }}"
+                                                    data-short-name="{{ entry.train_type.short_name or entry.train_type.name }}"
                                                     style="color: #{{ train_type_colors.get(entry.train_type.index, '000000') }};"
-                                                >{{ entry.train_type.short_name or entry.train_type.name }}</span>
+                                                >{% if train_display_settings.use_train_type_short_name and entry.train_type.short_name %}{{ entry.train_type.short_name }}{% else %}{{ entry.train_type.name }}{% endif %}</span>
                                             </td>
                                             {% endfor %}
 
                                             {% for i in range(counts.max_count - hour.entries|length) %}
-                                            <td class="train-info-cell"></td>
+                                            <td
+                                                class="train-info-cell"
+                                                style="
+                                                    font-family: '{{ train_display_settings.metadata_font_name }}', sans-serif;
+                                                    font-size: {{ train_display_settings.metadata_font_size }}px;
+                                                    background-color: #{{ train_display_settings.train_fill }};
+                                                "
+                                            ></td>
                                             {% endfor %}
                                         </tr>
                                         <tr class="minute-row">
                                             {% for entry in hour.entries %}
-                                            <td class="minute-cell">
+                                            <td
+                                                class="minute-cell"
+                                                style="
+                                                    font-family: '{{ train_display_settings.minute_font_name }}', sans-serif;
+                                                    font-size: {{ train_display_settings.minute_font_size }}px;
+                                                    color: #{{ train_display_settings.train_font_color }};
+                                                "
+                                            >
                                                 {{ "%02d"|format(entry.minute) }}
                                             </td>
                                             {% endfor %}
 
                                             {% for i in range(counts.max_count - hour.entries|length) %}
-                                            <td class="minute-cell"></td>
+                                            <td
+                                                class="minute-cell"
+                                                style="
+                                                    font-family: '{{ train_display_settings.minute_font_name }}', sans-serif;
+                                                    font-size: {{ train_display_settings.minute_font_size }}px;
+                                                    color: #{{ train_display_settings.train_font_color }};
+                                                "
+                                            ></td>
                                             {% endfor %}
                                         </tr>
                                         {% endfor %}
@@ -703,6 +824,120 @@
         });
 
         // 列車欄の罫線設定
+
+        // 列車欄の表示設定
+        const metadataFontName = document.getElementById("metadata_font_name");
+        const metadataFontSize = document.getElementById("metadata_font_size");
+        const minuteFontName = document.getElementById("minute_font_name");
+        const minuteFontSize = document.getElementById("minute_font_size");
+        const trainFontColor = document.getElementById("train_font_color");
+        const trainFill = document.getElementById("train_fill");
+        const useTrainTypeShortName = document.getElementById(
+            "use_train_type_short_name"
+        );
+        const showDestination = document.getElementById("show_destination");
+
+        const trainTypeVisibilityControls = document.querySelectorAll(
+            'input[name^="train_type_column_visible_"]'
+        );
+
+        function updateTrainDisplayPreview() {
+            // 列車情報セルのフォントと背景色
+            document.querySelectorAll(".train-info-cell").forEach((cell) => {
+                if (metadataFontName) {
+                    cell.style.fontFamily =
+                        `"${metadataFontName.value}", sans-serif`;
+                }
+
+                if (metadataFontSize) {
+                    const size = Number(metadataFontSize.value);
+                    if (size >= 6 && size <= 72) {
+                        cell.style.fontSize = `${size}px`;
+                    }
+                }
+
+                if (trainFill) {
+                    cell.style.backgroundColor = trainFill.value;
+                }
+            });
+
+            // 分セルのフォントと文字色
+            document.querySelectorAll(".minute-cell").forEach((cell) => {
+                if (minuteFontName) {
+                    cell.style.fontFamily =
+                        `"${minuteFontName.value}", sans-serif`;
+                }
+
+                if (minuteFontSize) {
+                    const size = Number(minuteFontSize.value);
+                    if (size >= 6 && size <= 72) {
+                        cell.style.fontSize = `${size}px`;
+                    }
+                }
+
+                if (trainFontColor) {
+                    cell.style.color = trainFontColor.value;
+                }
+            });
+
+            // 行先の表示・非表示
+            document.querySelectorAll(".destination").forEach((element) => {
+                element.style.display =
+                    showDestination && !showDestination.checked
+                        ? "none"
+                        : "";
+            });
+
+            // 列車種別の略称と表示・非表示
+            const visibility = new Map();
+
+            trainTypeVisibilityControls.forEach((control) => {
+                const index = control.name.replace(
+                    "train_type_column_visible_",
+                    ""
+                );
+                visibility.set(index, control.checked);
+            });
+
+            document.querySelectorAll(".train-type").forEach((element) => {
+                const index = element.dataset.trainTypeIndex;
+
+                element.style.display =
+                    visibility.has(index) && !visibility.get(index)
+                        ? "none"
+                        : "";
+
+                const useShort =
+                    useTrainTypeShortName &&
+                    useTrainTypeShortName.checked;
+
+                element.textContent =
+                    useShort && element.dataset.shortName
+                        ? element.dataset.shortName
+                        : element.dataset.fullName;
+            });
+        }
+
+        [
+            metadataFontName,
+            metadataFontSize,
+            minuteFontName,
+            minuteFontSize,
+            trainFontColor,
+            trainFill,
+            useTrainTypeShortName,
+            showDestination,
+            ...trainTypeVisibilityControls,
+        ].forEach((element) => {
+            if (element) {
+                element.addEventListener("input", updateTrainDisplayPreview);
+                element.addEventListener("change", updateTrainDisplayPreview);
+            }
+        });
+
+        // 初期状態も反映する
+        updateTrainDisplayPreview();
+
         const trainCells = document.querySelectorAll(
             ".train-info-cell, .minute-cell"
         );
