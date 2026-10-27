@@ -148,3 +148,293 @@ th {
 .color-preview {
     font-weight: bold;
 }
+
+
+/* Windows版に近い時刻表レイアウト */
+.container {
+    max-width: 1500px;
+}
+
+.timetable-panel {
+    padding: 0;
+    overflow: hidden;
+}
+
+.timetable-title {
+    padding: 10px 12px;
+    background: #000000;
+    color: #ffffff;
+    text-align: center;
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.timetable-directions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 16px;
+    padding: 0;
+}
+
+.direction {
+    min-width: 0;
+}
+
+.direction-title {
+    margin: 0 0 2px;
+    padding: 5px 8px;
+    background: #0864c5;
+    color: #ffffff;
+    text-align: center;
+    font-size: 1rem;
+}
+
+.direction .table-scroll {
+    overflow-x: auto;
+}
+
+.station-timetable {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    white-space: nowrap;
+    background: #ffffff;
+}
+
+.station-timetable .hour-column {
+    width: 44px;
+}
+
+.station-timetable .train-column {
+    width: 72px;
+}
+
+.station-timetable th,
+.station-timetable td {
+    box-sizing: border-box;
+    padding: 2px 4px;
+    border: 0;
+    text-align: center;
+}
+
+.station-timetable .hour-cell {
+    background: #000000;
+    color: #ffffff;
+    font-size: 1rem;
+    font-weight: bold;
+    vertical-align: middle;
+}
+
+.station-timetable .train-info-cell {
+    height: 24px;
+    background: #aec3e8;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+.station-timetable .destination,
+.station-timetable .train-type {
+    display: inline;
+}
+
+.station-timetable .minute-cell {
+    height: 24px;
+    background: #ffffff;
+    color: #000000;
+    font-size: 16px;
+}
+
+.station-timetable .train-info-row,
+.station-timetable .minute-row {
+    border-bottom: 1px solid #d5d5d5;
+}
+
+.timetable-legend {
+    margin: 12px;
+    padding: 8px;
+    border: 1px solid #cccccc;
+    border-radius: 0;
+}
+
+.timetable-legend > strong {
+    display: block;
+    margin-bottom: 6px;
+}
+
+.legend-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+}
+
+.legend-items span {
+    white-space: nowrap;
+}
+
+/* 画面が狭い場合は上下に並べる */
+@media (max-width: 900px) {
+    .timetable-directions {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.legend-settings {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 24px;
+    margin-bottom: 16px;
+}
+
+.legend-settings label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 0;
+}
+
+.legend-settings input[type="checkbox"] {
+    display: inline-block;
+    margin: 0;
+}
+
+.is-hidden {
+    display: none !important;
+}
+
+.legend-items > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+}
+
+.legend-items > div.is-hidden {
+    display: none !important;
+}
+
+.workspace {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 400px;
+    grid-template-areas: "preview settings";
+    align-items: start;
+    gap: 20px;
+}
+
+.settings-column {
+    grid-area: settings;
+    min-width: 0;
+}
+
+.preview-column {
+    grid-area: preview;
+    min-width: 0;
+}
+
+.settings-column .panel {
+    padding: 20px;
+}
+
+.preview-column .timetable-panel {
+    margin-bottom: 24px;
+}
+
+@media (max-width: 1000px) {
+    .workspace {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas:
+            "settings"
+            "preview";
+    }
+}
+
+/* 設定項目の折りたたみ */
+.collapsible-panel details > summary,
+.settings-group > summary {
+    cursor: pointer;
+    list-style-position: outside;
+}
+
+.collapsible-panel summary h2,
+.settings-group summary h3 {
+    display: inline-block;
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.collapsible-panel details[open] > summary,
+.settings-group[open] > summary {
+    margin-bottom: 16px;
+}
+
+.settings-group {
+    margin-top: 20px;
+    padding-top: 12px;
+    border-top: 1px solid #dce3e8;
+}
+
+.settings-group:first-of-type {
+    margin-top: 0;
+}
+
+.settings-group summary h3 {
+    font-size: 1rem;
+}
+
+/* 駅略称欄をコンパクトにする */
+.settings-column .table-scroll table:not(.color-settings-table) {
+    table-layout: fixed;
+}
+
+.settings-column .table-scroll table:not(.color-settings-table) th:nth-child(1),
+.settings-column .table-scroll table:not(.color-settings-table) td:nth-child(1) {
+    width: auto;
+}
+
+.settings-column .table-scroll table:not(.color-settings-table) th:nth-child(2),
+.settings-column .table-scroll table:not(.color-settings-table) td:nth-child(2) {
+    width: 90px;
+}
+
+.settings-column .table-scroll table:not(.color-settings-table) th:nth-child(3),
+.settings-column .table-scroll table:not(.color-settings-table) td:nth-child(3) {
+    width: 48px;
+    text-align: center;
+}
+
+/* 略称入力欄の幅を制限 */
+.settings-column .table-scroll table:not(.color-settings-table) input[type="text"] {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    padding: 5px;
+}
+
+/* 無印チェックボックスの余白を削除 */
+.settings-column .table-scroll table:not(.color-settings-table) input[type="checkbox"] {
+    display: inline-block;
+    margin: 0;
+}
+
+.title-settings {
+    display: grid;
+    grid-template-columns: minmax(100px, 1fr) minmax(0, 1.5fr);
+    gap: 10px;
+    align-items: center;
+}
+
+.title-settings input[type="text"],
+.title-settings input[type="number"] {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.title-settings input[type="color"] {
+    width: 48px;
+    height: 32px;
+    padding: 2px;
+}
+
+.title-settings input:disabled {
+    opacity: 0.4;
+}

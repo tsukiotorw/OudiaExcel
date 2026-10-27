@@ -11,206 +11,595 @@
     <main class="container">
         <h1>OuDiaExcel Web</h1>
         <p class="description">OuDiaSecond の時刻表データを読み込みます。</p>
+        <div class="workspace">
+            <aside class="settings-column">
 
-        <section class="panel">
-            <h2>ファイル読み込み</h2>
-            <form method="post" enctype="multipart/form-data">
-                <label for="file">OuDiaSecond ファイル（.oud2）</label>
-                <input id="file" name="file" type="file" accept=".oud2" required>
-                <button type="submit">読み込む</button>
-            </form>
-        </section>
+                <section class="panel collapsible-panel">
+                    <details>
+                        <summary><h2>ファイル読み込み</h2></summary>
+                        <form method="post" enctype="multipart/form-data">
+                            <label for="file">OuDiaSecond ファイル（.oud2）</label>
+                            <input id="file" name="file" type="file" accept=".oud2" required>
+                            <button type="submit">読み込む</button>
+                        </form>
+                    </details>
+                </section>
 
-        {% if error %}
-        <section class="message error">
-            <h2>エラー</h2>
-            <p>{{ error }}</p>
-        </section>
-        {% endif %}
+                {% if error %}
+                <section class="message error">
+                    <h2>エラー</h2>
+                    <p>{{ error }}</p>
+                </section>
+                {% endif %}
 
-        {% if message %}
-        <section class="message">
-            <p>{{ message }}</p>
-        </section>
-        {% endif %}
+                {% if message %}
+                <section class="message">
+                    <p>{{ message }}</p>
+                </section>
+                {% endif %}
 
-        {% if railway %}
-        <section class="panel">
-            <h2>路線情報</h2>
-            <p class="railway-name">{{ railway.name }}</p>
-            <p>駅数：{{ railway.stations | length }}</p>
+                {% if railway %}
+                <section class="panel collapsible-panel">
+                    <details>
+                        <summary><h2>路線情報・駅選択</h2></summary>
 
-            <h2>駅選択</h2>
-            <form method="post" action="/station">
-                <input type="hidden" name="railway_id" value="{{ railway_id }}">
+                        <p class="railway-name">{{ railway.name }}</p>
+                        <p>駅数：{{ railway.stations | length }}</p>
 
-                <label for="station_index">駅名</label>
-                <select id="station_index" name="station_index" required>
-                    {% for station in railway.stations %}
-                    <option
-                        value="{{ station.index }}"
-                        {% if station_index == station.index %}selected{% endif %}
-                    >
-                        {{ station.name }}
-                    </option>
-                    {% endfor %}
-                </select>
+                        <form method="post" action="/station">
+                            <input type="hidden" name="railway_id" value="{{ railway_id }}">
 
-                <button type="submit">時刻表を表示</button>
-            </form>
-        </section>
+                            <label for="station_index">駅名</label>
+                            <select id="station_index" name="station_index" required>
+                                {% for station in railway.stations %}
+                                <option
+                                    value="{{ station.index }}"
+                                    {% if station_index == station.index %}selected{% endif %}
+                                >
+                                    {{ station.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
 
-        <section class="panel">
-            <h2>表示設定</h2>
-            <p>駅の略称・無印と列車種別の文字色を設定します。</p>
+                            <button type="submit">時刻表を表示</button>
+                        </form>
+                    </details>
+                </section>
 
-            <form method="post" action="/settings">
-                <input type="hidden" name="railway_id" value="{{ railway_id }}">
-                <input
-                    type="hidden"
-                    name="station_index"
-                    value="{{ station_index if station_index is not none else '' }}"
-                >
+                <section class="panel">
+                    <h2>表示設定</h2>
+                    <p>各項目を開いて設定できます。</p>
 
-                <h3>駅設定</h3>
-                <div class="table-scroll">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>正式名称</th>
-                                <th>略称</th>
-                                <th>無印</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for station in railway.stations %}
-                            <tr>
-                                <td>{{ station.name }}</td>
-                                <td>
-                                    <input
-                                        type="text"
-                                        name="alias_{{ station.index }}"
-                                        value="{{ station.short_name }}"
-                                        aria-label="{{ station.name }}の略称"
-                                    >
-                                </td>
-                                <td>
+                    <form method="post" action="/settings">
+                        <input type="hidden" name="railway_id" value="{{ railway_id }}">
+                        <input
+                            type="hidden"
+                            name="station_index"
+                            value="{{ station_index if station_index is not none else '' }}"
+                        >
+
+                        <details class="settings-group" open>
+                            <summary><h3>駅設定</h3></summary>
+                            <div class="table-scroll">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>正式名称</th>
+                                            <th>略称</th>
+                                            <th>無印</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for station in railway.stations %}
+                                        <tr>
+                                            <td>{{ station.name }}</td>
+                                            <td>
+                                                <input
+                                                    type="text"
+                                                    name="alias_{{ station.index }}"
+                                                    value="{{ station.short_name }}"
+                                                    aria-label="{{ station.name }}の略称"
+                                                >
+                                            </td>
+                                            <td>
+                                                <input
+                                                    type="checkbox"
+                                                    name="no_mark_{{ station.index }}"
+                                                    value="true"
+                                                    {% if station.is_no_mark %}checked{% endif %}
+                                                    aria-label="{{ station.name }}を無印にする"
+                                                >
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </details>
+
+                        <details class="settings-group">
+                            <summary><h3>凡例の表示設定</h3></summary>                        
+                            <div class="legend-settings">
+                                <label>
                                     <input
                                         type="checkbox"
-                                        name="no_mark_{{ station.index }}"
+                                        name="show_legend"
                                         value="true"
-                                        {% if station.is_no_mark %}checked{% endif %}
-                                        aria-label="{{ station.name }}を無印にする"
+                                        {% if show_legend %}checked{% endif %}
                                     >
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+                                    凡例を表示
+                                </label>
 
-                <h3>列車種別の文字色</h3>
-                <div class="table-scroll">
-                    <table class="color-settings-table">
-                        <thead>
-                            <tr>
-                                <th>列車種別</th>
-                                <th>文字色</th>
-                                <th>プレビュー</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for train_type in railway.train_types %}
-                            <tr>
-                                <td>{{ train_type.name }}</td>
-                                <td>
+                                <label>
                                     <input
-                                        class="color-input"
+                                        type="checkbox"
+                                        name="show_train_type_legend"
+                                        value="true"
+                                        {% if show_train_type_legend %}checked{% endif %}
+                                    >
+                                    列車種別の凡例を表示
+                                </label>
+
+                                <label>
+                                    <input
+                                        type="checkbox"
+                                        name="show_station_legend"
+                                        value="true"
+                                        {% if show_station_legend %}checked{% endif %}
+                                    >
+                                    駅略称・無印の凡例を表示
+                                </label>
+                            </div>
+                        </details>
+
+                        <details class="settings-group" open>
+                            <summary><h3>タイトルの表示設定</h3></summary>
+
+                            <div class="title-settings">
+                                <label for="title_fill">背景色</label>
+                                <div>
+                                    <input
+                                        type="checkbox"
+                                        id="title_fill_enabled"
+                                        name="title_fill_enabled"
+                                        value="true"
+                                        {% if title_settings.fill %}checked{% endif %}
+                                    >
+                                    <label for="title_fill_enabled">背景色を指定する</label>
+                                    <input
                                         type="color"
-                                        name="train_type_color_{{ train_type.index }}"
-                                        value="#{{ train_type_colors.get(train_type.index, '000000') }}"
-                                        aria-label="{{ train_type.name }}の文字色"
+                                        id="title_fill"
+                                        name="title_fill"
+                                        value="#{{ title_settings.fill or 'FFFFFF' }}"
+                                        {% if not title_settings.fill %}disabled{% endif %}
                                     >
-                                </td>
-                                <td>
-                                    <span
-                                        class="color-preview"
-                                        style="color: #{{ train_type_colors.get(train_type.index, '000000') }};"
-                                    >
-                                        {{ train_type.short_name or train_type.name }}
-                                    </span>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+                                </div>
 
-                <button type="submit">設定を保存</button>
-            </form>
-        </section>
-        {% endif %}
-
-        {% if timetable %}
-        <section class="panel">
-            <h2>{{ timetable.station_name }}駅 時刻表</h2>
-
-            {% for direction_name, hours in [
-                ("下り", timetable.down),
-                ("上り", timetable.up)
-            ] %}
-            <h3>{{ direction_name }}</h3>
-
-            <div class="table-scroll">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>時</th>
-                            <th>分</th>
-                            <th>行先</th>
-                            <th>種別</th>
-                            <th>列車番号</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for hour in hours %}
-                            {% for entry in hour.entries %}
-                            <tr>
-                                <td>{{ hour.hour }}時</td>
-                                <td>{{ "%02d"|format(entry.minute) }}</td>
-                                <td>
-                                    {% if not entry.destination.is_no_mark %}
-                                        {{ entry.destination.display_name }}
-                                    {% endif %}
-                                </td>
-                                <td
-                                    style="color: #{{ train_type_colors.get(entry.train_type.index, '000000') }};"
+                                <label for="title_font_color">文字色</label>
+                                <input
+                                    type="color"
+                                    id="title_font_color"
+                                    name="title_font_color"
+                                    value="#{{ title_settings.font_color }}"
                                 >
-                                    {{ entry.train_type.short_name or entry.train_type.name }}
-                                </td>
-                                <td>{{ entry.train_number }}</td>
-                            </tr>
+
+                                <label for="title_font_name">フォント名</label>
+                                <input
+                                    type="text"
+                                    id="title_font_name"
+                                    name="title_font_name"
+                                    value="{{ title_settings.font_name }}"
+                                >
+
+                                <label for="title_font_size">フォントサイズ</label>
+                                <input
+                                    type="number"
+                                    id="title_font_size"
+                                    name="title_font_size"
+                                    min="6"
+                                    max="72"
+                                    value="{{ title_settings.font_size }}"
+                                >
+                            </div>
+                        </details>
+                        
+                        <details class="settings-group">
+                            <summary><h3>タイトルの罫線設定</h3></summary>
+
+                            <div class="title-border-settings">
+                                <h4>罫線設定</h4>
+
+                                {% for side, label in [
+                                    ("top", "上"),
+                                    ("bottom", "下"),
+                                    ("left", "左"),
+                                    ("right", "右")
+                                ] %}
+                                <fieldset>
+                                    <legend>{{ label }}の罫線</legend>
+
+                                    <label>
+                                        <input
+                                            type="checkbox"
+                                            name="title_border_{{ side }}_enabled"
+                                            value="true"
+                                            {% if title_settings.borders[side].enabled %}checked{% endif %}
+                                        >
+                                        有効にする
+                                    </label>
+
+                                    <label for="title_border_{{ side }}_color">
+                                        色
+                                    </label>
+                                    <input
+                                        type="color"
+                                        id="title_border_{{ side }}_color"
+                                        name="title_border_{{ side }}_color"
+                                        value="#{{ title_settings.borders[side].color }}"
+                                    >
+
+                                    <label for="title_border_{{ side }}_style">
+                                        線種
+                                    </label>
+                                    <select
+                                        id="title_border_{{ side }}_style"
+                                        name="title_border_{{ side }}_style"
+                                    >
+                                        <option value="thin" {% if title_settings.borders[side].style == "thin" %}selected{% endif %}>細線</option>
+                                        <option value="medium" {% if title_settings.borders[side].style == "medium" %}selected{% endif %}>中線</option>
+                                        <option value="thick" {% if title_settings.borders[side].style == "thick" %}selected{% endif %}>太線</option>
+                                        <option value="dashed" {% if title_settings.borders[side].style == "dashed" %}selected{% endif %}>破線</option>
+                                        <option value="dotted" {% if title_settings.borders[side].style == "dotted" %}selected{% endif %}>点線</option>
+                                        <option value="double" {% if title_settings.borders[side].style == "double" %}selected{% endif %}>二重線</option>
+                                    </select>
+                                </fieldset>
+                                {% endfor %}
+                            </div>
+                        </details>
+                        
+                        <details class="settings-group">
+                            <summary><h3>列車種別の文字色</h3></summary>
+                            <div class="table-scroll">
+                                <table class="color-settings-table">
+                                    <thead>
+                                        <tr>
+                                            <th>列車種別</th>
+                                            <th>文字色</th>
+                                            <th>プレビュー</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for train_type in railway.train_types %}
+                                        <tr>
+                                            <td>{{ train_type.name }}</td>
+                                            <td>
+                                                <input
+                                                    class="color-input"
+                                                    type="color"
+                                                    name="train_type_color_{{ train_type.index }}"
+                                                    value="#{{ train_type_colors.get(train_type.index, '000000') }}"
+                                                    aria-label="{{ train_type.name }}の文字色"
+                                                >
+                                            </td>
+                                            <td>
+                                                <span
+                                                    class="color-preview"
+                                                    style="color: #{{ train_type_colors.get(train_type.index, '000000') }};"
+                                                >
+                                                    {{ train_type.short_name or train_type.name }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </details>
+
+                        <button type="submit">設定を保存</button>
+                    </form>
+                </section>
+                {% endif %}
+            </aside>
+
+            <div class="preview-column">
+
+            {% if timetable %}
+                <section class="panel timetable-panel">
+                    <div
+                        id="timetable-title"
+                        class="timetable-title"
+                        style="
+                            color: #{{ title_settings.font_color }};
+                            font-family: '{{ title_settings.font_name }}', sans-serif;
+                            font-size: {{ title_settings.font_size }}px;
+                            {% if title_settings.fill %}
+                            background-color: #{{ title_settings.fill }};
+                            {% endif %}
+                            {% for side in ("top", "bottom", "left", "right") %}
+                            {% set border = title_settings.borders[side] %}
+                            {% if border.enabled %}
+                            border-{{ side }}: {{ {"thin": "1px solid", "medium": "2px solid", "thick": "3px solid", "dashed": "1px dashed", "dotted": "1px dotted", "double": "3px double"}[border.style] }} #{{ border.color }};
+                            {% else %}
+                            border-{{ side }}: none;
+                            {% endif %}
                             {% endfor %}
+                        "
+                    >
+                        {{ timetable.station_name }}駅 時刻表
+                    </div>
+
+                    <div class="timetable-directions">
+                        {% for direction_name, hours in [
+                            ("下り", timetable.down),
+                            ("上り", timetable.up)
+                        ] %}
+                        {% set counts = namespace(max_count=1) %}
+                        {% for hour in hours %}
+                            {% if hour.entries|length > counts.max_count %}
+                                {% set counts.max_count = hour.entries|length %}
+                            {% endif %}
                         {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% endfor %}
 
-            <div class="timetable-legend">
-                <strong>凡例</strong>
-                <div class="legend-items">
-                    {% for item in train_type_legend %}
-                    <span style="color: #{{ item.color }}">{{ item.name }}</span>
-                    {% endfor %}
+                        <section class="direction">
+                            <h3 class="direction-title">{{ direction_name }}</h3>
 
-                    {% for item in station_legend %}
-                    <span>{{ item }}</span>
-                    {% endfor %}
-                </div>
+                            <div class="table-scroll">
+                                <table class="station-timetable">
+                                    <colgroup>
+                                        <col class="hour-column">
+                                        {% for i in range(counts.max_count) %}
+                                        <col class="train-column">
+                                        {% endfor %}
+                                    </colgroup>
+                                    <tbody>
+                                        {% for hour in hours %}
+                                        <tr class="train-info-row">
+                                            <th class="hour-cell" rowspan="2">
+                                                {{ hour.hour }}
+                                            </th>
+
+                                            {% for entry in hour.entries %}
+                                            <td class="train-info-cell">
+                                                {% if not entry.destination.is_no_mark %}
+                                                <span class="destination">
+                                                    {{ entry.destination.display_name }}
+                                                </span>
+                                                {% endif %}
+                                                <span
+                                                    class="train-type"
+                                                    style="color: #{{ train_type_colors.get(entry.train_type.index, '000000') }};"
+                                                >{{ entry.train_type.short_name or entry.train_type.name }}</span>
+                                            </td>
+                                            {% endfor %}
+
+                                            {% for i in range(counts.max_count - hour.entries|length) %}
+                                            <td class="train-info-cell"></td>
+                                            {% endfor %}
+                                        </tr>
+                                        <tr class="minute-row">
+                                            {% for entry in hour.entries %}
+                                            <td class="minute-cell">
+                                                {{ "%02d"|format(entry.minute) }}
+                                            </td>
+                                            {% endfor %}
+
+                                            {% for i in range(counts.max_count - hour.entries|length) %}
+                                            <td class="minute-cell"></td>
+                                            {% endfor %}
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                        {% endfor %}
+                    </div>
+
+                    {% if show_legend %}
+                    <div
+                        class="timetable-legend {% if not show_legend %}is-hidden{% endif %}"
+                        id="timetable-legend"
+                    >
+                        <strong>凡例</strong>
+
+                        <div class="legend-items">
+                            <div
+                                id="train-type-legend"
+                                class="{% if not show_train_type_legend %}is-hidden{% endif %}"
+                            >
+                                {% for item in train_type_legend %}
+                                <span style="color: #{{ item.color }}">
+                                    {{ item.name }}
+                                </span>
+                                {% endfor %}
+                            </div>
+
+                            <div
+                                id="station-legend"
+                                class="{% if not show_station_legend %}is-hidden{% endif %}"
+                            >
+                                {% for item in station_legend %}
+                                <span>{{ item }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </section>
+            {% endif %}
             </div>
-        </section>
-        {% endif %}
+        </div>
     </main>
+    <script>
+    document.addEventListener("DOMContentLoaded", () => {
+        // タイトル設定の入力欄
+        const timetableTitle = document.getElementById("timetable-title");
+        const titleFillEnabled = document.getElementById("title_fill_enabled");
+        const titleFill = document.getElementById("title_fill");
+        const titleFontColor = document.getElementById("title_font_color");
+        const titleFontName = document.getElementById("title_font_name");
+        const titleFontSize = document.getElementById("title_font_size");
+
+        // タイトルの罫線設定
+        const titleBorders = {};
+
+        ["top", "bottom", "left", "right"].forEach((side) => {
+            titleBorders[side] = {
+                enabled: document.querySelector(
+                    `input[name="title_border_${side}_enabled"]`
+                ),
+                color: document.getElementById(
+                    `title_border_${side}_color`
+                ),
+                style: document.getElementById(
+                    `title_border_${side}_style`
+                ),
+            };
+        });
+
+        const borderStyles = {
+            thin: "1px solid",
+            medium: "2px solid",
+            thick: "3px solid",
+            dashed: "1px dashed",
+            dotted: "1px dotted",
+            double: "3px double",
+        };
+
+        // 背景色の入力欄とタイトルの即時反映
+        function updateTitlePreview() {
+            if (titleFillEnabled && titleFill) {
+                titleFill.disabled = !titleFillEnabled.checked;
+
+                if (timetableTitle) {
+                    timetableTitle.style.backgroundColor =
+                        titleFillEnabled.checked ? titleFill.value : "";
+                }
+            }
+
+            if (!timetableTitle) {
+                return;
+            }
+
+            if (titleFontColor) {
+                timetableTitle.style.color = titleFontColor.value;
+            }
+
+            if (titleFontName) {
+                timetableTitle.style.fontFamily =
+                    `"${titleFontName.value}", sans-serif`;
+            }
+
+            if (titleFontSize) {
+                const size = Number(titleFontSize.value);
+
+                if (size >= 6 && size <= 72) {
+                    timetableTitle.style.fontSize = `${size}px`;
+                }
+            }
+            // 罫線の即時反映
+            Object.entries(titleBorders).forEach(([side, controls]) => {
+                if (!controls.enabled || !controls.color || !controls.style) {
+                    return;
+                }
+
+                const property = `border${side.charAt(0).toUpperCase()}${side.slice(1)}`;
+
+                if (!controls.enabled.checked) {
+                    timetableTitle.style[property] = "none";
+                    return;
+                }
+
+                const lineStyle = borderStyles[controls.style.value];
+
+                if (lineStyle) {
+                    timetableTitle.style[property] =
+                        `${lineStyle} ${controls.color.value}`;
+                }
+            });
+        }
+
+        [
+            titleFillEnabled,
+            titleFill,
+            titleFontColor,
+            titleFontName,
+            titleFontSize,
+        ].forEach((element) => {
+            if (element) {
+                element.addEventListener("input", updateTitlePreview);
+                element.addEventListener("change", updateTitlePreview);
+            }
+        });
+
+        Object.values(titleBorders).forEach((controls) => {
+            [controls.enabled, controls.color, controls.style].forEach(
+                (element) => {
+                    if (element) {
+                        element.addEventListener("input", updateTitlePreview);
+                        element.addEventListener("change", updateTitlePreview);
+                    }
+                }
+            );
+        });
+
+        // 初期状態も反映する
+        updateTitlePreview();
+
+        // 凡例設定
+        const showLegend = document.querySelector(
+            'input[name="show_legend"]'
+        );
+        const showTrainTypeLegend = document.querySelector(
+            'input[name="show_train_type_legend"]'
+        );
+        const showStationLegend = document.querySelector(
+            'input[name="show_station_legend"]'
+        );
+
+        const legend = document.getElementById("timetable-legend");
+        const trainTypeLegend = document.getElementById("train-type-legend");
+        const stationLegend = document.getElementById("station-legend");
+
+        if (
+            showLegend &&
+            showTrainTypeLegend &&
+            showStationLegend &&
+            legend &&
+            trainTypeLegend &&
+            stationLegend
+        ) {
+            function updateLegendVisibility() {
+                legend.classList.toggle(
+                    "is-hidden",
+                    !showLegend.checked
+                );
+
+                trainTypeLegend.classList.toggle(
+                    "is-hidden",
+                    !showTrainTypeLegend.checked
+                );
+
+                stationLegend.classList.toggle(
+                    "is-hidden",
+                    !showStationLegend.checked
+                );
+            }
+
+            showLegend.addEventListener("change", updateLegendVisibility);
+            showTrainTypeLegend.addEventListener(
+                "change",
+                updateLegendVisibility
+            );
+            showStationLegend.addEventListener(
+                "change",
+                updateLegendVisibility
+            );
+
+            updateLegendVisibility();
+        }
+    });
+    </script>
 </body>
 </html>

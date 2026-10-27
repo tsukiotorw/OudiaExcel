@@ -96,6 +96,60 @@ def _render_page(
             settings = load_station_settings(session_id, file_key)
             _apply_station_settings(railway, settings)
 
+    legend_settings = settings.get("legend_settings", {})
+
+    if not isinstance(legend_settings, dict):
+        legend_settings = {}
+
+    show_legend = legend_settings.get("show_legend", True)
+    show_train_type_legend = legend_settings.get(
+        "show_train_type_legend",
+        True,
+    )
+    show_station_legend = legend_settings.get(
+        "show_station_legend",
+        True,
+    )
+
+    # 時刻表の表示設定
+    display_settings = settings.get("display_settings", {})
+    if not isinstance(display_settings, dict):
+        display_settings = {}
+
+    # タイトルの表示設定（未設定の場合は既定値を使用）
+    title_settings = {
+        "fill": None,
+        "font_color": "000000",
+        "font_name": "源ノ角ゴシック JP",
+        "font_size": 14,
+        "borders": {
+            "top": {
+                "enabled": False,
+                "color": "000000",
+                "style": "thin",
+            },
+            "bottom": {
+                "enabled": False,
+                "color": "000000",
+                "style": "thin",
+            },
+            "left": {
+                "enabled": False,
+                "color": "000000",
+                "style": "thin",
+            },
+            "right": {
+                "enabled": False,
+                "color": "000000",
+                "style": "thin",
+            },
+        },
+    }
+
+    saved_title_settings = display_settings.get("title", {})
+    if isinstance(saved_title_settings, dict):
+        title_settings.update(saved_title_settings)
+
     saved_colors = settings.get("train_type_colors", {})
     train_type_colors: dict[int, str] = {}
 
@@ -162,6 +216,11 @@ def _render_page(
             "train_type_legend": train_type_legend,
             "station_legend": station_legend,
             "train_type_colors": train_type_colors,
+            "show_legend": show_legend,
+            "show_train_type_legend": show_train_type_legend,
+            "show_station_legend": show_station_legend,
+            "display_settings": display_settings,
+            "title_settings": title_settings,
         },
     )
 
@@ -285,6 +344,16 @@ async def save_settings(
     station_aliases: dict[str, str] = {}
     station_no_mark: dict[str, bool] = {}
 
+    legend_settings = {
+        "show_legend": form_data.get("show_legend") == "true",
+        "show_train_type_legend": (
+            form_data.get("show_train_type_legend") == "true"
+        ),
+        "show_station_legend": (
+            form_data.get("show_station_legend") == "true"
+        ),
+    }
+
     for station in railway.stations:
         alias = str(form_data.get(f"alias_{station.index}", "")).strip()
         no_mark = form_data.get(f"no_mark_{station.index}") == "true"
@@ -295,8 +364,125 @@ async def save_settings(
         if no_mark:
             station_no_mark[station.name] = True
 
-    # 既存の色設定を読み込み、フォームで指定された色を更新する。
+    # 既存の表示設定を読み込む
     existing_settings = load_station_settings(session_id, file_key)
+    display_settings = existing_settings.get("display_settings", {})
+
+    if not isinstance(display_settings, dict):
+        display_settings = {}
+
+    # タイトル設定を取得する
+    title_settings = display_settings.get("title", {})
+    if not isinstance(title_settings, dict):
+        title_settings = {}
+
+    # タイトルの背景色を取得する
+    title_fill = None
+
+    if form_data.get("title_fill_enabled") == "true":
+        submitted_fill = str(form_data.get("title_fill", "")).strip()
+
+        if re.fullmatch(r"#[0-9A-Fa-f]{6}", submitted_fill):
+            title_fill = submitted_fill[1:].upper()
+        else:
+            title_fill = title_settings.get("fill")
+
+    # タイトルの文字色を取得する
+    submitted_font_color = str(
+        form_data.get("title_font_color", "")
+    ).strip()
+
+    if re.fullmatch(r"#[0-9A-Fa-f]{6}", submitted_font_color):
+        title_font_color = submitted_font_color[1:].upper()
+    else:
+        title_font_color = title_settings.get("font_color", "000000")
+
+    # タイトルのフォント名を取得する
+    submitted_font_name = str(
+        form_data.get("title_font_name", "")
+    ).strip()
+
+    title_font_name = (
+        submitted_font_name[:100]
+        if submitted_font_name
+        else title_settings.get("font_name", "源ノ角ゴシック JP")
+    )
+
+    # タイトルのフォントサイズを取得する
+    try:
+        title_font_size = int(form_data.get("title_font_size", "14"))
+    except (TypeError, ValueError):
+        title_font_size = title_settings.get("font_size", 14)
+
+    if not 6 <= title_font_size <= 72:
+        title_font_size = title_settings.get("font_size", 14)
+
+    # タイトルの罫線設定を取得する
+    saved_borders = title_settings.get("borders", {})
+
+    if not isinstance(saved_borders, dict):
+        saved_borders = {}
+
+    title_borders = {}
+
+    valid_border_styles = {
+        "thin",
+        "medium",
+        "thick",
+        "dashed",
+        "dotted",
+        "double",
+    }
+
+    for side in ("top", "bottom", "left", "right"):
+        saved_border = saved_borders.get(side, {})
+
+        if not isinstance(saved_border, dict):
+            saved_border = {}
+
+        # 罫線の有効・無効
+        border_enabled = (
+            form_data.get(f"title_border_{side}_enabled") == "true"
+        )
+
+        # 罫線の色
+        submitted_border_color = str(
+            form_data.get(f"title_border_{side}_color", "")
+        ).strip()
+
+        if re.fullmatch(r"#[0-9A-Fa-f]{6}", submitted_border_color):
+            border_color = submitted_border_color[1:].upper()
+        else:
+            border_color = saved_border.get("color", "000000")
+
+        # 罫線の線種
+        submitted_border_style = str(
+            form_data.get(f"title_border_{side}_style", "")
+        ).strip()
+
+        if submitted_border_style in valid_border_styles:
+            border_style = submitted_border_style
+        else:
+            border_style = saved_border.get("style", "thin")
+
+        title_borders[side] = {
+            "enabled": border_enabled,
+            "color": border_color,
+            "style": border_style,
+        }
+
+    # タイトル設定を保存用の辞書にまとめる
+    title_settings = {
+        "fill": title_fill,
+        "font_color": title_font_color,
+        "font_name": title_font_name,
+        "font_size": title_font_size,
+        "borders": title_borders,
+    }
+
+    display_settings["title"] = title_settings
+
+    # 既存の列車種別の色設定を読み込む
     saved_colors = existing_settings.get("train_type_colors", {})
 
     train_type_colors: dict[int, str] = {}
@@ -323,6 +509,8 @@ async def save_settings(
         station_aliases=station_aliases,
         station_no_mark=station_no_mark,
         train_type_colors=train_type_colors,
+        legend_settings=legend_settings,
+        display_settings=display_settings,
     )
 
     # 保存した設定を路線データに反映する。

@@ -90,8 +90,10 @@ def save_station_settings(
     station_aliases: dict[str, str],
     station_no_mark: dict[str, bool],
     train_type_colors: dict[int, str] | None = None,
+    legend_settings: dict[str, bool] | None = None,
+    display_settings: dict | None = None,
 ) -> None:
-    """駅設定と列車種別の色設定を保存する。"""
+    """駅設定・列車種別の色・凡例表示設定を保存する。"""
     data = _load_all_settings()
 
     sessions = data["sessions"]
@@ -110,4 +112,15 @@ def save_station_settings(
             for index, color in train_type_colors.items()
         }
 
+    # 凡例設定が渡された場合だけ更新する。
+    # 省略された場合は既存の設定を維持する。
+    if legend_settings is not None:
+        settings["legend_settings"] = legend_settings
+
+    # 表示設定が渡された場合だけ更新する。
+    # 省略された場合は既存の設定を維持する。
+    if display_settings is not None:
+        settings["display_settings"] = display_settings
+
     _save_all_settings(data)
+
