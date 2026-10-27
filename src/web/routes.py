@@ -150,6 +150,146 @@ def _render_page(
     if isinstance(saved_title_settings, dict):
         title_settings.update(saved_title_settings)
 
+    # ヘッダ（下り・上り）の罫線設定
+    default_border_side = {
+        "enabled": False,
+        "color": "000000",
+        "style": "thin",
+    }
+
+    header_border = {
+        side: default_border_side.copy()
+        for side in ("top", "bottom", "left", "right")
+    }
+
+    saved_header_border = display_settings.get("header_border", {})
+
+    if isinstance(saved_header_border, dict):
+        for side in ("top", "bottom", "left", "right"):
+            saved_side = saved_header_border.get(side, {})
+
+            if isinstance(saved_side, dict):
+                header_border[side].update(saved_side)
+
+    # 保存値の形式を検証し、不正な値は既定値に戻す
+    valid_border_styles = {
+        "thin",
+        "medium",
+        "thick",
+        "dashed",
+        "dotted",
+        "double",
+    }
+
+    for side in ("top", "bottom", "left", "right"):
+        border = header_border[side]
+
+        if not isinstance(border.get("enabled"), bool):
+            border["enabled"] = False
+
+        if not re.fullmatch(
+            r"[0-9A-Fa-f]{6}",
+            str(border.get("color", "")),
+        ):
+            border["color"] = "000000"
+        else:
+            border["color"] = border["color"].upper()
+
+        if border.get("style") not in valid_border_styles:
+            border["style"] = "thin"
+
+    # 時刻欄の罫線設定
+    hour_border = {
+        side: default_border_side.copy()
+        for side in ("top", "bottom", "left", "right")
+    }
+
+    saved_hour_border = display_settings.get("hour_border", {})
+
+    if isinstance(saved_hour_border, dict):
+        for side in ("top", "bottom", "left", "right"):
+            saved_side = saved_hour_border.get(side, {})
+
+            if isinstance(saved_side, dict):
+                hour_border[side].update(saved_side)
+
+    # 保存値の形式を検証し、不正な値は既定値に戻す
+    for side in ("top", "bottom", "left", "right"):
+        border = hour_border[side]
+
+        if not isinstance(border.get("enabled"), bool):
+            border["enabled"] = False
+
+        if not re.fullmatch(
+            r"[0-9A-Fa-f]{6}",
+            str(border.get("color", "")),
+        ):
+            border["color"] = "000000"
+        else:
+            border["color"] = border["color"].upper()
+
+        if border.get("style") not in valid_border_styles:
+            border["style"] = "thin"
+
+    # 列車欄の罫線設定
+    train_border = {
+        side: default_border_side.copy()
+        for side in ("top", "bottom", "left", "right")
+    }
+
+    saved_train_border = display_settings.get("train_border", {})
+
+    if isinstance(saved_train_border, dict):
+        for side in ("top", "bottom", "left", "right"):
+            saved_side = saved_train_border.get(side, {})
+
+            if isinstance(saved_side, dict):
+                train_border[side].update(saved_side)
+
+    # 保存値の形式を検証し、不正な値は既定値に戻す
+    for side in ("top", "bottom", "left", "right"):
+        border = train_border[side]
+
+        if not isinstance(border.get("enabled"), bool):
+            border["enabled"] = False
+
+        if not re.fullmatch(
+            r"[0-9A-Fa-f]{6}",
+            str(border.get("color", "")),
+        ):
+            border["color"] = "000000"
+        else:
+            border["color"] = border["color"].upper()
+
+        if border.get("style") not in valid_border_styles:
+            border["style"] = "thin"
+
+    # 列車情報と分の間の罫線設定
+    train_minute_border = default_border_side.copy()
+
+    saved_train_minute_border = display_settings.get(
+        "train_minute_border",
+        {},
+    )
+
+    if isinstance(saved_train_minute_border, dict):
+        train_minute_border.update(saved_train_minute_border)
+
+    # 保存値の形式を検証し、不正な値は既定値に戻す
+    if not isinstance(train_minute_border.get("enabled"), bool):
+        train_minute_border["enabled"] = False
+
+    if not re.fullmatch(
+        r"[0-9A-Fa-f]{6}",
+        str(train_minute_border.get("color", "")),
+    ):
+        train_minute_border["color"] = "000000"
+    else:
+        train_minute_border["color"] = train_minute_border["color"].upper()
+
+    if train_minute_border.get("style") not in valid_border_styles:
+        train_minute_border["style"] = "thin"
+
     saved_colors = settings.get("train_type_colors", {})
     train_type_colors: dict[int, str] = {}
 
@@ -221,6 +361,10 @@ def _render_page(
             "show_station_legend": show_station_legend,
             "display_settings": display_settings,
             "title_settings": title_settings,
+            "header_border": header_border,
+            "hour_border": hour_border,
+            "train_border": train_border,
+            "train_minute_border": train_minute_border,
         },
     )
 
@@ -481,6 +625,193 @@ async def save_settings(
     }
 
     display_settings["title"] = title_settings
+
+    # ヘッダ（下り・上り）の罫線設定を取得する
+    saved_header_border = display_settings.get("header_border", {})
+
+    if not isinstance(saved_header_border, dict):
+        saved_header_border = {}
+
+    header_border = {}
+
+    for side in ("top", "bottom", "left", "right"):
+        saved_border = saved_header_border.get(side, {})
+
+        if not isinstance(saved_border, dict):
+            saved_border = {}
+
+        # 罫線の有効・無効
+        border_enabled = (
+            form_data.get(f"header_border_{side}_enabled") == "true"
+        )
+
+        # 罫線の色
+        submitted_border_color = str(
+            form_data.get(f"header_border_{side}_color", "")
+        ).strip()
+
+        if re.fullmatch(r"#[0-9A-Fa-f]{6}", submitted_border_color):
+            border_color = submitted_border_color[1:].upper()
+        else:
+            border_color = saved_border.get("color", "000000")
+
+        # 罫線の線種
+        submitted_border_style = str(
+            form_data.get(f"header_border_{side}_style", "")
+        ).strip()
+
+        if submitted_border_style in valid_border_styles:
+            border_style = submitted_border_style
+        else:
+            border_style = saved_border.get("style", "thin")
+
+        header_border[side] = {
+            "enabled": border_enabled,
+            "color": border_color,
+            "style": border_style,
+        }
+
+    display_settings["header_border"] = header_border
+
+    # 時刻欄の罫線設定を取得する
+    saved_hour_border = display_settings.get("hour_border", {})
+
+    if not isinstance(saved_hour_border, dict):
+        saved_hour_border = {}
+
+    hour_border = {}
+
+    for side in ("top", "bottom", "left", "right"):
+        saved_border = saved_hour_border.get(side, {})
+
+        if not isinstance(saved_border, dict):
+            saved_border = {}
+
+        # 罫線の有効・無効
+        border_enabled = (
+            form_data.get(f"hour_border_{side}_enabled") == "true"
+        )
+
+        # 罫線の色
+        submitted_border_color = str(
+            form_data.get(f"hour_border_{side}_color", "")
+        ).strip()
+
+        if re.fullmatch(r"#[0-9A-Fa-f]{6}", submitted_border_color):
+            border_color = submitted_border_color[1:].upper()
+        else:
+            border_color = saved_border.get("color", "000000")
+
+        # 罫線の線種
+        submitted_border_style = str(
+            form_data.get(f"hour_border_{side}_style", "")
+        ).strip()
+
+        if submitted_border_style in valid_border_styles:
+            border_style = submitted_border_style
+        else:
+            border_style = saved_border.get("style", "thin")
+
+        hour_border[side] = {
+            "enabled": border_enabled,
+            "color": border_color,
+            "style": border_style,
+        }
+
+    display_settings["hour_border"] = hour_border
+
+    # 列車欄の罫線設定を取得・保存する
+    saved_train_border = display_settings.get("train_border", {})
+
+    if not isinstance(saved_train_border, dict):
+        saved_train_border = {}
+
+    train_border = {}
+
+    for side in ("top", "bottom", "left", "right"):
+        saved_border = saved_train_border.get(side, {})
+
+        if not isinstance(saved_border, dict):
+            saved_border = {}
+
+        # 罫線の有効・無効
+        border_enabled = (
+            form_data.get(f"train_border_{side}_enabled") == "true"
+        )
+
+        # 罫線の色
+        submitted_border_color = str(
+            form_data.get(f"train_border_{side}_color", "")
+        ).strip()
+
+        if re.fullmatch(r"#[0-9A-Fa-f]{6}", submitted_border_color):
+            border_color = submitted_border_color[1:].upper()
+        else:
+            border_color = saved_border.get("color", "000000")
+
+        # 罫線の線種
+        submitted_border_style = str(
+            form_data.get(f"train_border_{side}_style", "")
+        ).strip()
+
+        if submitted_border_style in valid_border_styles:
+            border_style = submitted_border_style
+        else:
+            border_style = saved_border.get("style", "thin")
+
+        train_border[side] = {
+            "enabled": border_enabled,
+            "color": border_color,
+            "style": border_style,
+        }
+
+    display_settings["train_border"] = train_border
+
+    # 列車情報と分の間の罫線設定を取得・保存する
+    saved_train_minute_border = display_settings.get(
+        "train_minute_border",
+        {},
+    )
+
+    if not isinstance(saved_train_minute_border, dict):
+        saved_train_minute_border = {}
+
+    # 罫線の有効・無効
+    train_minute_border_enabled = (
+        form_data.get("train_minute_border_enabled") == "true"
+    )
+
+    # 罫線の色
+    submitted_train_minute_color = str(
+        form_data.get("train_minute_border_color", "")
+    ).strip()
+
+    if re.fullmatch(r"#[0-9A-Fa-f]{6}", submitted_train_minute_color):
+        train_minute_border_color = submitted_train_minute_color[1:].upper()
+    else:
+        train_minute_border_color = saved_train_minute_border.get(
+            "color",
+            "000000",
+        )
+
+    # 罫線の線種
+    submitted_train_minute_style = str(
+        form_data.get("train_minute_border_style", "")
+    ).strip()
+
+    if submitted_train_minute_style in valid_border_styles:
+        train_minute_border_style = submitted_train_minute_style
+    else:
+        train_minute_border_style = saved_train_minute_border.get(
+            "style",
+            "thin",
+        )
+
+    display_settings["train_minute_border"] = {
+        "enabled": train_minute_border_enabled,
+        "color": train_minute_border_color,
+        "style": train_minute_border_style,
+    }
 
     # 既存の列車種別の色設定を読み込む
     saved_colors = existing_settings.get("train_type_colors", {})

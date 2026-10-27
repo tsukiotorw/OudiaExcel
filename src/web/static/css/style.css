@@ -438,3 +438,20 @@ th {
 .title-settings input:disabled {
     opacity: 0.4;
 }
+
+/* 表示設定の見出しと保存ボタン */
+.settings-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.settings-header h2 {
+    margin: 0;
+}
+
+.settings-header button {
+    flex-shrink: 0;
+}
