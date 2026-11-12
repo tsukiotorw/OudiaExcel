@@ -8,12 +8,19 @@ from tempfile import NamedTemporaryFile
 from uuid import uuid4
 
 from fastapi import APIRouter, File, Form, Request, UploadFile
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.templating import Jinja2Templates
+from starlette.background import BackgroundTask
 
+from src.application.excel_export import export_station_timetable
 from src.application.oud2_loader import load_oud2
 from src.application.station_timetable import generate_station_timetable
 from src.models.railway import Railway
+from src.timetable.display_config import (
+    BorderConfig,
+    BorderSideConfig,
+    TimetableDisplayConfig,
+)
 from src.web.settings import (
     load_station_settings,
     save_station_settings,
@@ -28,6 +35,16 @@ templates = Jinja2Templates(directory=WEB_DIR / "templates")
 _loaded_railways: dict[str, Railway] = {}
 _railway_file_keys: dict[str, str] = {}
 
+_BORDER_SIDES = ("top", "bottom", "left", "right")
+_BORDER_STYLES = {
+    "thin",
+    "medium",
+    "thick",
+    "dashed",
+    "dotted",
+    "double",
+}
+
 
 def _get_session_id(request: Request) -> tuple[str, bool]:
     """CookieからセッションIDを取得し、なければ新規発行する。"""
@@ -40,10 +57,10 @@ def _get_session_id(request: Request) -> tuple[str, bool]:
 
 
 def _set_session_cookie(
-    response: HTMLResponse,
+    response: Response,
     session_id: str,
     is_new_session: bool,
-) -> HTMLResponse:
+) -> Response:
     """新規セッションの場合にCookieを設定する。"""
     if is_new_session:
         response.set_cookie(
@@ -75,6 +92,328 @@ def _apply_station_settings(
     for station in railway.stations:
         station.short_name = aliases.get(station.name, "")
         station.is_no_mark = no_mark.get(station.name, False)
+
+
+def _validated_color(value: object, default: str) -> str:
+    color = str(value or "")
+    return color.upper() if re.fullmatch(r"[0-9A-Fa-f]{6}", color) else default
+
+
+def _load_style_settings(
+    display_settings: dict,
+    key: str,
+    defaults: dict,
+) -> dict:
+    saved = display_settings.get(key, {})
+    if not isinstance(saved, dict):
+        saved = {}
+
+    style = defaults.copy()
+    style.update(saved)
+    style["font_name"] = str(style.get("font_name", ""))[:100] or defaults["font_name"]
+
+    try:
+        font_size = int(style["font_size"])
+    except (TypeError, ValueError):
+        font_size = defaults["font_size"]
+    style["font_size"] = font_size if 6 <= font_size <= 72 else defaults["font_size"]
+    style["font_color"] = _validated_color(
+        style.get("font_color"),
+        defaults["font_color"],
+    )
+
+    fill = style.get("fill")
+    style["fill"] = (
+        str(fill).upper()
+        if isinstance(fill, str) and re.fullmatch(r"[0-9A-Fa-f]{6}", fill)
+        else None
+    )
+    return style
+
+
+def _read_style_settings(
+    form_data,
+    saved: dict,
+    defaults: dict,
+    prefix: str,
+) -> dict:
+    font_name = str(form_data.get(f"{prefix}_font_name", "")).strip()
+    try:
+        font_size = int(form_data.get(f"{prefix}_font_size", defaults["font_size"]))
+    except (TypeError, ValueError):
+        font_size = saved.get("font_size", defaults["font_size"])
+    if not 6 <= font_size <= 72:
+        font_size = saved.get("font_size", defaults["font_size"])
+
+    submitted_color = str(form_data.get(f"{prefix}_font_color", "")).strip()
+    font_color = (
+        submitted_color[1:].upper()
+        if re.fullmatch(r"#[0-9A-Fa-f]{6}", submitted_color)
+        else saved.get("font_color", defaults["font_color"])
+    )
+
+    fill = None
+    if form_data.get(f"{prefix}_fill_enabled") == "true":
+        submitted_fill = str(form_data.get(f"{prefix}_fill", "")).strip()
+        if re.fullmatch(r"#[0-9A-Fa-f]{6}", submitted_fill):
+            fill = submitted_fill[1:].upper()
+        else:
+            fill = saved.get("fill")
+
+    return {
+        "font_name": font_name[:100] if font_name else saved.get(
+            "font_name", defaults["font_name"]
+        ),
+        "font_size": font_size,
+        "font_color": font_color,
+        "fill": fill,
+    }
+
+
+def _border_config_from_settings(settings: object) -> BorderConfig:
+    border = BorderConfig()
+    if not isinstance(settings, dict):
+        return border
+
+    for side in _BORDER_SIDES:
+        values = settings.get(side, {})
+        if not isinstance(values, dict):
+            continue
+        enabled = values.get("enabled", False)
+        style = values.get("style", "thin")
+        setattr(
+            border,
+            side,
+            BorderSideConfig(
+                enabled=enabled if isinstance(enabled, bool) else False,
+                color=_validated_color(values.get("color"), "000000"),
+                style=style if style in _BORDER_STYLES else "thin",
+            ),
+        )
+    return border
+
+
+def _display_config_from_settings(settings: dict) -> TimetableDisplayConfig:
+    display_settings = settings.get("display_settings", {})
+    if not isinstance(display_settings, dict):
+        display_settings = {}
+
+    config = TimetableDisplayConfig()
+    title = _load_style_settings(
+        display_settings,
+        "title",
+        {
+            "font_name": "源ノ角ゴシック JP",
+            "font_size": 14,
+            "font_color": "000000",
+            "fill": None,
+        },
+    )
+    saved_title = display_settings.get("title", {})
+    if not isinstance(saved_title, dict):
+        saved_title = {}
+    title_borders = saved_title.get("borders", {})
+    config.title_font_name = title["font_name"]
+    config.title_font_size = title["font_size"]
+    config.title_font_color = title["font_color"]
+    config.title_fill = title["fill"]
+    config.title_border = _border_config_from_settings(
+        title_borders
+    )
+
+    header = _load_style_settings(
+        display_settings,
+        "header",
+        {
+            "font_name": "源ノ角ゴシック JP Heavy",
+            "font_size": 12,
+            "font_color": "FFFFFF",
+            "fill": "0864C5",
+        },
+    )
+    config.header_font_name = header["font_name"]
+    config.header_font_size = header["font_size"]
+    config.header_font_color = header["font_color"]
+    config.header_fill = header["fill"]
+    config.header_border = _border_config_from_settings(
+        display_settings.get("header_border")
+    )
+
+    hour = _load_style_settings(
+        display_settings,
+        "hour",
+        {
+            "font_name": "源ノ角ゴシック JP Heavy",
+            "font_size": 10,
+            "font_color": "FFFFFF",
+            "fill": "000000",
+        },
+    )
+    config.hour_font_name = hour["font_name"]
+    config.hour_font_size = hour["font_size"]
+    config.hour_font_color = hour["font_color"]
+    config.hour_fill = hour["fill"]
+    config.hour_border = _border_config_from_settings(
+        display_settings.get("hour_border")
+    )
+
+    train_settings = display_settings.get("train", {})
+    if not isinstance(train_settings, dict):
+        train_settings = {}
+    train_defaults = {
+        "metadata_font_name": "源ノ角ゴシック JP",
+        "metadata_font_size": 9,
+        "minute_font_name": "源ノ角ゴシック JP",
+        "minute_font_size": 9,
+    }
+    train_settings = {**train_defaults, **train_settings}
+    for key in ("metadata_font_size", "minute_font_size"):
+        try:
+            size = int(train_settings[key])
+        except (TypeError, ValueError):
+            size = train_defaults[key]
+        train_settings[key] = size if 6 <= size <= 72 else train_defaults[key]
+    config.metadata_font_name = str(
+        train_settings.get("metadata_font_name", "源ノ角ゴシック JP")
+    )[:100]
+    config.metadata_font_size = train_settings.get("metadata_font_size", 9)
+    config.minute_font_name = str(
+        train_settings.get("minute_font_name", "源ノ角ゴシック JP")
+    )[:100]
+    config.minute_font_size = train_settings.get("minute_font_size", 9)
+    config.train_font_color = _validated_color(
+        train_settings.get("train_font_color"),
+        "000000",
+    )
+    config.train_fill = _validated_color(
+        train_settings.get("train_fill"),
+        "FAFAFA",
+    )
+    config.show_destination = (
+        train_settings.get("show_destination")
+        if isinstance(train_settings.get("show_destination"), bool)
+        else True
+    )
+    config.use_train_type_short_name = (
+        train_settings.get("use_train_type_short_name")
+        if isinstance(train_settings.get("use_train_type_short_name"), bool)
+        else False
+    )
+    saved_column_visibility = display_settings.get(
+        "train_type_column_visible", {}
+    )
+    if not isinstance(saved_column_visibility, dict):
+        saved_column_visibility = {}
+    config.train_type_column_visible = {
+        int(index): visible
+        for index, visible in saved_column_visibility.items()
+        if str(index).isdigit() and isinstance(visible, bool)
+    }
+    config.train_border = _border_config_from_settings(
+        display_settings.get("train_border")
+    )
+
+    train_minute_border = display_settings.get("train_minute_border", {})
+    if isinstance(train_minute_border, dict):
+        config.train_separator = BorderSideConfig(
+            enabled=(
+                train_minute_border.get("enabled")
+                if isinstance(train_minute_border.get("enabled"), bool)
+                else False
+            ),
+            color=_validated_color(
+                train_minute_border.get("color"),
+                "000000",
+            ),
+            style=(
+                train_minute_border.get("style", "thin")
+                if train_minute_border.get("style") in _BORDER_STYLES
+                else "thin"
+            ),
+        )
+
+    legend_defaults = {
+        "label_font_name": "源ノ角ゴシック JP Heavy",
+        "label_font_size": 8,
+        "label_font_color": "FFFFFF",
+        "label_fill": "000000",
+        "font_name": "源ノ角ゴシック JP",
+        "font_size": 8,
+        "fill": "FAFAFA",
+        "row_height": 24.2,
+        "show_destination_legend": True,
+    }
+    saved_legend = display_settings.get("legend", {})
+    if not isinstance(saved_legend, dict):
+        saved_legend = {}
+    legend = legend_defaults.copy()
+    legend.update(saved_legend)
+    config.legend_label_font_name = str(legend["label_font_name"])[:100]
+    config.legend_label_font_size = _valid_font_size(
+        legend.get("label_font_size"),
+        legend_defaults["label_font_size"],
+    )
+    config.legend_label_font_color = _validated_color(
+        legend.get("label_font_color"),
+        legend_defaults["label_font_color"],
+    )
+    config.legend_label_fill = _validated_color(
+        legend.get("label_fill"),
+        legend_defaults["label_fill"],
+    )
+    config.legend_font_name = str(legend["font_name"])[:100]
+    config.legend_font_size = _valid_font_size(
+        legend.get("font_size"),
+        legend_defaults["font_size"],
+    )
+    config.legend_fill = _validated_color(
+        legend.get("fill"),
+        legend_defaults["fill"],
+    )
+    try:
+        row_height = float(legend["row_height"])
+    except (TypeError, ValueError):
+        row_height = legend_defaults["row_height"]
+    config.legend_row_height = (
+        row_height if 10 <= row_height <= 100 else legend_defaults["row_height"]
+    )
+    config.show_destination_legend = (
+        legend["show_destination_legend"]
+        if isinstance(legend["show_destination_legend"], bool)
+        else True
+    )
+    config.legend_border = _border_config_from_settings(
+        display_settings.get("legend_border")
+    )
+    saved_colors = settings.get("train_type_colors", {})
+    if not isinstance(saved_colors, dict):
+        saved_colors = {}
+    config.train_type_colors = {
+        int(index): color.upper()
+        for index, color in saved_colors.items()
+        if str(index).isdigit()
+        and isinstance(color, str)
+        and re.fullmatch(r"[0-9A-Fa-f]{6}", color)
+    }
+    saved_type_visibility = display_settings.get(
+        "train_type_legend_visible", {}
+    )
+    if not isinstance(saved_type_visibility, dict):
+        saved_type_visibility = {}
+    config.train_type_visible = {
+        int(index): visible
+        for index, visible in saved_type_visibility.items()
+        if str(index).isdigit() and isinstance(visible, bool)
+    }
+    return config
+
+
+def _valid_font_size(value: object, default: int) -> int:
+    try:
+        size = int(value)
+    except (TypeError, ValueError):
+        return default
+    return size if 6 <= size <= 72 else default
 
 
 def _render_page(
@@ -115,6 +454,77 @@ def _render_page(
     display_settings = settings.get("display_settings", {})
     if not isinstance(display_settings, dict):
         display_settings = {}
+
+    header_display_settings = _load_style_settings(
+        display_settings,
+        "header",
+        {
+            "font_name": "源ノ角ゴシック JP Heavy",
+            "font_size": 12,
+            "font_color": "FFFFFF",
+            "fill": "0864C5",
+        },
+    )
+    hour_display_settings = _load_style_settings(
+        display_settings,
+        "hour",
+        {
+            "font_name": "源ノ角ゴシック JP Heavy",
+            "font_size": 10,
+            "font_color": "FFFFFF",
+            "fill": "000000",
+        },
+    )
+
+    legend_defaults = {
+        "label_font_name": "源ノ角ゴシック JP Heavy",
+        "label_font_size": 8,
+        "label_font_color": "FFFFFF",
+        "label_fill": "000000",
+        "font_name": "源ノ角ゴシック JP",
+        "font_size": 8,
+        "fill": "FAFAFA",
+        "row_height": 24.2,
+        "show_destination_legend": True,
+    }
+    saved_legend_settings = display_settings.get("legend", {})
+    if not isinstance(saved_legend_settings, dict):
+        saved_legend_settings = {}
+    legend_display_settings = legend_defaults.copy()
+    legend_display_settings.update(saved_legend_settings)
+    for key in ("label_font_size", "font_size"):
+        try:
+            size = int(legend_display_settings[key])
+        except (TypeError, ValueError):
+            size = legend_defaults[key]
+        legend_display_settings[key] = (
+            size if 6 <= size <= 72 else legend_defaults[key]
+        )
+    for key, default in (
+        ("label_font_color", "FFFFFF"),
+        ("label_fill", "000000"),
+        ("fill", "FAFAFA"),
+    ):
+        legend_display_settings[key] = _validated_color(
+            legend_display_settings.get(key),
+            default,
+        )
+    for key in ("label_font_name", "font_name"):
+        legend_display_settings[key] = (
+            str(legend_display_settings.get(key, ""))[:100]
+            or legend_defaults[key]
+        )
+    try:
+        legend_row_height = float(legend_display_settings["row_height"])
+    except (TypeError, ValueError):
+        legend_row_height = legend_defaults["row_height"]
+    legend_display_settings["row_height"] = (
+        legend_row_height
+        if 10 <= legend_row_height <= 100
+        else legend_defaults["row_height"]
+    )
+    if not isinstance(legend_display_settings["show_destination_legend"], bool):
+        legend_display_settings["show_destination_legend"] = True
 
     # 列車欄の表示設定
     train_display_defaults = {
@@ -171,6 +581,12 @@ def _render_page(
         saved_column_visibility = {}
 
     train_type_column_visible = {}
+    saved_legend_visibility = display_settings.get(
+        "train_type_legend_visible", {}
+    )
+    if not isinstance(saved_legend_visibility, dict):
+        saved_legend_visibility = {}
+    train_type_legend_visible = {}
 
     if railway is not None:
         for train_type in railway.train_types:
@@ -180,6 +596,13 @@ def _render_page(
             )
             train_type_column_visible[train_type.index] = (
                 value if isinstance(value, bool) else True
+            )
+            legend_visible = saved_legend_visibility.get(
+                str(train_type.index),
+                saved_legend_visibility.get(train_type.index, True),
+            )
+            train_type_legend_visible[train_type.index] = (
+                legend_visible if isinstance(legend_visible, bool) else True
             )
 
     # タイトルの表示設定（未設定の場合は既定値を使用）
@@ -356,6 +779,27 @@ def _render_page(
     if train_minute_border.get("style") not in valid_border_styles:
         train_minute_border["style"] = "thin"
 
+    legend_border = {
+        side: default_border_side.copy()
+        for side in _BORDER_SIDES
+    }
+    saved_legend_border = display_settings.get("legend_border", {})
+    if isinstance(saved_legend_border, dict):
+        for side in _BORDER_SIDES:
+            saved_side = saved_legend_border.get(side, {})
+            if isinstance(saved_side, dict):
+                legend_border[side].update(saved_side)
+    for side in _BORDER_SIDES:
+        border = legend_border[side]
+        if not isinstance(border.get("enabled"), bool):
+            border["enabled"] = False
+        border["color"] = _validated_color(
+            border.get("color"),
+            "000000",
+        )
+        if border.get("style") not in _BORDER_STYLES:
+            border["style"] = "thin"
+
     saved_colors = settings.get("train_type_colors", {})
     train_type_colors: dict[int, str] = {}
 
@@ -385,13 +829,23 @@ def _render_page(
 
     train_type_legend = []
     station_legend = []
+    destination_legend = []
 
     if railway is not None:
         # 列車種別の凡例
         train_type_legend = [
             {
                 "index": train_type.index,
-                "name": train_type.short_name or train_type.name,
+                "name": (
+                    train_type.short_name
+                    if (
+                        train_display_settings["use_train_type_short_name"]
+                        and train_type.short_name
+                    )
+                    else train_type.name
+                ),
+                "short_name": train_type.short_name or train_type.name,
+                "full_name": train_type.name,
                 "color": train_type_colors.get(
                     train_type.index,
                     "000000",
@@ -408,6 +862,18 @@ def _render_page(
                 station_legend.append(
                     f"{station.short_name}＝{station.name}"
                 )
+
+    if timetable is not None:
+        destinations = {}
+        for hour in timetable.down + timetable.up:
+            for entry in hour.entries:
+                destination = entry.destination
+                if destination.is_no_mark or destination.short_name:
+                    destinations[(destination.index, destination.name)] = (
+                        f"{'無印' if destination.is_no_mark else destination.short_name}"
+                        f"＝{destination.name}"
+                    )
+        destination_legend = list(destinations.values())
 
     return templates.TemplateResponse(
         request=request,
@@ -431,8 +897,14 @@ def _render_page(
             "hour_border": hour_border,
             "train_border": train_border,
             "train_minute_border": train_minute_border,
+            "legend_border": legend_border,
             "train_display_settings": train_display_settings,
             "train_type_column_visible": train_type_column_visible,
+            "train_type_legend_visible": train_type_legend_visible,
+            "header_display_settings": header_display_settings,
+            "hour_display_settings": hour_display_settings,
+            "legend_display_settings": legend_display_settings,
+            "destination_legend": destination_legend,
         },
     )
 
@@ -476,10 +948,16 @@ async def upload_oud2(
         _loaded_railways[railway_id] = railway
         _railway_file_keys[railway_id] = file_key
 
+        selected_station_index = (
+            railway.stations[0].index
+            if railway.stations
+            else None
+        )
         response = _render_page(
             request,
             session_id=session_id,
             railway_id=railway_id,
+            station_index=selected_station_index,
         )
 
     except Exception as exc:
@@ -650,6 +1128,123 @@ async def save_settings(
     display_settings["train_type_column_visible"] = (
         train_type_column_visible
     )
+
+    for key, defaults in (
+        (
+            "header",
+            {
+                "font_name": "源ノ角ゴシック JP Heavy",
+                "font_size": 12,
+                "font_color": "FFFFFF",
+                "fill": "0864C5",
+            },
+        ),
+        (
+            "hour",
+            {
+                "font_name": "源ノ角ゴシック JP Heavy",
+                "font_size": 10,
+                "font_color": "FFFFFF",
+                "fill": "000000",
+            },
+        ),
+    ):
+        saved_style = display_settings.get(key, {})
+        if not isinstance(saved_style, dict):
+            saved_style = {}
+        display_settings[key] = _read_style_settings(
+            form_data,
+            saved_style,
+            defaults,
+            key,
+        )
+
+    saved_legend_display = display_settings.get("legend", {})
+    if not isinstance(saved_legend_display, dict):
+        saved_legend_display = {}
+    legend_display_defaults = {
+        "label_font_name": "源ノ角ゴシック JP Heavy",
+        "label_font_size": 8,
+        "label_font_color": "FFFFFF",
+        "label_fill": "000000",
+        "font_name": "源ノ角ゴシック JP",
+        "font_size": 8,
+        "fill": "FAFAFA",
+        "row_height": 24.2,
+        "show_destination_legend": True,
+    }
+
+    def read_legend_font_name(field_name: str) -> str:
+        submitted = str(form_data.get(field_name, "")).strip()
+        return (
+            submitted[:100]
+            if submitted
+            else saved_legend_display.get(
+                field_name,
+                legend_display_defaults[field_name],
+            )
+        )
+
+    def read_legend_font_size(field_name: str) -> int:
+        try:
+            size = int(
+                form_data.get(
+                    field_name,
+                    legend_display_defaults[field_name],
+                )
+            )
+        except (TypeError, ValueError):
+            size = saved_legend_display.get(
+                field_name,
+                legend_display_defaults[field_name],
+            )
+        if not 6 <= size <= 72:
+            size = saved_legend_display.get(
+                field_name,
+                legend_display_defaults[field_name],
+            )
+        return size
+
+    def read_legend_color(field_name: str) -> str:
+        submitted = str(form_data.get(field_name, "")).strip()
+        if re.fullmatch(r"#[0-9A-Fa-f]{6}", submitted):
+            return submitted[1:].upper()
+        return _validated_color(
+            saved_legend_display.get(field_name),
+            legend_display_defaults[field_name],
+        )
+
+    try:
+        legend_row_height = float(
+            form_data.get("legend_row_height", "24.2")
+        )
+    except (TypeError, ValueError):
+        legend_row_height = saved_legend_display.get("row_height", 24.2)
+    if not 10 <= legend_row_height <= 100:
+        legend_row_height = saved_legend_display.get("row_height", 24.2)
+
+    display_settings["legend"] = {
+        "label_font_name": read_legend_font_name("label_font_name"),
+        "label_font_size": read_legend_font_size("label_font_size"),
+        "label_font_color": read_legend_color("label_font_color"),
+        "label_fill": read_legend_color("label_fill"),
+        "font_name": read_legend_font_name("font_name"),
+        "font_size": read_legend_font_size("font_size"),
+        "fill": read_legend_color("fill"),
+        "row_height": legend_row_height,
+        "show_destination_legend": (
+            form_data.get("show_destination_legend") == "true"
+        ),
+    }
+
+    display_settings["train_type_legend_visible"] = {
+        str(train_type.index): (
+            form_data.get(
+                f"train_type_legend_visible_{train_type.index}"
+            ) == "true"
+        )
+        for train_type in railway.train_types
+    }
 
     # タイトル設定を取得する
     title_settings = display_settings.get("title", {})
@@ -949,6 +1544,42 @@ async def save_settings(
         "style": train_minute_border_style,
     }
 
+    saved_legend_border = display_settings.get("legend_border", {})
+    if not isinstance(saved_legend_border, dict):
+        saved_legend_border = {}
+    legend_border = {}
+    for side in _BORDER_SIDES:
+        saved_border = saved_legend_border.get(side, {})
+        if not isinstance(saved_border, dict):
+            saved_border = {}
+
+        submitted_color = str(
+            form_data.get(f"legend_border_{side}_color", "")
+        ).strip()
+        color = (
+            submitted_color[1:].upper()
+            if re.fullmatch(r"#[0-9A-Fa-f]{6}", submitted_color)
+            else _validated_color(saved_border.get("color"), "000000")
+        )
+        submitted_style = str(
+            form_data.get(f"legend_border_{side}_style", "")
+        ).strip()
+        style = (
+            submitted_style
+            if submitted_style in _BORDER_STYLES
+            else saved_border.get("style", "thin")
+        )
+        legend_border[side] = {
+            "enabled": (
+                form_data.get(f"legend_border_{side}_enabled") == "true"
+            ),
+            "color": color,
+            "style": (
+                style if style in _BORDER_STYLES else "thin"
+            ),
+        }
+    display_settings["legend_border"] = legend_border
+
     # 既存の列車種別の色設定を読み込む
     saved_colors = existing_settings.get("train_type_colors", {})
 
@@ -1000,4 +1631,69 @@ async def save_settings(
     )
 
     return _set_session_cookie(response, session_id, is_new_session)
+
+
+@router.post("/export/excel")
+async def export_excel(
+    request: Request,
+    railway_id: str = Form(...),
+    station_index: int = Form(...),
+):
+    session_id, is_new_session = _get_session_id(request)
+    railway = _loaded_railways.get(railway_id)
+    file_key = _railway_file_keys.get(railway_id)
+
+    if railway is None or file_key is None:
+        response = _render_page(
+            request,
+            session_id=session_id,
+            error="路線データが見つかりません。ファイルを再読み込みしてください。",
+        )
+        return _set_session_cookie(response, session_id, is_new_session)
+
+    station = next(
+        (item for item in railway.stations if item.index == station_index),
+        None,
+    )
+    if station is None:
+        response = _render_page(
+            request,
+            session_id=session_id,
+            railway_id=railway_id,
+            error="選択された駅が見つかりません。",
+        )
+        return _set_session_cookie(response, session_id, is_new_session)
+
+    await save_settings(request, railway_id, str(station_index))
+    settings = load_station_settings(session_id, file_key)
+    _apply_station_settings(railway, settings)
+    timetable = generate_station_timetable(railway, station)
+    display_config = _display_config_from_settings(settings)
+
+    with NamedTemporaryFile(suffix=".xlsx", delete=False) as output_file:
+        output_path = Path(output_file.name)
+
+    complete = False
+    try:
+        export_station_timetable(
+            timetable,
+            output_path,
+            display_config,
+        )
+        safe_station_name = re.sub(r'[\\/:*?"<>|]+', "_", station.name)
+        filename = f"{safe_station_name}_時刻表.xlsx"
+        response = FileResponse(
+            output_path,
+            media_type=(
+                "application/vnd.openxmlformats-officedocument."
+                "spreadsheetml.sheet"
+            ),
+            filename=filename,
+            background=BackgroundTask(output_path.unlink, missing_ok=True),
+        )
+        complete = True
+        return _set_session_cookie(response, session_id, is_new_session)
+    finally:
+        if not complete:
+            output_path.unlink(missing_ok=True)
 

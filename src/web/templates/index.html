@@ -157,6 +157,136 @@
                         </details>
 
                         <details class="settings-group">
+                            <summary><h3>凡例の書式設定</h3></summary>
+                            <div class="title-settings">
+                                <label for="label_font_name">凡例ラベルのフォント名</label>
+                                <input
+                                    type="text"
+                                    id="label_font_name"
+                                    name="label_font_name"
+                                    value="{{ legend_display_settings.label_font_name }}"
+                                >
+
+                                <label for="label_font_size">凡例ラベルのフォントサイズ</label>
+                                <input
+                                    type="number"
+                                    id="label_font_size"
+                                    name="label_font_size"
+                                    min="6"
+                                    max="72"
+                                    value="{{ legend_display_settings.label_font_size }}"
+                                >
+
+                                <label for="label_font_color">凡例ラベルの文字色</label>
+                                <input
+                                    type="color"
+                                    id="label_font_color"
+                                    name="label_font_color"
+                                    value="#{{ legend_display_settings.label_font_color }}"
+                                >
+
+                                <label for="label_fill">凡例ラベルの背景色</label>
+                                <input
+                                    type="color"
+                                    id="label_fill"
+                                    name="label_fill"
+                                    value="#{{ legend_display_settings.label_fill }}"
+                                >
+
+                                <label for="font_name">凡例項目のフォント名</label>
+                                <input
+                                    type="text"
+                                    id="font_name"
+                                    name="font_name"
+                                    value="{{ legend_display_settings.font_name }}"
+                                >
+
+                                <label for="font_size">凡例項目のフォントサイズ</label>
+                                <input
+                                    type="number"
+                                    id="font_size"
+                                    name="font_size"
+                                    min="6"
+                                    max="72"
+                                    value="{{ legend_display_settings.font_size }}"
+                                >
+
+                                <label for="fill">凡例項目の背景色</label>
+                                <input
+                                    type="color"
+                                    id="fill"
+                                    name="fill"
+                                    value="#{{ legend_display_settings.fill }}"
+                                >
+
+                                <label for="legend_row_height">凡例の行の高さ</label>
+                                <input
+                                    type="number"
+                                    id="legend_row_height"
+                                    name="legend_row_height"
+                                    min="10"
+                                    max="100"
+                                    step="0.1"
+                                    value="{{ legend_display_settings.row_height }}"
+                                >
+
+                                <label>
+                                    <input
+                                        type="checkbox"
+                                        name="show_destination_legend"
+                                        value="true"
+                                        {% if legend_display_settings.show_destination_legend %}checked{% endif %}
+                                    >
+                                    駅略称・無印の行先凡例を表示
+                                </label>
+                            </div>
+                        </details>
+
+                        <details class="settings-group">
+                            <summary><h3>凡例の罫線設定</h3></summary>
+                            <div class="title-border-settings">
+                                {% for side, label in [
+                                    ("top", "上"),
+                                    ("bottom", "下"),
+                                    ("left", "左"),
+                                    ("right", "右")
+                                ] %}
+                                <fieldset>
+                                    <legend>{{ label }}の罫線</legend>
+                                    <label>
+                                        <input
+                                            type="checkbox"
+                                            name="legend_border_{{ side }}_enabled"
+                                            value="true"
+                                            {% if legend_border[side].enabled %}checked{% endif %}
+                                        >
+                                        有効にする
+                                    </label>
+                                    <label for="legend_border_{{ side }}_color">色</label>
+                                    <input
+                                        type="color"
+                                        id="legend_border_{{ side }}_color"
+                                        name="legend_border_{{ side }}_color"
+                                        value="#{{ legend_border[side].color }}"
+                                    >
+                                    <label for="legend_border_{{ side }}_style">線種</label>
+                                    <select
+                                        id="legend_border_{{ side }}_style"
+                                        name="legend_border_{{ side }}_style"
+                                    >
+                                        <option value="thin" {% if legend_border[side].style == "thin" %}selected{% endif %}>細線</option>
+                                        <option value="medium" {% if legend_border[side].style == "medium" %}selected{% endif %}>中線</option>
+                                        <option value="thick" {% if legend_border[side].style == "thick" %}selected{% endif %}>太線</option>
+                                        <option value="dashed" {% if legend_border[side].style == "dashed" %}selected{% endif %}>破線</option>
+                                        <option value="dotted" {% if legend_border[side].style == "dotted" %}selected{% endif %}>点線</option>
+                                        <option value="double" {% if legend_border[side].style == "double" %}selected{% endif %}>二重線</option>
+                                    </select>
+                                </fieldset>
+                                {% endfor %}
+                            </div>
+                        </details>
+
+                        <details class="settings-group">
                             <summary><h3>タイトルの表示設定</h3></summary>
 
                             <div class="title-settings">
@@ -262,6 +392,56 @@
                         </details>
 
                         <details class="settings-group">
+                            <summary><h3>ヘッダの表示設定</h3></summary>
+                            <div class="title-settings">
+                                <label for="header_font_name">フォント名</label>
+                                <input
+                                    type="text"
+                                    id="header_font_name"
+                                    name="header_font_name"
+                                    value="{{ header_display_settings.font_name }}"
+                                >
+
+                                <label for="header_font_size">フォントサイズ</label>
+                                <input
+                                    type="number"
+                                    id="header_font_size"
+                                    name="header_font_size"
+                                    min="6"
+                                    max="72"
+                                    value="{{ header_display_settings.font_size }}"
+                                >
+
+                                <label for="header_font_color">文字色</label>
+                                <input
+                                    type="color"
+                                    id="header_font_color"
+                                    name="header_font_color"
+                                    value="#{{ header_display_settings.font_color }}"
+                                >
+
+                                <label for="header_fill">背景色</label>
+                                <div>
+                                    <input
+                                        type="checkbox"
+                                        id="header_fill_enabled"
+                                        name="header_fill_enabled"
+                                        value="true"
+                                        {% if header_display_settings.fill %}checked{% endif %}
+                                    >
+                                    <label for="header_fill_enabled">背景色を指定する</label>
+                                    <input
+                                        type="color"
+                                        id="header_fill"
+                                        name="header_fill"
+                                        value="#{{ header_display_settings.fill or '0864C5' }}"
+                                        {% if not header_display_settings.fill %}disabled{% endif %}
+                                    >
+                                </div>
+                            </div>
+                        </details>
+
+                        <details class="settings-group">
                             <summary><h3>ヘッダの罫線設定</h3></summary>
 
                             <div class="title-border-settings">
@@ -314,6 +494,56 @@
                                 {% endfor %}
                             </div>
                         </details>                        
+
+                        <details class="settings-group">
+                            <summary><h3>時刻欄の表示設定</h3></summary>
+                            <div class="title-settings">
+                                <label for="hour_font_name">フォント名</label>
+                                <input
+                                    type="text"
+                                    id="hour_font_name"
+                                    name="hour_font_name"
+                                    value="{{ hour_display_settings.font_name }}"
+                                >
+
+                                <label for="hour_font_size">フォントサイズ</label>
+                                <input
+                                    type="number"
+                                    id="hour_font_size"
+                                    name="hour_font_size"
+                                    min="6"
+                                    max="72"
+                                    value="{{ hour_display_settings.font_size }}"
+                                >
+
+                                <label for="hour_font_color">文字色</label>
+                                <input
+                                    type="color"
+                                    id="hour_font_color"
+                                    name="hour_font_color"
+                                    value="#{{ hour_display_settings.font_color }}"
+                                >
+
+                                <label for="hour_fill">背景色</label>
+                                <div>
+                                    <input
+                                        type="checkbox"
+                                        id="hour_fill_enabled"
+                                        name="hour_fill_enabled"
+                                        value="true"
+                                        {% if hour_display_settings.fill %}checked{% endif %}
+                                    >
+                                    <label for="hour_fill_enabled">背景色を指定する</label>
+                                    <input
+                                        type="color"
+                                        id="hour_fill"
+                                        name="hour_fill"
+                                        value="#{{ hour_display_settings.fill or '000000' }}"
+                                        {% if not hour_display_settings.fill %}disabled{% endif %}
+                                    >
+                                </div>
+                            </div>
+                        </details>
 
                         <details class="settings-group">
                             <summary><h3>時刻欄の罫線設定</h3></summary>
@@ -553,6 +783,7 @@
                                         <tr>
                                             <th>列車種別</th>
                                             <th>表示</th>
+                                            <th>凡例</th>
                                             <th>文字色</th>
                                             <th>プレビュー</th>
                                         </tr>
@@ -572,16 +803,27 @@
                                             </td>
                                             <td>
                                                 <input
+                                                    type="checkbox"
+                                                    name="train_type_legend_visible_{{ train_type.index }}"
+                                                    value="true"
+                                                    {% if train_type_legend_visible.get(train_type.index, true) %}checked{% endif %}
+                                                    aria-label="{{ train_type.name }}を凡例に表示"
+                                                >
+                                            </td>
+                                            <td>
+                                                <input
                                                     class="color-input"
                                                     type="color"
                                                     name="train_type_color_{{ train_type.index }}"
                                                     value="#{{ train_type_colors.get(train_type.index, '000000') }}"
+                                                    data-train-type-index="{{ train_type.index }}"
                                                     aria-label="{{ train_type.name }}の文字色"
                                                 >
                                             </td>
                                             <td>
                                                 <span
                                                     class="color-preview"
+                                                    data-train-type-index="{{ train_type.index }}"
                                                     style="color: #{{ train_type_colors.get(train_type.index, '000000') }};"
                                                 >
                                                     {{ train_type.short_name or train_type.name }}
@@ -601,6 +843,14 @@
             <div class="preview-column">
 
             {% if timetable %}
+                <div class="export-actions">
+                    <button
+                        type="submit"
+                        form="settings-form"
+                        formaction="/export/excel"
+                    >Excel出力</button>
+                    <button type="button" id="export-png">PNG出力</button>
+                </div>
                 <section class="panel timetable-panel">
                     <div
                         id="timetable-title"
@@ -638,7 +888,17 @@
                         {% endfor %}
 
                         <section class="direction">
-                            <h3 class="direction-title">{{ direction_name }}</h3>
+                            <h3
+                                class="direction-title"
+                                style="
+                                    font-family: '{{ header_display_settings.font_name }}', sans-serif;
+                                    font-size: {{ header_display_settings.font_size }}px;
+                                    color: #{{ header_display_settings.font_color }};
+                                    {% if header_display_settings.fill %}
+                                    background-color: #{{ header_display_settings.fill }};
+                                    {% endif %}
+                                "
+                            >{{ direction_name }}</h3>
 
                             <div class="table-scroll">
                                 <table class="station-timetable">
@@ -651,7 +911,18 @@
                                     <tbody>
                                         {% for hour in hours %}
                                         <tr class="train-info-row">
-                                            <th class="hour-cell" rowspan="2">
+                                            <th
+                                                class="hour-cell"
+                                                rowspan="2"
+                                                style="
+                                                    font-family: '{{ hour_display_settings.font_name }}', sans-serif;
+                                                    font-size: {{ hour_display_settings.font_size }}px;
+                                                    color: #{{ hour_display_settings.font_color }};
+                                                    {% if hour_display_settings.fill %}
+                                                    background-color: #{{ hour_display_settings.fill }};
+                                                    {% endif %}
+                                                "
+                                            >
                                                 {{ hour.hour }}
                                             </th>
 
@@ -723,20 +994,47 @@
                         {% endfor %}
                     </div>
 
-                    {% if show_legend %}
                     <div
                         class="timetable-legend {% if not show_legend %}is-hidden{% endif %}"
                         id="timetable-legend"
+                        style="
+                            background-color: #{{ legend_display_settings.fill }};
+                            font-family: '{{ legend_display_settings.font_name }}', sans-serif;
+                            font-size: {{ legend_display_settings.font_size }}px;
+                            --legend-row-height: {{ legend_display_settings.row_height }}px;
+                            {% for side in ("top", "bottom", "left", "right") %}
+                            {% set border = legend_border[side] %}
+                            {% if border.enabled %}
+                            border-{{ side }}: {{ {"thin": "1px solid", "medium": "2px solid", "thick": "3px solid", "dashed": "1px dashed", "dotted": "1px dotted", "double": "3px double"}[border.style] }} #{{ border.color }};
+                            {% else %}
+                            border-{{ side }}: none;
+                            {% endif %}
+                            {% endfor %}
+                        "
                     >
-                        <strong>凡例</strong>
+                        <strong
+                            style="
+                                background-color: #{{ legend_display_settings.label_fill }};
+                                color: #{{ legend_display_settings.label_font_color }};
+                                font-family: '{{ legend_display_settings.label_font_name }}', sans-serif;
+                                font-size: {{ legend_display_settings.label_font_size }}px;
+                            "
+                        >凡例</strong>
 
                         <div class="legend-items">
                             <div
                                 id="train-type-legend"
                                 class="{% if not show_train_type_legend %}is-hidden{% endif %}"
+                                style="background-color: #{{ legend_display_settings.fill }};"
                             >
                                 {% for item in train_type_legend %}
-                                <span style="color: #{{ item.color }}">
+                                <span
+                                    data-train-type-index="{{ item.index }}"
+                                    data-full-name="{{ item.full_name }}"
+                                    data-short-name="{{ item.short_name }}"
+                                    style="color: #{{ item.color }}"
+                                    {% if not train_type_legend_visible.get(item.index, true) %}hidden{% endif %}
+                                >
                                     {{ item.name }}
                                 </span>
                                 {% endfor %}
@@ -745,14 +1043,23 @@
                             <div
                                 id="station-legend"
                                 class="{% if not show_station_legend %}is-hidden{% endif %}"
+                                style="background-color: #{{ legend_display_settings.fill }};"
                             >
                                 {% for item in station_legend %}
                                 <span>{{ item }}</span>
                                 {% endfor %}
                             </div>
+                            <div
+                                id="destination-legend"
+                                class="{% if not legend_display_settings.show_destination_legend %}is-hidden{% endif %}"
+                                style="background-color: #{{ legend_display_settings.fill }};"
+                            >
+                                {% for item in destination_legend %}
+                                <span>{{ item }}</span>
+                                {% endfor %}
+                            </div>
                         </div>
                     </div>
-                    {% endif %}
                 </section>
             {% endif %}
             </div>
@@ -770,6 +1077,16 @@
 
         // 下り・上りのヘッダ
         const directionTitles = document.querySelectorAll(".direction-title");
+        const headerFontName = document.getElementById("header_font_name");
+        const headerFontSize = document.getElementById("header_font_size");
+        const headerFontColor = document.getElementById("header_font_color");
+        const headerFillEnabled = document.getElementById("header_fill_enabled");
+        const headerFill = document.getElementById("header_fill");
+        const hourFontName = document.getElementById("hour_font_name");
+        const hourFontSize = document.getElementById("hour_font_size");
+        const hourFontColor = document.getElementById("hour_font_color");
+        const hourFillEnabled = document.getElementById("hour_fill_enabled");
+        const hourFill = document.getElementById("hour_fill");
 
         // タイトルの罫線設定
         const titleBorders = {};
@@ -839,6 +1156,9 @@
 
         const trainTypeVisibilityControls = document.querySelectorAll(
             'input[name^="train_type_column_visible_"]'
+        );
+        const trainTypeColorControls = document.querySelectorAll(
+            'input[name^="train_type_color_"]'
         );
 
         function updateTrainDisplayPreview() {
@@ -916,6 +1236,16 @@
                         ? element.dataset.shortName
                         : element.dataset.fullName;
             });
+
+            document.querySelectorAll("#train-type-legend span").forEach((element) => {
+                const useShort =
+                    useTrainTypeShortName &&
+                    useTrainTypeShortName.checked;
+                element.textContent =
+                    useShort && element.dataset.shortName
+                        ? element.dataset.shortName
+                        : element.dataset.fullName;
+            });
         }
 
         [
@@ -928,6 +1258,7 @@
             useTrainTypeShortName,
             showDestination,
             ...trainTypeVisibilityControls,
+            ...trainTypeColorControls,
         ].forEach((element) => {
             if (element) {
                 element.addEventListener("input", updateTrainDisplayPreview);
@@ -937,6 +1268,23 @@
 
         // 初期状態も反映する
         updateTrainDisplayPreview();
+
+        function updateTrainTypeColors() {
+            trainTypeColorControls.forEach((control) => {
+                const index = control.dataset.trainTypeIndex;
+                document.querySelectorAll(
+                    `[data-train-type-index="${index}"]`
+                ).forEach((element) => {
+                    element.style.color = control.value;
+                });
+            });
+        }
+
+        trainTypeColorControls.forEach((control) => {
+            control.addEventListener("input", updateTrainTypeColors);
+            control.addEventListener("change", updateTrainTypeColors);
+        });
+        updateTrainTypeColors();
 
         const trainCells = document.querySelectorAll(
             ".train-info-cell, .minute-cell"
@@ -971,6 +1319,83 @@
             dotted: "1px dotted",
             double: "3px double",
         };
+
+        function updateHeaderDisplayPreview() {
+            if (headerFillEnabled && headerFill) {
+                headerFill.disabled = !headerFillEnabled.checked;
+            }
+            directionTitles.forEach((element) => {
+                if (headerFontName) {
+                    element.style.fontFamily =
+                        `"${headerFontName.value}", sans-serif`;
+                }
+                if (headerFontSize) {
+                    const size = Number(headerFontSize.value);
+                    if (size >= 6 && size <= 72) {
+                        element.style.fontSize = `${size}px`;
+                    }
+                }
+                if (headerFontColor) {
+                    element.style.color = headerFontColor.value;
+                }
+                if (headerFillEnabled && headerFill) {
+                    element.style.backgroundColor =
+                        headerFillEnabled.checked ? headerFill.value : "";
+                }
+            });
+        }
+
+        function updateHourDisplayPreview() {
+            if (hourFillEnabled && hourFill) {
+                hourFill.disabled = !hourFillEnabled.checked;
+            }
+            hourCells.forEach((element) => {
+                if (hourFontName) {
+                    element.style.fontFamily =
+                        `"${hourFontName.value}", sans-serif`;
+                }
+                if (hourFontSize) {
+                    const size = Number(hourFontSize.value);
+                    if (size >= 6 && size <= 72) {
+                        element.style.fontSize = `${size}px`;
+                    }
+                }
+                if (hourFontColor) {
+                    element.style.color = hourFontColor.value;
+                }
+                if (hourFillEnabled && hourFill) {
+                    element.style.backgroundColor =
+                        hourFillEnabled.checked ? hourFill.value : "";
+                }
+            });
+        }
+
+        [
+            headerFontName,
+            headerFontSize,
+            headerFontColor,
+            headerFillEnabled,
+            headerFill,
+        ].forEach((element) => {
+            if (element) {
+                element.addEventListener("input", updateHeaderDisplayPreview);
+                element.addEventListener("change", updateHeaderDisplayPreview);
+            }
+        });
+        [
+            hourFontName,
+            hourFontSize,
+            hourFontColor,
+            hourFillEnabled,
+            hourFill,
+        ].forEach((element) => {
+            if (element) {
+                element.addEventListener("input", updateHourDisplayPreview);
+                element.addEventListener("change", updateHourDisplayPreview);
+            }
+        });
+        updateHeaderDisplayPreview();
+        updateHourDisplayPreview();
 
         // 背景色の入力欄とタイトルの即時反映
         function updateTitlePreview() {
@@ -1258,10 +1683,71 @@
         const showStationLegend = document.querySelector(
             'input[name="show_station_legend"]'
         );
+        const showDestinationLegend = document.querySelector(
+            'input[name="show_destination_legend"]'
+        );
+        const trainTypeLegendVisibilityControls = document.querySelectorAll(
+            'input[name^="train_type_legend_visible_"]'
+        );
 
         const legend = document.getElementById("timetable-legend");
         const trainTypeLegend = document.getElementById("train-type-legend");
         const stationLegend = document.getElementById("station-legend");
+        const destinationLegend = document.getElementById("destination-legend");
+        const legendBorders = {};
+        ["top", "bottom", "left", "right"].forEach((side) => {
+            legendBorders[side] = {
+                enabled: document.querySelector(
+                    `input[name="legend_border_${side}_enabled"]`
+                ),
+                color: document.getElementById(
+                    `legend_border_${side}_color`
+                ),
+                style: document.getElementById(
+                    `legend_border_${side}_style`
+                ),
+            };
+        });
+
+        function updateLegendBorderPreview() {
+            if (!legend) {
+                return;
+            }
+            Object.entries(legendBorders).forEach(([side, controls]) => {
+                if (!controls.enabled || !controls.color || !controls.style) {
+                    return;
+                }
+                const property =
+                    `border${side.charAt(0).toUpperCase()}${side.slice(1)}`;
+                if (!controls.enabled.checked) {
+                    legend.style[property] = "none";
+                    return;
+                }
+                const lineStyle = borderStyles[controls.style.value];
+                if (lineStyle) {
+                    legend.style[property] =
+                        `${lineStyle} ${controls.color.value}`;
+                }
+            });
+        }
+
+        Object.values(legendBorders).forEach((controls) => {
+            [controls.enabled, controls.color, controls.style].forEach(
+                (element) => {
+                    if (element) {
+                        element.addEventListener(
+                            "input",
+                            updateLegendBorderPreview
+                        );
+                        element.addEventListener(
+                            "change",
+                            updateLegendBorderPreview
+                        );
+                    }
+                }
+            );
+        });
+        updateLegendBorderPreview();
 
         if (
             showLegend &&
@@ -1286,6 +1772,27 @@
                     "is-hidden",
                     !showStationLegend.checked
                 );
+                if (destinationLegend && showDestinationLegend) {
+                    destinationLegend.classList.toggle(
+                        "is-hidden",
+                        !showDestinationLegend.checked
+                    );
+                }
+
+                const visibility = new Map();
+                trainTypeLegendVisibilityControls.forEach((control) => {
+                    const index = control.name.replace(
+                        "train_type_legend_visible_",
+                        ""
+                    );
+                    visibility.set(index, control.checked);
+                });
+                trainTypeLegend.querySelectorAll("span").forEach((item) => {
+                    const visible = visibility.get(
+                        item.dataset.trainTypeIndex
+                    );
+                    item.hidden = visible === false;
+                });
             }
 
             showLegend.addEventListener("change", updateLegendVisibility);
@@ -1297,8 +1804,289 @@
                 "change",
                 updateLegendVisibility
             );
+            if (showDestinationLegend) {
+                showDestinationLegend.addEventListener(
+                    "change",
+                    updateLegendVisibility
+                );
+            }
+            trainTypeLegendVisibilityControls.forEach((control) => {
+                control.addEventListener("change", updateLegendVisibility);
+            });
 
             updateLegendVisibility();
+        }
+
+        const legendLabelFontName = document.getElementById("label_font_name");
+        const legendLabelFontSize = document.getElementById("label_font_size");
+        const legendLabelFontColor = document.getElementById("label_font_color");
+        const legendLabelFill = document.getElementById("label_fill");
+        const legendFontName = document.getElementById("font_name");
+        const legendFontSize = document.getElementById("font_size");
+        const legendFill = document.getElementById("fill");
+        const legendRowHeight = document.getElementById("legend_row_height");
+
+        function updateLegendStylePreview() {
+            if (!legend) {
+                return;
+            }
+            if (legendFill) {
+                legend.style.backgroundColor = legendFill.value;
+                legend.querySelectorAll(".legend-items > div").forEach((row) => {
+                    row.style.backgroundColor = legendFill.value;
+                });
+            }
+            if (legendFontName) {
+                legend.style.fontFamily =
+                    `"${legendFontName.value}", sans-serif`;
+            }
+            if (legendFontSize) {
+                const size = Number(legendFontSize.value);
+                if (size >= 6 && size <= 72) {
+                    legend.style.fontSize = `${size}px`;
+                }
+            }
+            if (legendRowHeight) {
+                const height = Number(legendRowHeight.value);
+                if (height >= 10 && height <= 100) {
+                    legend.style.setProperty(
+                        "--legend-row-height",
+                        `${height}px`
+                    );
+                }
+            }
+
+            const label = legend.querySelector("strong");
+            if (label) {
+                if (legendLabelFontName) {
+                    label.style.fontFamily =
+                        `"${legendLabelFontName.value}", sans-serif`;
+                }
+                if (legendLabelFontSize) {
+                    const size = Number(legendLabelFontSize.value);
+                    if (size >= 6 && size <= 72) {
+                        label.style.fontSize = `${size}px`;
+                    }
+                }
+                if (legendLabelFontColor) {
+                    label.style.color = legendLabelFontColor.value;
+                }
+                if (legendLabelFill) {
+                    label.style.backgroundColor = legendLabelFill.value;
+                }
+            }
+        }
+
+        [
+            legendLabelFontName,
+            legendLabelFontSize,
+            legendLabelFontColor,
+            legendLabelFill,
+            legendFontName,
+            legendFontSize,
+            legendFill,
+            legendRowHeight,
+        ].forEach((element) => {
+            if (element) {
+                element.addEventListener("input", updateLegendStylePreview);
+                element.addEventListener("change", updateLegendStylePreview);
+            }
+        });
+        updateLegendStylePreview();
+
+        const exportPngButton = document.getElementById("export-png");
+        if (exportPngButton) {
+            exportPngButton.addEventListener("click", async () => {
+                const target = document.querySelector(".timetable-panel");
+                if (!target) {
+                    window.alert("出力する時刻表がありません。");
+                    return;
+                }
+
+                let imageUrl;
+                try {
+                    const targetRect = target.getBoundingClientRect();
+                    const width = Math.ceil(targetRect.width);
+                    const height = Math.ceil(targetRect.height);
+                    const backgrounds = [];
+                    const borders = [];
+                    const text = [];
+                    const escapeXml = (value) => String(value).replace(
+                        /[&<>"']/g,
+                        (character) => ({
+                            "&": "&amp;",
+                            "<": "&lt;",
+                            ">": "&gt;",
+                            '"': "&quot;",
+                            "'": "&apos;",
+                        })[character]
+                    );
+
+                    [target, ...target.querySelectorAll("*")].forEach((element) => {
+                        const style = window.getComputedStyle(element);
+                        const rect = element.getBoundingClientRect();
+                        const x = rect.left - targetRect.left;
+                        const y = rect.top - targetRect.top;
+                        if (
+                            style.display === "none" ||
+                            style.visibility === "hidden" ||
+                            rect.width <= 0 ||
+                            rect.height <= 0
+                        ) {
+                            return;
+                        }
+
+                        if (style.backgroundColor !== "rgba(0, 0, 0, 0)") {
+                            backgrounds.push(
+                                `<rect x="${x}" y="${y}" width="${rect.width}" height="${rect.height}" fill="${style.backgroundColor}"/>`
+                            );
+                        }
+
+                        ["top", "right", "bottom", "left"].forEach((side) => {
+                            const borderStyle = style.getPropertyValue(
+                                `border-${side}-style`
+                            );
+                            const borderWidth = parseFloat(
+                                style.getPropertyValue(`border-${side}-width`)
+                            );
+                            if (
+                                !borderWidth ||
+                                borderStyle === "none" ||
+                                borderStyle === "hidden"
+                            ) {
+                                return;
+                            }
+                            const color = style.getPropertyValue(
+                                `border-${side}-color`
+                            );
+                            let x1 = x;
+                            let y1 = y;
+                            let x2 = x + rect.width;
+                            let y2 = y + rect.height;
+                            if (side === "top") {
+                                y2 = y1;
+                            } else if (side === "right") {
+                                x1 = x2;
+                            } else if (side === "bottom") {
+                                y1 = y2;
+                            } else {
+                                x2 = x1;
+                            }
+
+                            const dash = borderStyle === "dashed"
+                                ? `stroke-dasharray="${borderWidth * 4} ${borderWidth * 2}"`
+                                : borderStyle === "dotted"
+                                    ? `stroke-dasharray="${borderWidth} ${borderWidth * 2}"`
+                                    : "";
+                            if (borderStyle === "double") {
+                                const offset = Math.max(1, borderWidth / 3);
+                                for (const direction of [-1, 1]) {
+                                    const dx = side === "left" || side === "right"
+                                        ? direction * offset
+                                        : 0;
+                                    const dy = side === "top" || side === "bottom"
+                                        ? direction * offset
+                                        : 0;
+                                    borders.push(
+                                        `<line x1="${x1 + dx}" y1="${y1 + dy}" x2="${x2 + dx}" y2="${y2 + dy}" stroke="${color}" stroke-width="${Math.max(1, borderWidth / 3)}"/>`
+                                    );
+                                }
+                            } else {
+                                borders.push(
+                                    `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="${borderWidth}" ${dash}/>`
+                                );
+                            }
+                        });
+                    });
+
+                    const walker = document.createTreeWalker(
+                        target,
+                        NodeFilter.SHOW_TEXT
+                    );
+                    const range = document.createRange();
+                    let textNode;
+                    while ((textNode = walker.nextNode())) {
+                        const content = textNode.nodeValue || "";
+                        const parentStyle = window.getComputedStyle(
+                            textNode.parentElement
+                        );
+                        if (
+                            parentStyle.display === "none" ||
+                            parentStyle.visibility === "hidden"
+                        ) {
+                            continue;
+                        }
+                        let offset = 0;
+                        for (const character of content) {
+                            range.setStart(textNode, offset);
+                            range.setEnd(textNode, offset + character.length);
+                            offset += character.length;
+                            const rect = range.getBoundingClientRect();
+                            if (!rect.width || !rect.height) {
+                                continue;
+                            }
+                            text.push(
+                                `<text x="${rect.left - targetRect.left}" y="${rect.top - targetRect.top + rect.height / 2}" dominant-baseline="central" fill="${parentStyle.color}" font-family="${escapeXml(parentStyle.fontFamily)}" font-size="${parentStyle.fontSize}" font-weight="${parentStyle.fontWeight}" font-style="${parentStyle.fontStyle}">${escapeXml(character)}</text>`
+                            );
+                        }
+                    }
+
+                    const svg = `
+                        <svg xmlns="http://www.w3.org/2000/svg"
+                             width="${width}" height="${height}"
+                             viewBox="0 0 ${width} ${height}">
+                            ${backgrounds.join("")}
+                            ${borders.join("")}
+                            ${text.join("")}
+                        </svg>`;
+                    imageUrl = URL.createObjectURL(
+                        new Blob([svg], { type: "image/svg+xml;charset=utf-8" })
+                    );
+
+                    const image = new Image();
+                    await new Promise((resolve, reject) => {
+                        image.onload = resolve;
+                        image.onerror = () => reject(
+                            new Error("時刻表を画像に変換できませんでした。")
+                        );
+                        image.src = imageUrl;
+                    });
+
+                    const canvas = document.createElement("canvas");
+                    canvas.width = width;
+                    canvas.height = height;
+                    const context = canvas.getContext("2d");
+                    if (!context) {
+                        throw new Error("画像出力用のCanvasを作成できません。");
+                    }
+                    context.drawImage(image, 0, 0);
+
+                    const png = await new Promise((resolve, reject) => {
+                        canvas.toBlob((blob) => {
+                            if (blob) {
+                                resolve(blob);
+                            } else {
+                                reject(new Error("PNG画像を作成できませんでした。"));
+                            }
+                        }, "image/png");
+                    });
+                    const downloadUrl = URL.createObjectURL(png);
+                    const link = document.createElement("a");
+                    const stationName = document.getElementById(
+                        "timetable-title"
+                    ).textContent.trim().replace(/[\\/:*?"<>|]+/g, "_");
+                    link.href = downloadUrl;
+                    link.download = `${stationName}.png`;
+                    link.click();
+                    URL.revokeObjectURL(downloadUrl);
+                } catch (error) {
+                    window.alert(`PNG出力に失敗しました: ${error.message}`);
+                } finally {
+                    if (imageUrl) {
+                        URL.revokeObjectURL(imageUrl);
+                    }
+                }
+            });
         }
     });
     </script>

@@ -2,6 +2,16 @@
 
 OudiaSecond (*.oud2) の解析ライブラリ。
 
+## Web版
+
+次のコマンドでWeb版を起動し、`http://127.0.0.1:8000` を開きます。
+
+```powershell
+python -m uvicorn src.web.main:app
+```
+
+`.oud2` ファイルの読み込み、駅時刻表の表示、各表示設定の編集に加え、Excel・PNG形式で出力できます。
+
 ## Documentation
 
 本プロジェクトの設計・調査資料は `docs/` 配下に整理しています。
