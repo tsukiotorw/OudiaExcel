@@ -323,7 +323,8 @@ class ExcelWriter:
                     size=self.display_config.minute_font_size,
                     bold=True,
                     color=self._to_excel_color(
-                        self.display_config.train_font_color
+                        self.display_config.minute_font_color
+                        or self.display_config.train_font_color
                     ),
                 )
 
@@ -577,6 +578,7 @@ class ExcelWriter:
                     size=config.legend_font_size,
                     color=self._to_excel_color(
                         config.get_train_type_color(train_type.index)
+                        or config.legend_font_color
                     ),
                 )
                 cell.alignment = Alignment(
@@ -601,6 +603,9 @@ class ExcelWriter:
                 cell.font = Font(
                     name=config.legend_font_name,
                     size=config.legend_font_size,
+                    color=self._to_excel_color(
+                        config.legend_font_color
+                    ),
                 )
                 cell.alignment = Alignment(
                     horizontal="left",

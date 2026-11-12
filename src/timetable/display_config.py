@@ -91,6 +91,9 @@ class TimetableDisplayConfig:
     train_fill: str | None = None
     train_font_color: str = "000000"
 
+    # 分の文字色（Noneの場合は列車欄の文字色を使用）
+    minute_font_color: str | None = None
+
     # 時刻表の列車種別に略称を使用する
     use_train_type_short_name: bool = False
 
@@ -108,6 +111,7 @@ class TimetableDisplayConfig:
     # 凡例
     legend_label_fill: str = "000000"
     legend_fill: str = "FAFAFA"
+    legend_font_color: str = "000000"
     legend_label_font_name: str = "源ノ角ゴシック JP Heavy"
     legend_font_name: str = "源ノ角ゴシック JP"
     legend_label_font_size: int = 8

@@ -829,7 +829,8 @@ def _render_page(
 
     train_type_legend = []
     station_legend = []
-    destination_legend = []
+    down_destination_legend = []
+    up_destination_legend = []
 
     if railway is not None:
         # 列車種別の凡例
@@ -864,16 +865,26 @@ def _render_page(
                 )
 
     if timetable is not None:
-        destinations = {}
-        for hour in timetable.down + timetable.up:
-            for entry in hour.entries:
-                destination = entry.destination
-                if destination.is_no_mark or destination.short_name:
-                    destinations[(destination.index, destination.name)] = (
-                        f"{'無印' if destination.is_no_mark else destination.short_name}"
-                        f"＝{destination.name}"
-                    )
-        destination_legend = list(destinations.values())
+        # 下り・上りそれぞれの行先凡例を作成する
+        for hours, destination_legend in (
+            (timetable.down, down_destination_legend),
+            (timetable.up, up_destination_legend),
+        ):
+            destinations = {}
+
+            for hour in hours:
+                for entry in hour.entries:
+                    destination = entry.destination
+
+                    if destination.is_no_mark or destination.short_name:
+                        destinations[
+                            (destination.index, destination.name)
+                        ] = (
+                            f"{'無印' if destination.is_no_mark else destination.short_name}"
+                            f"＝{destination.name}"
+                        )
+
+            destination_legend.extend(destinations.values())
 
     return templates.TemplateResponse(
         request=request,
@@ -904,7 +915,8 @@ def _render_page(
             "header_display_settings": header_display_settings,
             "hour_display_settings": hour_display_settings,
             "legend_display_settings": legend_display_settings,
-            "destination_legend": destination_legend,
+            "down_destination_legend": down_destination_legend,
+            "up_destination_legend": up_destination_legend,
         },
     )
 

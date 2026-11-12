@@ -5,3 +5,4 @@ uvicorn
 python-multipart
 jinja2
 Pillow
+httpx2
