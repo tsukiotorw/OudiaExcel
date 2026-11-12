@@ -146,15 +146,6 @@
                                     列車種別の凡例を表示
                                 </label>
 
-                                <label>
-                                    <input
-                                        type="checkbox"
-                                        name="show_station_legend"
-                                        value="true"
-                                        {% if show_station_legend %}checked{% endif %}
-                                    >
-                                    駅略称・無印の凡例を表示
-                                </label>
                             </div>
                         </details>
 
@@ -211,6 +202,14 @@
                                     min="6"
                                     max="72"
                                     value="{{ legend_display_settings.font_size }}"
+                                >
+
+                                <label for="font_color">凡例項目の文字色</label>
+                                <input
+                                    type="color"
+                                    id="font_color"
+                                    name="font_color"
+                                    value="#{{ legend_display_settings.font_color }}"
                                 >
 
                                 <label for="fill">凡例項目の背景色</label>
@@ -737,7 +736,26 @@
                                     value="{{ train_display_settings.minute_font_size }}"
                                 >
 
-                                <label for="train_font_color">分の文字色</label>
+                                <label for="minute_color_mode">分の文字色</label>
+                                <select
+                                    id="minute_color_mode"
+                                    name="minute_color_mode"
+                                >
+                                    <option
+                                        value="legend"
+                                        {% if train_display_settings.minute_color_mode == "legend" %}selected{% endif %}
+                                    >
+                                        凡例と同じ色
+                                    </option>
+                                    <option
+                                        value="custom"
+                                        {% if train_display_settings.minute_color_mode == "custom" %}selected{% endif %}
+                                    >
+                                        個別に指定
+                                    </option>
+                                </select>
+
+                                <label for="train_font_color">分の個別文字色</label>
                                 <input
                                     type="color"
                                     id="train_font_color"
@@ -972,7 +990,7 @@
                                                 style="
                                                     font-family: '{{ train_display_settings.minute_font_name }}', sans-serif;
                                                     font-size: {{ train_display_settings.minute_font_size }}px;
-                                                    color: #{{ train_display_settings.train_font_color }};
+                                                    color: #{{ train_display_settings.minute_font_color }};
                                                 "
                                             >
                                                 {{ "%02d"|format(entry.minute) }}
@@ -985,7 +1003,7 @@
                                                 style="
                                                     font-family: '{{ train_display_settings.minute_font_name }}', sans-serif;
                                                     font-size: {{ train_display_settings.minute_font_size }}px;
-                                                    color: #{{ train_display_settings.train_font_color }};
+                                                    color: #{{ train_display_settings.minute_font_color }};
                                                 "
                                             ></td>
                                             {% endfor %}
@@ -1044,39 +1062,41 @@
                                 {% endfor %}
                             </div>
 
+                            {% if down_destination_legend %}
                             <div
-                                id="station-legend"
-                                class="{% if not show_station_legend %}is-hidden{% endif %}"
-                                style="background-color: #{{ legend_display_settings.fill }};"
+                                id="down-destination-legend"
+                                class="destination-legend {% if not legend_display_settings.show_destination_legend %}is-hidden{% endif %}"
+                                style="
+                                    background-color: #{{ legend_display_settings.fill }};
+                                    color: #{{ legend_display_settings.font_color }};
+                                    border: 1px solid #999;
+                                    padding: 4px;
+                                "
                             >
-                                {% for item in station_legend %}
+                                <strong>下り：</strong>
+                                {% for item in down_destination_legend %}
                                 <span>{{ item }}</span>
                                 {% endfor %}
                             </div>
+                            {% endif %}
+
+                            {% if up_destination_legend %}
                             <div
-                                id="destination-legend"
-                                class="{% if not legend_display_settings.show_destination_legend %}is-hidden{% endif %}"
-                                style="background-color: #{{ legend_display_settings.fill }};"
+                                id="up-destination-legend"
+                                class="destination-legend {% if not legend_display_settings.show_destination_legend %}is-hidden{% endif %}"
+                                style="
+                                    background-color: #{{ legend_display_settings.fill }};
+                                    color: #{{ legend_display_settings.font_color }};
+                                    border: 1px solid #999;
+                                    padding: 4px;
+                                "
                             >
-                                {% if down_destination_legend %}
-                                <div style="display: block;">
-                                    <strong>下り：</strong>
-                                    {% for item in down_destination_legend %}
-                                    <span>{{ item }}</span>
-                                    {% endfor %}
-                                </div>
-                                {% endif %}
-
-                                {% if up_destination_legend %}
-                                <div style="display: block;">
-                                    <strong>上り：</strong>
-                                    {% for item in up_destination_legend %}
-                                    <span>{{ item }}</span>
-                                    {% endfor %}
-                                </div>
-                                {% endif %}
+                                <strong>上り：</strong>
+                                {% for item in up_destination_legend %}
+                                <span>{{ item }}</span>
+                                {% endfor %}
                             </div>
-
+                            {% endif %}
                         </div>
                     </div>
                 </section>
@@ -1167,6 +1187,8 @@
         const minuteFontName = document.getElementById("minute_font_name");
         const minuteFontSize = document.getElementById("minute_font_size");
         const trainFontColor = document.getElementById("train_font_color");
+        const minuteColorMode = document.getElementById("minute_color_mode");
+        const legendFontColor = document.getElementById("font_color");
         const trainFill = document.getElementById("train_fill");
         const useTrainTypeShortName = document.getElementById(
             "use_train_type_short_name"
@@ -1214,9 +1236,13 @@
                     }
                 }
 
-                if (trainFontColor) {
-                    cell.style.color = trainFontColor.value;
-                }
+                const minuteColor =
+                    minuteColorMode && minuteColorMode.value === "legend"
+                        ? (legendFontColor ? legendFontColor.value : "#000000")
+                        : (trainFontColor ? trainFontColor.value : "#000000");
+
+                cell.style.color = minuteColor;
+
             });
 
             // 行先の表示・非表示
@@ -1279,6 +1305,8 @@
             minuteFontName,
             minuteFontSize,
             trainFontColor,
+            minuteColorMode,
+            legendFontColor,
             trainFill,
             useTrainTypeShortName,
             showDestination,
@@ -1705,9 +1733,6 @@
         const showTrainTypeLegend = document.querySelector(
             'input[name="show_train_type_legend"]'
         );
-        const showStationLegend = document.querySelector(
-            'input[name="show_station_legend"]'
-        );
         const showDestinationLegend = document.querySelector(
             'input[name="show_destination_legend"]'
         );
@@ -1717,8 +1742,12 @@
 
         const legend = document.getElementById("timetable-legend");
         const trainTypeLegend = document.getElementById("train-type-legend");
-        const stationLegend = document.getElementById("station-legend");
-        const destinationLegend = document.getElementById("destination-legend");
+        const downDestinationLegend = document.getElementById(
+            "down-destination-legend"
+        );
+        const upDestinationLegend = document.getElementById(
+            "up-destination-legend"
+        );
         const legendBorders = {};
         ["top", "bottom", "left", "right"].forEach((side) => {
             legendBorders[side] = {
@@ -1777,10 +1806,8 @@
         if (
             showLegend &&
             showTrainTypeLegend &&
-            showStationLegend &&
             legend &&
-            trainTypeLegend &&
-            stationLegend
+            trainTypeLegend
         ) {
             function updateLegendVisibility() {
                 legend.classList.toggle(
@@ -1793,18 +1820,22 @@
                     !showTrainTypeLegend.checked
                 );
 
-                stationLegend.classList.toggle(
-                    "is-hidden",
-                    !showStationLegend.checked
+                const showDestination =
+                    showDestinationLegend && showDestinationLegend.checked;
+
+                [downDestinationLegend, upDestinationLegend].forEach(
+                    (destinationLegend) => {
+                        if (destinationLegend) {
+                            destinationLegend.classList.toggle(
+                                "is-hidden",
+                                !showDestination
+                            );
+                        }
+                    }
                 );
-                if (destinationLegend && showDestinationLegend) {
-                    destinationLegend.classList.toggle(
-                        "is-hidden",
-                        !showDestinationLegend.checked
-                    );
-                }
 
                 const visibility = new Map();
+
                 trainTypeLegendVisibilityControls.forEach((control) => {
                     const index = control.name.replace(
                         "train_type_legend_visible_",
@@ -1812,6 +1843,7 @@
                     );
                     visibility.set(index, control.checked);
                 });
+
                 trainTypeLegend.querySelectorAll("span").forEach((item) => {
                     const visible = visibility.get(
                         item.dataset.trainTypeIndex
@@ -1825,16 +1857,14 @@
                 "change",
                 updateLegendVisibility
             );
-            showStationLegend.addEventListener(
-                "change",
-                updateLegendVisibility
-            );
+
             if (showDestinationLegend) {
                 showDestinationLegend.addEventListener(
                     "change",
                     updateLegendVisibility
                 );
             }
+
             trainTypeLegendVisibilityControls.forEach((control) => {
                 control.addEventListener("change", updateLegendVisibility);
             });
@@ -1859,6 +1889,11 @@
                 legend.style.backgroundColor = legendFill.value;
                 legend.querySelectorAll(".legend-items > div").forEach((row) => {
                     row.style.backgroundColor = legendFill.value;
+                });
+            }
+            if (legendFontColor) {
+                legend.querySelectorAll(".destination-legend").forEach((row) => {
+                    row.style.color = legendFontColor.value;
                 });
             }
             if (legendFontName) {
@@ -1909,6 +1944,7 @@
             legendLabelFill,
             legendFontName,
             legendFontSize,
+            legendFontColor,
             legendFill,
             legendRowHeight,
         ].forEach((element) => {

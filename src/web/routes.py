@@ -340,6 +340,7 @@ def _display_config_from_settings(settings: dict) -> TimetableDisplayConfig:
         "font_name": "源ノ角ゴシック JP",
         "font_size": 8,
         "fill": "FAFAFA",
+        "font_color": "000000",
         "row_height": 24.2,
         "show_destination_legend": True,
     }
@@ -370,6 +371,22 @@ def _display_config_from_settings(settings: dict) -> TimetableDisplayConfig:
         legend.get("fill"),
         legend_defaults["fill"],
     )
+    config.legend_font_color = _validated_color(
+        legend.get("font_color"),
+        legend_defaults["font_color"],
+    )
+
+    minute_color_mode = train_settings.get("minute_color_mode", "legend")
+
+    if minute_color_mode not in ("legend", "custom"):
+        minute_color_mode = "legend"
+
+    config.minute_font_color = (
+        config.legend_font_color
+        if minute_color_mode == "legend"
+        else config.train_font_color
+    )
+
     try:
         row_height = float(legend["row_height"])
     except (TypeError, ValueError):
@@ -484,6 +501,7 @@ def _render_page(
         "font_name": "源ノ角ゴシック JP",
         "font_size": 8,
         "fill": "FAFAFA",
+        "font_color": "000000",
         "row_height": 24.2,
         "show_destination_legend": True,
     }
@@ -503,6 +521,7 @@ def _render_page(
     for key, default in (
         ("label_font_color", "FFFFFF"),
         ("label_fill", "000000"),
+        ("font_color", "000000"),
         ("fill", "FAFAFA"),
     ):
         legend_display_settings[key] = _validated_color(
@@ -534,6 +553,7 @@ def _render_page(
         "minute_font_size": 9,
         "train_font_color": "000000",
         "train_fill": "FAFAFA",
+        "minute_color_mode": "legend",
         "use_train_type_short_name": False,
         "show_destination": True,
     }
@@ -560,6 +580,13 @@ def _render_page(
         train_display_settings[key] = size
 
     # 色を検証
+    minute_color_mode = train_display_settings.get("minute_color_mode")
+
+    if minute_color_mode not in ("legend", "custom"):
+        minute_color_mode = "legend"
+
+    train_display_settings["minute_color_mode"] = minute_color_mode
+
     for key in ("train_font_color", "train_fill"):
         color = str(train_display_settings.get(key, ""))
 
@@ -567,6 +594,13 @@ def _render_page(
             train_display_settings[key] = train_display_defaults[key]
         else:
             train_display_settings[key] = color.upper()
+
+    # 分の文字色を決定
+    train_display_settings["minute_font_color"] = (
+        legend_display_settings["font_color"]
+        if minute_color_mode == "legend"
+        else train_display_settings["train_font_color"]
+    )
 
     # 真偽値を検証
     for key in ("use_train_type_short_name", "show_destination"):
@@ -1080,16 +1114,33 @@ async def save_settings(
 
     train_display_settings = {}
 
+    minute_color_mode = str(
+        form_data.get("minute_color_mode", "legend")
+    )
+
+    if minute_color_mode not in ("legend", "custom"):
+        minute_color_mode = saved_train_display.get(
+            "minute_color_mode",
+            "legend",
+        )
+
+    if minute_color_mode not in ("legend", "custom"):
+        minute_color_mode = "legend"
+
+    train_display_settings["minute_color_mode"] = minute_color_mode
+
     for key, default in (
-        ("metadata_font_name", "源ノ角ゴシック JP"),
-        ("minute_font_name", "源ノ角ゴシック JP"),
+        ("train_font_color", "000000"),
+        ("train_fill", "FAFAFA"),
     ):
         submitted = str(form_data.get(key, "")).strip()
-        train_display_settings[key] = (
-            submitted[:100]
-            if submitted
-            else saved_train_display.get(key, default)
-        )
+
+        if re.fullmatch(r"#[0-9A-Fa-f]{6}", submitted):
+            train_display_settings[key] = submitted[1:].upper()
+        else:
+            train_display_settings[key] = saved_train_display.get(
+                key, default
+            )
 
     for key, default in (
         ("metadata_font_size", 9),
@@ -1109,6 +1160,18 @@ async def save_settings(
         ("train_font_color", "000000"),
         ("train_fill", "FAFAFA"),
     ):
+        minute_color_mode = str(
+            form_data.get("minute_color_mode", "legend")
+        )
+
+        if minute_color_mode not in ("legend", "custom"):
+            minute_color_mode = saved_train_display.get(
+                "minute_color_mode",
+                "legend",
+            )
+
+        train_display_settings["minute_color_mode"] = minute_color_mode
+
         submitted = str(form_data.get(key, "")).strip()
 
         if re.fullmatch(r"#[0-9A-Fa-f]{6}", submitted):
@@ -1182,6 +1245,7 @@ async def save_settings(
         "font_name": "源ノ角ゴシック JP",
         "font_size": 8,
         "fill": "FAFAFA",
+        "font_color": "000000",
         "row_height": 24.2,
         "show_destination_legend": True,
     }
@@ -1243,6 +1307,7 @@ async def save_settings(
         "font_name": read_legend_font_name("font_name"),
         "font_size": read_legend_font_size("font_size"),
         "fill": read_legend_color("fill"),
+        "font_color": read_legend_color("font_color"),
         "row_height": legend_row_height,
         "show_destination_legend": (
             form_data.get("show_destination_legend") == "true"
