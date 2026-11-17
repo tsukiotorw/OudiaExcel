@@ -8,9 +8,11 @@ import pytest
 
 from src.application.preset_settings import (
     Preset,
+    load_official_presets,
     load_presets,
     save_presets,
 )
+from src.application import preset_settings
 from src.timetable.display_config import (
     BorderConfig,
     BorderSideConfig,
@@ -47,6 +49,29 @@ def _write_single_preset(oud2_path: Path, config: dict) -> Path:
     return path
 
 
+def _official_preset(preset_id: str, name: str) -> dict:
+    return {
+        "id": preset_id,
+        "name": name,
+        "base_preset_id": None,
+        "config": {},
+    }
+
+
+def _write_official_file(
+    directory: Path,
+    filename: str,
+    document: dict,
+) -> Path:
+    path = directory / filename
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(document, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    return path
+
+
 def test_save_and_load_preset(oud2_path: Path) -> None:
     config = TimetableDisplayConfig(
         show_destination=False,
@@ -77,6 +102,172 @@ def test_save_and_load_preset(oud2_path: Path) -> None:
     assert loaded[0].config.train_separator == config.train_separator
     assert loaded[0].config.train_type_colors == {0: "008000", 2: "0000FF"}
     assert loaded[0].config.train_type_column_visible == {2: True}
+
+
+def test_load_official_presets_from_one_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(preset_settings, "_OFFICIAL_PRESETS_DIR", tmp_path)
+    _write_official_file(
+        tmp_path,
+        "keio.json",
+        {
+            "version": 1,
+            "presets": [_official_preset("keio-standard", "京王標準")],
+        },
+    )
+
+    loaded = load_official_presets()
+
+    assert isinstance(loaded, list)
+    assert loaded == [
+        Preset("keio-standard", "京王標準", None, TimetableDisplayConfig())
+    ]
+    assert all(isinstance(preset, Preset) for preset in loaded)
+
+
+def test_load_official_presets_from_multiple_files(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(preset_settings, "_OFFICIAL_PRESETS_DIR", tmp_path)
+    _write_official_file(
+        tmp_path,
+        "keio.json",
+        {
+            "version": 1,
+            "presets": [_official_preset("keio-standard", "京王標準")],
+        },
+    )
+    _write_official_file(
+        tmp_path,
+        "jr_east.json",
+        {
+            "version": 1,
+            "presets": [_official_preset("jr-east-standard", "JR東日本標準")],
+        },
+    )
+
+    loaded = load_official_presets()
+
+    assert [preset.id for preset in loaded] == [
+        "jr-east-standard",
+        "keio-standard",
+    ]
+
+
+def test_load_official_presets_uses_filename_order(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(preset_settings, "_OFFICIAL_PRESETS_DIR", tmp_path)
+    _write_official_file(
+        tmp_path,
+        "z-last.json",
+        {
+            "version": 1,
+            "presets": [_official_preset("last", "最後")],
+        },
+    )
+    _write_official_file(
+        tmp_path,
+        "a-first.json",
+        {
+            "version": 1,
+            "presets": [_official_preset("first", "最初")],
+        },
+    )
+
+    assert [preset.id for preset in load_official_presets()] == [
+        "first",
+        "last",
+    ]
+
+
+def test_load_official_presets_rejects_invalid_json_format(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(preset_settings, "_OFFICIAL_PRESETS_DIR", tmp_path)
+    _write_official_file(
+        tmp_path,
+        "invalid.json",
+        {"version": 1, "presets": "invalid"},
+    )
+
+    with pytest.raises(ValueError):
+        load_official_presets()
+
+
+def test_load_official_presets_rejects_unsupported_version(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(preset_settings, "_OFFICIAL_PRESETS_DIR", tmp_path)
+    _write_official_file(
+        tmp_path,
+        "future.json",
+        {"version": 999, "presets": []},
+    )
+
+    with pytest.raises(ValueError, match="未対応"):
+        load_official_presets()
+
+
+def test_load_official_presets_rejects_duplicate_ids_across_files(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(preset_settings, "_OFFICIAL_PRESETS_DIR", tmp_path)
+    for filename, name in (("a.json", "一つ目"), ("b.json", "二つ目")):
+        _write_official_file(
+            tmp_path,
+            filename,
+            {
+                "version": 1,
+                "presets": [_official_preset("duplicate", name)],
+            },
+        )
+
+    with pytest.raises(ValueError, match="IDが重複"):
+        load_official_presets()
+
+
+def test_load_official_presets_rejects_duplicate_names_across_files(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(preset_settings, "_OFFICIAL_PRESETS_DIR", tmp_path)
+    for filename, preset_id in (("a.json", "first"), ("b.json", "second")):
+        _write_official_file(
+            tmp_path,
+            filename,
+            {
+                "version": 1,
+                "presets": [_official_preset(preset_id, "同じ名前")],
+            },
+        )
+
+    with pytest.raises(ValueError, match="名が重複"):
+        load_official_presets()
+
+
+def test_load_official_presets_error_includes_invalid_file_path(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(preset_settings, "_OFFICIAL_PRESETS_DIR", tmp_path)
+    invalid_path = _write_official_file(
+        tmp_path,
+        "invalid.json",
+        {"version": 1, "presets": "invalid"},
+    )
+
+    with pytest.raises(ValueError) as exc_info:
+        load_official_presets()
+
+    assert str(invalid_path) in str(exc_info.value)
 
 
 def test_save_and_load_multiple_presets(oud2_path: Path) -> None:

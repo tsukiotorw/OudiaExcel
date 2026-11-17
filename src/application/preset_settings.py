@@ -19,6 +19,12 @@ from src.timetable.display_config import TimetableDisplayConfig
 
 
 _FILE_VERSION = 1
+_OFFICIAL_PRESETS_DIR = (
+    Path(__file__).resolve().parents[1]
+    / "timetable"
+    / "presets"
+    / "official"
+)
 _TRAIN_TYPE_CONFIG_FIELDS = {
     "train_type_colors",
     "train_type_fills",
@@ -262,6 +268,46 @@ def load_presets(oud2_path: Path) -> list[Preset]:
         raise ValueError(
             f"{exc} (ファイル: {path})"
         ) from exc
+
+
+def load_official_presets() -> list[Preset]:
+    """アプリに同梱された公式プリセットを読み込む。"""
+    presets: list[Preset] = []
+    seen_ids: set[str] = set()
+    seen_names: set[str] = set()
+
+    for path in sorted(
+        _OFFICIAL_PRESETS_DIR.glob("*.json"),
+        key=lambda item: item.name,
+    ):
+        try:
+            file_presets = _load_presets_file(path)
+        except ValueError as exc:
+            if str(path) in str(exc):
+                raise
+            raise ValueError(
+                f"{exc} (ファイル: {path})"
+            ) from exc
+
+        for preset in file_presets:
+            if preset.id in seen_ids:
+                raise ValueError(
+                    f"プリセットIDが重複しています: "
+                    f"{preset.id} (ファイル: {path})"
+                )
+
+            normalized_name = preset.name.strip()
+            if normalized_name in seen_names:
+                raise ValueError(
+                    f"プリセット名が重複しています: "
+                    f"{preset.name} (ファイル: {path})"
+                )
+
+            seen_ids.add(preset.id)
+            seen_names.add(normalized_name)
+            presets.append(preset)
+
+    return presets
 
 
 def _serialize_presets(presets: list[Preset]) -> list[dict[str, Any]]:
