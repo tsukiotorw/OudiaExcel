@@ -71,7 +71,22 @@ def test_save_and_load_display_config(
 ) -> None:
     config = TimetableDisplayConfig(
         train_type_colors={0: "008000", 1: "0000FF"},
+        train_type_fills={0: "FFFF00", 1: "00FFFF"},
         train_type_visible={0: True, 1: False},
+        destination_position="bottom",
+        train_type_position="top",
+        metadata_order="train_type_first",
+        hour_column_mode="center",
+        striped_train_fill=False,
+        destination_font_name="ＭＳ ゴシック",
+        destination_font_size=9,
+        destination_font_color="112233",
+        destination_font_mode="train_type",
+        train_type_font_name="Arial",
+        train_type_font_size=11,
+        train_type_font_color="445566",
+        train_type_font_mode="destination",
+        minute_font_mode="train_type",
         show_destination=False,
         show_destination_legend=False,
         use_train_type_short_name=True,
@@ -95,7 +110,22 @@ def test_save_and_load_display_config(
     assert loaded.show_destination_legend is False
     assert loaded.use_train_type_short_name is True
     assert loaded.train_type_colors == {0: "008000", 1: "0000FF"}
+    assert loaded.train_type_fills == {0: "FFFF00", 1: "00FFFF"}
     assert loaded.train_type_visible == {0: True, 1: False}
+    assert loaded.destination_position == "bottom"
+    assert loaded.train_type_position == "top"
+    assert loaded.metadata_order == "train_type_first"
+    assert loaded.hour_column_mode == "center"
+    assert loaded.striped_train_fill is False
+    assert loaded.destination_font_name == "ＭＳ ゴシック"
+    assert loaded.destination_font_size == 9
+    assert loaded.destination_font_color == "112233"
+    assert loaded.destination_font_mode == "train_type"
+    assert loaded.train_type_font_name == "Arial"
+    assert loaded.train_type_font_size == 11
+    assert loaded.train_type_font_color == "445566"
+    assert loaded.train_type_font_mode == "destination"
+    assert loaded.minute_font_mode == "train_type"
 
     assert isinstance(loaded.title_border, BorderConfig)
     assert isinstance(loaded.title_border.top, BorderSideConfig)

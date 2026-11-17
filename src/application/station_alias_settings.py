@@ -226,6 +226,7 @@ def _display_config_from_dict(
             )
         elif name in {
             "train_type_colors",
+            "train_type_fills",
             "train_type_visible",
             "train_type_column_visible",
         }:

@@ -3,15 +3,23 @@ from __future__ import annotations
 from pathlib import Path
 
 from openpyxl import Workbook
+from openpyxl.cell.rich_text import CellRichText, InlineFont, TextBlock
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 from src.models.timetable import (
+    TimetableEntry,
     StationTimetable,
     TimetableHour,
 )
+from src.models.train_type import TrainType
 
 from src.timetable.display_config import TimetableDisplayConfig
+from src.timetable.display_layout import (
+    HourSlot,
+    get_entry_layout,
+    merge_timetable_hours,
+)
 
 class ExcelWriter:
     """StationTimetableをExcelファイルへ出力する。"""
@@ -44,55 +52,161 @@ class ExcelWriter:
         worksheet.title = timetable.station_name
 
 
-        down_width = self._max_entry_count(timetable.down) + 1
-        up_width = self._max_entry_count(timetable.up) + 1
+        start_row = 3
+        slots = merge_timetable_hours(timetable.down, timetable.up)
+        down_train_width = max(
+            max((len(slot.down_entries) for slot in slots), default=0),
+            1,
+        )
+        up_train_width = max(
+            max((len(slot.up_entries) for slot in slots), default=0),
+            1,
+        )
+        central_hour_column = self.display_config.hour_column_mode == "center"
 
         down_start_column = 1
-
-        up_start_column = (
-            down_start_column
-            + down_width
-            + self._DIRECTION_GAP
-        )
-
-        start_row = 3
+        if central_hour_column:
+            down_width = down_train_width
+            central_column = down_start_column + down_width
+            up_start_column = central_column + 1
+            up_width = up_train_width
+            title_column = central_column + 1
+            column_groups = (
+                (down_start_column, down_width),
+                (central_column, 1),
+                (up_start_column, up_width),
+            )
+            column_widths = {
+                **{
+                    column: 7
+                    for column in range(
+                        down_start_column,
+                        down_start_column + down_width,
+                    )
+                },
+                central_column: 4,
+                **{
+                    column: 7
+                    for column in range(
+                        up_start_column,
+                        up_start_column + up_width,
+                    )
+                },
+            }
+            train_starts = (down_start_column, up_start_column)
+            hour_columns = (central_column, central_column)
+        else:
+            down_width = down_train_width + 1
+            up_width = up_train_width + 1
+            up_start_column = (
+                down_start_column
+                + down_width
+                + self._DIRECTION_GAP
+            )
+            title_column = up_start_column
+            column_groups = (
+                (down_start_column, down_width),
+                (up_start_column, up_width),
+            )
+            column_widths = {
+                down_start_column: 4,
+                up_start_column: 4,
+                **{
+                    column: 7
+                    for column in range(
+                        down_start_column + 1,
+                        down_start_column + down_width,
+                    )
+                },
+                **{
+                    column: 7
+                    for column in range(
+                        up_start_column + 1,
+                        up_start_column + up_width,
+                    )
+                },
+            }
+            train_starts = (
+                down_start_column + 1,
+                up_start_column + 1,
+            )
+            hour_columns = (down_start_column, up_start_column)
 
         self._write_title(
             worksheet=worksheet,
             station_name=timetable.station_name,
-            title_column=up_start_column,
+            title_column=title_column,
         )
-
-
-        down_end_row = self._write_direction(
-            worksheet=worksheet,
-            row=start_row,
-            start_column=down_start_column,
-            title="下り",
-            hours=timetable.down,
-            width=down_width,
+        self._write_direction_header(
+            worksheet,
+            start_row,
+            down_start_column,
+            "下り",
+            down_width,
         )
-
-        up_end_row = self._write_direction(
-            worksheet=worksheet,
-            row=start_row,
-            start_column=up_start_column,
-            title="上り",
-            hours=timetable.up,
-            width=up_width,
+        self._write_direction_header(
+            worksheet,
+            start_row,
+            up_start_column,
+            "上り",
+            up_width,
         )
+        if central_hour_column:
+            header_cell = worksheet.cell(
+                row=start_row,
+                column=hour_columns[0],
+            )
+            header_cell.fill = self._create_fill(
+                self.display_config.header_fill
+            ) or PatternFill()
+            header_cell.border = self._create_border(
+                self.display_config.header_border
+            )
 
-        table_end_row = max(
-            down_end_row,
-            up_end_row,
-        )
+        row = start_row + 1
+        for slot in slots:
+            row_count = self._hour_row_count(slot)
+            self._write_hour_column(
+                worksheet,
+                row,
+                hour_columns[0],
+                slot.hour if central_hour_column or slot.down_present else None,
+                slot.hour,
+                row_count,
+            )
+            if not central_hour_column:
+                self._write_hour_column(
+                    worksheet,
+                    row,
+                    hour_columns[1],
+                    slot.hour if slot.up_present else None,
+                    slot.hour,
+                    row_count,
+                )
+            self._write_hour_entries(
+                worksheet,
+                row,
+                train_starts[0],
+                slot.down_entries,
+                slot.hour,
+                row_count,
+            )
+            self._write_hour_entries(
+                worksheet,
+                row,
+                train_starts[1],
+                slot.up_entries,
+                slot.hour,
+                row_count,
+            )
+            self._set_hour_row_heights(worksheet, row, row_count)
+            row += row_count
 
+        table_end_row = row
         self._apply_layout(
             worksheet=worksheet,
-            down_start_column=down_start_column,
-            down_width=down_width,
-            up_start_column=up_start_column,
-            up_width=up_width,
+            column_groups=column_groups,
+            column_widths=column_widths,
             table_end_row=table_end_row,
         )
 
@@ -100,7 +214,6 @@ class ExcelWriter:
             worksheet=worksheet,
             row=table_end_row + 1,
             start_column=down_start_column,
-            end_column=up_start_column + up_width - 1,
             up_start_column=up_start_column,
             timetable=timetable,
         )
@@ -160,18 +273,15 @@ class ExcelWriter:
         )
 
 
-    def _write_direction(
+    def _write_direction_header(
         self,
         worksheet,
         row: int,
         start_column: int,
         title: str,
-        hours: list[TimetableHour],
         width: int,
-    ) -> int:
+    ) -> None:
         end_column = start_column + width - 1
-
-        # ヘッダ
         header_fill = self._create_fill(
             self.display_config.header_fill
         )
@@ -210,149 +320,207 @@ class ExcelWriter:
             end_column=end_column,
         )
 
-        row += 1
+    def _hour_row_count(self, slot: HourSlot) -> int:
+        counts = [
+            len(get_entry_layout(entry, self.display_config))
+            for entry in (*slot.down_entries, *slot.up_entries)
+        ]
+        if counts:
+            return max(counts)
+        if (
+            self.display_config.destination_position == "bottom"
+            or self.display_config.train_type_position == "bottom"
+        ):
+            return 3
+        return self._HOUR_ROWS
 
-        # 時刻表
-        for hour_index, hour in enumerate(hours):
-            metadata_row = row
-            minute_row = row + 1
+    def _write_hour_column(
+        self,
+        worksheet,
+        row: int,
+        column: int,
+        hour: int | None,
+        stripe_hour: int,
+        row_count: int,
+    ) -> None:
+        config = self.display_config
+        hour_fill = self._create_fill(config.hour_fill)
+        hour_order = (
+            (stripe_hour - 4) % 24
+            if 0 <= stripe_hour < 24
+            else stripe_hour
+        )
+        body_fill = self._create_fill(
+            config.timetable_alt_fill
+            if config.striped_train_fill and hour_order % 2 == 0
+            else config.timetable_fill
+        )
+        fill = hour_fill or body_fill or PatternFill()
 
-            timetable_fill = self._create_fill(
-                self.display_config.timetable_alt_fill
-                if hour_index % 2 == 0
-                else self.display_config.timetable_fill
-            )
+        for row_offset in range(row_count):
+            worksheet.cell(
+                row=row + row_offset,
+                column=column,
+            ).fill = fill
 
-            hour_fill = self._create_fill(
-                self.display_config.hour_fill
-            )
+        cell = worksheet.cell(row=row, column=column, value=hour)
+        cell.font = Font(
+            name=config.hour_font_name,
+            size=config.hour_font_size,
+            bold=True,
+            color=self._to_excel_color(config.hour_font_color),
+        )
+        cell.alignment = Alignment(
+            horizontal="center",
+            vertical="center",
+        )
+        cell.border = self._create_border(config.hour_border)
+        worksheet.merge_cells(
+            start_row=row,
+            start_column=column,
+            end_row=row + row_count - 1,
+            end_column=column,
+        )
 
-            train_fill = self._create_fill(
-                self.display_config.train_fill
-            )
-
-            hour_cell_fill = hour_fill or timetable_fill
-            train_cell_fill = train_fill or timetable_fill
-
-            # 時刻欄
-            hour_cell = worksheet.cell(
-                row=metadata_row,
-                column=start_column,
-                value=hour.hour,
-            )
-            hour_cell.font = Font(
-                name=self.display_config.hour_font_name,
-                size=self.display_config.hour_font_size,
-                bold=True,
-                color=self._to_excel_color(
-                    self.display_config.hour_font_color
-                ),
-            )
-            hour_cell.alignment = Alignment(
-                horizontal="center",
-                vertical="center",
-            )
-            hour_cell.fill = hour_cell_fill or PatternFill()
-
-            hour_cell.border = self._create_border(
-                self.display_config.hour_border
-            )
-
-            minute_hour_cell = worksheet.cell(
-                row=minute_row,
-                column=start_column,
-            )
-            minute_hour_cell.fill = hour_cell_fill or PatternFill()
-
-            worksheet.merge_cells(
-                start_row=metadata_row,
-                start_column=start_column,
-                end_row=minute_row,
-                end_column=start_column,
-            )
-
-            # 列車
-            for column, entry in enumerate(
-                hour.entries,
-                start=start_column + 1,
-            ):
-                metadata = self._format_entry_metadata(entry)
-
-                train_type_color = self.display_config.get_train_type_color(
-                    entry.train_type.index
+    def _write_hour_entries(
+        self,
+        worksheet,
+        row: int,
+        start_column: int,
+        entries: list[TimetableEntry],
+        hour: int,
+        row_count: int,
+    ) -> None:
+        for column, entry in enumerate(entries, start=start_column):
+            entry_rows = get_entry_layout(entry, self.display_config)
+            for row_offset in range(row_count):
+                kinds = (
+                    entry_rows[row_offset]
+                    if row_offset < len(entry_rows)
+                    else []
                 )
-
-                metadata_font_color = (
-                    train_type_color
-                    if train_type_color is not None
-                    else self.display_config.train_font_color
-                )
-
-                metadata_cell = worksheet.cell(
-                    row=metadata_row,
+                cell = worksheet.cell(
+                    row=row + row_offset,
                     column=column,
-                    value=metadata,
                 )
-
-                metadata_cell.font = Font(
-                    name=self.display_config.metadata_font_name,
-                    size=self.display_config.metadata_font_size,
-                    color=self._to_excel_color(metadata_font_color),
+                fill_color = (
+                    self.display_config.train_type_fills.get(
+                        entry.train_type.index
+                    )
+                    if kinds
+                    else None
                 )
-
-                metadata_cell.alignment = Alignment(
+                cell.fill = self._create_fill(
+                    fill_color
+                    or self.display_config.get_entry_fill(
+                        hour,
+                    )
+                ) or PatternFill()
+                cell.alignment = Alignment(
                     horizontal="center",
                     vertical="center",
                     wrap_text=True,
                 )
-
-                metadata_cell.fill = train_cell_fill or PatternFill()
-
-                metadata_cell.border = self._create_border(
+                cell.border = self._create_border(
                     self.display_config.train_border
                 )
 
-                minute_cell = worksheet.cell(
-                    row=minute_row,
-                    column=column,
-                    value=entry.minute,
-                )
+                if not kinds:
+                    continue
 
-                minute_cell.font = Font(
-                    name=self.display_config.minute_font_name,
-                    size=self.display_config.minute_font_size,
-                    bold=True,
-                    color=self._to_excel_color(
-                        self.display_config.minute_font_color
-                        or self.display_config.train_font_color
-                    ),
-                )
-
-                minute_cell.alignment = Alignment(
-                    horizontal="center",
-                    vertical="center",
-                )
-                
-                minute_cell.fill = train_cell_fill or PatternFill()
-
-                separator = self.display_config.train_separator
-
-                if separator.enabled:
-                    minute_cell.border = Border(
-                        top=self._create_border_side(separator),
+                rendered = [
+                    (
+                        kind,
+                        self._entry_item_value(entry, kind),
+                        self.display_config.get_entry_font_settings(
+                            kind,
+                            entry.train_type.index,
+                        ),
                     )
+                    for kind in kinds
+                ]
+                cell_color = rendered[0][2][2]
+                if len(rendered) > 1:
+                    cell_color = (
+                        self.display_config.get_train_type_color(
+                            entry.train_type.index
+                        )
+                        or cell_color
+                    )
+                cell.font = Font(
+                    name=rendered[0][2][0],
+                    size=rendered[0][2][1],
+                    color=self._to_excel_color(cell_color),
+                    bold=rendered[0][0] == "minute",
+                )
+                if len(rendered) == 1:
+                    cell.value = rendered[0][1]
+                else:
+                    rich_text = CellRichText()
+                    for index, (_, text, style) in enumerate(rendered):
+                        if index:
+                            rich_text.append(
+                                TextBlock(
+                                    InlineFont(
+                                        rFont=style[0],
+                                        sz=style[1],
+                                        color=self._to_excel_color(style[2]),
+                                    ),
+                                    " ",
+                                )
+                            )
+                        rich_text.append(
+                            TextBlock(
+                                InlineFont(
+                                    rFont=style[0],
+                                    sz=style[1],
+                                    color=self._to_excel_color(style[2]),
+                                ),
+                                str(text),
+                            )
+                        )
+                    cell.value = rich_text
 
-            row += self._HOUR_ROWS
+                if "minute" in kinds:
+                    separator = self.display_config.train_separator
+                    if separator.enabled:
+                        cell.border = Border(
+                            top=self._create_border_side(separator),
+                        )
 
-        return row
+    def _entry_item_value(self, entry, kind: str):
+        if kind == "destination":
+            return entry.destination.display_name
+        if kind == "train_type":
+            return (
+                entry.train_type.short_name
+                if (
+                    self.display_config.use_train_type_short_name
+                    and entry.train_type.short_name
+                )
+                else entry.train_type.name
+            )
+        if kind == "minute":
+            return entry.minute
+        raise ValueError(f"不明な列車欄項目です: {kind}")
+
+    def _set_hour_row_heights(
+        self,
+        worksheet,
+        row: int,
+        row_count: int,
+    ) -> None:
+        heights = (18, 20) if row_count == 2 else (14, 18, 14)
+        for offset in range(row_count):
+            worksheet.row_dimensions[row + offset].height = heights[
+                min(offset, len(heights) - 1)
+            ]
 
     @staticmethod
     def _apply_layout(
         worksheet,
-        down_start_column: int,
-        down_width: int,
-        up_start_column: int,
-        up_width: int,
+        column_groups: tuple[tuple[int, int], ...],
+        column_widths: dict[int, int],
         table_end_row: int,
     ) -> None:
         """時刻表全体のレイアウトを設定する。"""
@@ -362,30 +530,13 @@ class ExcelWriter:
             vertical="center",
         )
 
-        border_side = Side(
-            style="thin",
-            color="FFFAFAFA",
-        )
-
-        for start_column, width in (
-            (down_start_column, down_width),
-            (up_start_column, up_width),
-        ):
+        for start_column, width in column_groups:
             end_column = start_column + width - 1
 
-            # 時刻列
-            worksheet.column_dimensions[
-                get_column_letter(start_column)
-            ].width = 4
-
-            # 列車列
-            for column in range(
-                start_column + 1,
-                end_column + 1,
-            ):
+            for column in range(start_column, end_column + 1):
                 worksheet.column_dimensions[
                     get_column_letter(column)
-                ].width = 7
+                ].width = column_widths[column]
 
             # ヘッダ
             for column in range(
@@ -411,46 +562,18 @@ class ExcelWriter:
 
                     cell.alignment = alignment
 
-        # 行高
         worksheet.row_dimensions[1].height = 28
         worksheet.row_dimensions[3].height = 24
-
-        for row in range(4, table_end_row):
-            if (row - 4) % 2 == 0:
-                worksheet.row_dimensions[row].height = 18
-            else:
-                worksheet.row_dimensions[row].height = 20
 
 
     def _format_entry_metadata(self, entry) -> str:
         """列車の行先・種別を駅時刻表用の文字列に変換する。"""
-        config = self.display_config
-
-        parts = []
-
-        if (
-            config.show_destination
-            and not entry.destination.is_no_mark
-        ):
-            parts.append(entry.destination.display_name)
-
-        if config.train_type_column_visible.get(
-            entry.train_type.index,
-            True,
-        ):
-            train_type_name = (
-                entry.train_type.short_name
-                if (
-                    config.use_train_type_short_name
-                    and entry.train_type.short_name
-                )
-                else entry.train_type.name
-            )
-
-            if train_type_name:
-                parts.append(train_type_name)
-
-        return " ".join(parts)
+        return " ".join(
+            self._entry_item_value(entry, kind)
+            for row in get_entry_layout(entry, self.display_config)
+            for kind in row
+            if kind != "minute"
+        )
 
 
     @staticmethod
@@ -491,7 +614,6 @@ class ExcelWriter:
         worksheet,
         row: int,
         start_column: int,
-        end_column: int,
         up_start_column: int,
         timetable: StationTimetable,
     ) -> int:
@@ -533,21 +655,39 @@ class ExcelWriter:
         if not train_types and not down_items and not up_items:
             return row
 
-        has_station_items = bool(down_items or up_items)
-        legend_rows = int(bool(train_types)) + int(has_station_items)
-        legend_end_row = row + legend_rows - 1
-
         label_fill = self._create_fill(config.legend_label_fill)
         legend_fill = self._create_fill(config.legend_fill)
         border = self._create_border(config.legend_border)
 
-        def write_label(column: int) -> None:
-            worksheet.merge_cells(
-                start_row=row,
-                start_column=column,
-                end_row=legend_end_row,
-                end_column=column,
+        slots = merge_timetable_hours(timetable.down, timetable.up)
+
+        def available_columns(is_down: bool) -> int:
+            width = max(
+                max(
+                    (
+                        len(
+                            slot.down_entries
+                            if is_down
+                            else slot.up_entries
+                        )
+                        for slot in slots
+                    ),
+                    default=0,
+                ),
+                1,
             )
+            if config.hour_column_mode == "center":
+                width -= 1
+            return max(width, 0)
+
+        def write_label(column: int, end_row: int) -> None:
+            if end_row > row:
+                worksheet.merge_cells(
+                    start_row=row,
+                    start_column=column,
+                    end_row=end_row,
+                    end_column=column,
+                )
             cell = worksheet.cell(row=row, column=column, value="凡例")
             cell.font = Font(
                 name=config.legend_label_font_name,
@@ -561,82 +701,119 @@ class ExcelWriter:
             cell.fill = label_fill or PatternFill()
             cell.border = border
 
-        def write_train_types(column: int) -> None:
-            for index, train_type in enumerate(train_types):
-                name = (
-                    train_type.short_name
-                    if config.use_train_type_short_name and train_type.short_name
-                    else train_type.name
-                )
-                cell = worksheet.cell(
-                    row=row,
-                    column=column + 1 + index,
-                    value=name,
-                )
-                cell.font = Font(
-                    name=config.legend_font_name,
-                    size=config.legend_font_size,
-                    color=self._to_excel_color(
-                        config.get_train_type_color(train_type.index)
-                        or config.legend_font_color
-                    ),
-                )
-                cell.alignment = Alignment(
-                    horizontal="left",
-                    vertical="center",
-                    wrap_text=True,
-                )
-                cell.fill = legend_fill or PatternFill()
-                cell.border = border
-
-        def write_station_items(
-            items: list[str],
+        def write_train_type(
+            train_type: TrainType,
             row_number: int,
             column: int,
         ) -> None:
-            for index, item in enumerate(items):
-                cell = worksheet.cell(
-                    row=row_number,
-                    column=column + 1 + index,
-                    value=item,
-                )
-                cell.font = Font(
-                    name=config.legend_font_name,
-                    size=config.legend_font_size,
-                    color=self._to_excel_color(
-                        config.legend_font_color
-                    ),
-                )
-                cell.alignment = Alignment(
-                    horizontal="left",
-                    vertical="center",
-                    wrap_text=True,
-                )
-                cell.fill = legend_fill or PatternFill()
-                cell.border = border
+            name = (
+                train_type.short_name
+                if config.use_train_type_short_name and train_type.short_name
+                else train_type.name
+            )
+            cell = worksheet.cell(
+                row=row_number,
+                column=column,
+                value=name,
+            )
+            cell.font = Font(
+                name=config.legend_font_name,
+                size=config.legend_font_size,
+                color=self._to_excel_color(
+                    config.get_train_type_color(train_type.index)
+                    or config.legend_font_color
+                ),
+            )
+            cell.alignment = Alignment(
+                horizontal="left",
+                vertical="center",
+                wrap_text=True,
+            )
+            cell.fill = legend_fill or PatternFill()
+            cell.border = border
 
-        # 下り側の凡例
-        write_label(start_column)
-        if train_types:
-            write_train_types(start_column)
-        if down_items:
-            station_row = row + int(bool(train_types))
-            write_station_items(down_items, station_row, start_column)
+        def write_station_item(
+            item: str,
+            row_number: int,
+            column: int,
+        ) -> None:
+            cell = worksheet.cell(
+                row=row_number,
+                column=column,
+                value=item,
+            )
+            cell.font = Font(
+                name=config.legend_font_name,
+                size=config.legend_font_size,
+                color=self._to_excel_color(config.legend_font_color),
+            )
+            cell.alignment = Alignment(
+                horizontal="left",
+                vertical="center",
+                wrap_text=True,
+            )
+            cell.fill = legend_fill or PatternFill()
+            cell.border = border
 
-        # 上り側の凡例：上りの時刻列にラベル、その右から項目を配置
-        write_label(up_start_column)
-        if train_types:
-            write_train_types(up_start_column)
-        if up_items:
-            station_row = row + int(bool(train_types))
-            write_station_items(up_items, station_row, up_start_column)
+        def write_direction(
+            column: int,
+            capacity: int,
+            station_items: list[str],
+        ) -> int:
+            if capacity == 0:
+                row_count = 1 + len(train_types) + len(station_items)
+                write_label(column, row)
+                for index, train_type in enumerate(train_types):
+                    write_train_type(train_type, row + 1 + index, column)
+                for index, item in enumerate(station_items):
+                    write_station_item(
+                        item,
+                        row + 1 + len(train_types) + index,
+                        column,
+                    )
+                return row_count
 
-        for current_row in range(row, legend_end_row + 1):
+            train_type_rows = (
+                len(train_types) + capacity - 1
+            ) // capacity
+            station_rows = (
+                len(station_items) + capacity - 1
+            ) // capacity
+            row_count = max(1, train_type_rows + station_rows)
+            write_label(column, row + row_count - 1)
+
+            for index, train_type in enumerate(train_types):
+                write_train_type(
+                    train_type,
+                    row + index // capacity,
+                    column + 1 + index % capacity,
+                )
+            for index, item in enumerate(station_items):
+                write_station_item(
+                    item,
+                    row + train_type_rows + index // capacity,
+                    column + 1 + index % capacity,
+                )
+            return row_count
+
+        down_rows = write_direction(
+            start_column,
+            available_columns(is_down=True),
+            down_items,
+        )
+        up_rows = write_direction(
+            up_start_column,
+            available_columns(is_down=False),
+            up_items,
+        )
+        legend_rows = max(down_rows, up_rows)
+
+        for current_row in range(row, row + legend_rows):
             worksheet.row_dimensions[current_row].height = (
                 config.legend_row_height
             )
 
-        return legend_end_row + 1
+        return row + legend_rows
 
 
     @classmethod

@@ -10,8 +10,14 @@ from src.timetable.display_config import (
     BorderConfig,
     TimetableDisplayConfig,
 )
+from src.timetable.display_layout import (
+    HourSlot,
+    get_entry_layout,
+    merge_timetable_hours,
+)
 
 from src.models.timetable import (
+    TimetableEntry,
     StationTimetable,
     TimetableHour,
 )
@@ -130,38 +136,33 @@ class TimetablePreview(tk.Frame):
             down_hours = self.timetable.down
             up_hours = self.timetable.up
 
+        slots = merge_timetable_hours(down_hours, up_hours)
         down_train_count = max(
-            (
-                len(hour.entries)
-                for hour in down_hours
-            ),
+            (len(slot.down_entries) for slot in slots),
             default=0,
         )
-
         up_train_count = max(
-            (
-                len(hour.entries)
-                for hour in up_hours
-            ),
+            (len(slot.up_entries) for slot in slots),
             default=0,
         )
-
-        # 2方向の幅
-        down_width = (
-            self._HOUR_WIDTH
-            + self._CELL_WIDTH * max(down_train_count, 1)
+        central_hour_column = (
+            self.display_config.hour_column_mode == "center"
         )
+        down_train_width = self._CELL_WIDTH * max(down_train_count, 1)
+        up_train_width = self._CELL_WIDTH * max(up_train_count, 1)
+        if central_hour_column:
+            down_width = down_train_width
+            up_width = up_train_width
+            total_width = down_width + self._HOUR_WIDTH + up_width
+        else:
+            down_width = self._HOUR_WIDTH + down_train_width
+            up_width = self._HOUR_WIDTH + up_train_width
+            total_width = down_width + up_width + self._DIRECTION_GAP
 
-        up_width = (
-            self._HOUR_WIDTH
-            + self._CELL_WIDTH * max(up_train_count, 1)
-        )
-
-        total_width = (
-            down_width
-            + up_width
-            + self._DIRECTION_GAP
-        )
+        row_counts = [
+            self._hour_row_count(slot)
+            for slot in slots
+        ]
 
         # 凡例の高さを、下り・上りそれぞれの項目数から計算
         down_legend_rows, up_legend_rows, _, _ = (
@@ -173,15 +174,9 @@ class TimetablePreview(tk.Frame):
             1,
         )
 
-        max_hours = max(
-            len(down_hours),
-            len(up_hours),
-            1,
-        )
-
         direction_height = (
             self._HEADER_HEIGHT
-            + self._CELL_HEIGHT * 2 * max_hours
+            + self._CELL_HEIGHT * sum(row_counts)
         )
 
         legend_height = (
@@ -224,17 +219,33 @@ class TimetablePreview(tk.Frame):
             y=direction_y,
             width=down_width,
             title="下り",
-            hours=down_hours,
+            slots=slots,
+            direction="down",
+            include_hour_column=not central_hour_column,
+            row_counts=row_counts,
         )
 
-        # 上り
         self._draw_direction(
-            x=x0 + down_width + self._DIRECTION_GAP,
+            x=(
+                x0 + down_width + self._HOUR_WIDTH
+                if central_hour_column
+                else x0 + down_width + self._DIRECTION_GAP
+            ),
             y=direction_y,
             width=up_width,
             title="上り",
-            hours=up_hours,
+            slots=slots,
+            direction="up",
+            include_hour_column=not central_hour_column,
+            row_counts=row_counts,
         )
+        if central_hour_column:
+            self._draw_center_hour_column(
+                x=x0 + down_width,
+                y=direction_y,
+                slots=slots,
+                row_counts=row_counts,
+            )
 
         # 凡例
         legend_y = (
@@ -248,6 +259,7 @@ class TimetablePreview(tk.Frame):
             y=legend_y,
             down_width=down_width,
             up_width=up_width,
+            central_hour_column=central_hour_column,
         )
 
         self.canvas.configure(
@@ -367,9 +379,13 @@ class TimetablePreview(tk.Frame):
         y: float,
         width: float,
         title: str,
-        hours: list[TimetableHour],
+        slots: list[HourSlot],
+        direction: str,
+        include_hour_column: bool,
+        row_counts: list[int],
     ) -> None:
         """下り・上りの時刻表を描画する。"""
+        config = self.display_config
         # ヘッダ
         self.canvas.create_rectangle(
             x,
@@ -407,150 +423,219 @@ class TimetablePreview(tk.Frame):
 
         header_y = y + self._HEADER_HEIGHT
 
-        for hour_index, hour in enumerate(hours):
-
-            hour_y = (
-                header_y
-                + hour_index * self._CELL_HEIGHT * 2
+        entries_start_x = x + (
+            self._HOUR_WIDTH if include_hour_column else 0
+        )
+        current_y = header_y
+        for slot, row_count in zip(slots, row_counts):
+            entries = (
+                slot.down_entries
+                if direction == "down"
+                else slot.up_entries
             )
-
-            trains = self._create_preview_trains(hour)
-
-            # 時刻列
-            self.canvas.create_rectangle(
-                x,
-                hour_y,
-                x + self._HOUR_WIDTH,
-                hour_y + self._CELL_HEIGHT * 2,
-                fill=self._to_tk_color(
-                    self.display_config.hour_fill
-                ) or "#F2F2F2",
-                outline="",
-                tags=(PreviewItem.HOUR,),
+            has_hour = (
+                slot.down_present
+                if direction == "down"
+                else slot.up_present
             )
-
-            self._draw_border(
-                x,
-                hour_y,
-                x + self._HOUR_WIDTH,
-                hour_y + self._CELL_HEIGHT * 2,
-                self.display_config.hour_border,
-            )
-
-            self.canvas.create_text(
-                x + self._HOUR_WIDTH / 2,
-                hour_y + self._CELL_HEIGHT,
-                text=str(hour.hour),
-                font=(
-                    self.display_config.hour_font_name,
-                    self.display_config.hour_font_size,
-                    "bold",
-                ),
-                fill=self._to_tk_color(
-                    self.display_config.hour_font_color
-                ),
-            )
-
-            # 列車列
-            for index, (
-                destination,
-                train_type_index,
-                train_type,
-                minute,
-            ) in enumerate(trains):
-
-                train_x = (
-                    x
-                    + self._HOUR_WIDTH
-                    + index * self._CELL_WIDTH
+            if include_hour_column:
+                self._draw_hour_cell(
+                    x=x,
+                    y=current_y,
+                    hour=slot.hour if has_hour else None,
+                    row_count=row_count,
+                    stripe_hour=slot.hour,
                 )
 
-                # 列車情報
-                self.canvas.create_rectangle(
-                    train_x,
-                    hour_y,
-                    train_x + self._CELL_WIDTH,
-                    hour_y + self._CELL_HEIGHT,
-                    fill=self._to_tk_color(
-                        self.display_config.train_fill
-                    ) or "#FAFAFA",
-                    outline="",
-                    tags=(PreviewItem.TRAIN,),
+            for entry_index, entry in enumerate(entries):
+                entry_x = entries_start_x + entry_index * self._CELL_WIDTH
+                entry_layout = get_entry_layout(entry, config)
+                type_fill = config.train_type_fills.get(
+                    entry.train_type.index
                 )
 
-                train_type_color = (
-                    self.display_config.get_train_type_color(
-                        train_type_index
+                for row_index in range(row_count):
+                    row_y = current_y + row_index * self._CELL_HEIGHT
+                    kinds = (
+                        entry_layout[row_index]
+                        if row_index < len(entry_layout)
+                        else []
                     )
-                    or self.display_config.train_font_color
-                )
-
-                show_train_type = (
-                    self.display_config.train_type_column_visible.get(
-                        train_type_index,
-                        True,
+                    fill = self._to_tk_color(
+                        (type_fill if kinds else None)
+                        or config.get_entry_fill(
+                            slot.hour,
+                        )
+                    ) or "#FAFAFA"
+                    self.canvas.create_rectangle(
+                        entry_x,
+                        row_y,
+                        entry_x + self._CELL_WIDTH,
+                        row_y + self._CELL_HEIGHT,
+                        fill=fill,
+                        outline="",
+                        tags=(PreviewItem.TRAIN,),
                     )
-                )
+                    if kinds:
+                        self._draw_entry_text(
+                            entry=entry,
+                            kinds=kinds,
+                            x=entry_x,
+                            y=row_y,
+                        )
 
-                train_text = (
-                    f"{destination} {train_type}"
-                    if show_train_type
-                    else destination
-                ).strip()
-
-                self.canvas.create_text(
-                    train_x + self._CELL_WIDTH / 2,
-                    hour_y + self._CELL_HEIGHT / 2,
-                    text=train_text,
-                    font=(
-                        self.display_config.metadata_font_name,
-                        self.display_config.metadata_font_size,
-                    ),
-                    fill=self._to_tk_color(train_type_color),
-                )
-
-                # 分
-                self.canvas.create_rectangle(
-                    train_x,
-                    hour_y + self._CELL_HEIGHT,
-                    train_x + self._CELL_WIDTH,
-                    hour_y + self._CELL_HEIGHT * 2,
-                    fill="white",
-                    outline="",
-                )
-
-                self.canvas.create_text(
-                    train_x + self._CELL_WIDTH / 2,
-                    hour_y + self._CELL_HEIGHT * 1.5,
-                    text=minute,
-                    font=(
-                        self.display_config.minute_font_name,
-                        self.display_config.minute_font_size,
-                    ),
-                    fill=self._to_tk_color(
-                        self.display_config.train_font_color
-                    ),
-                )
+                    if "minute" in kinds and row_index > 0:
+                        separator = config.train_separator
+                        if separator.enabled:
+                            self.canvas.create_line(
+                                entry_x,
+                                row_y,
+                                entry_x + self._CELL_WIDTH,
+                                row_y,
+                                fill=self._to_tk_color(separator.color),
+                                width=self._border_width(separator.style),
+                            )
 
                 self._draw_border(
-                    train_x,
-                    hour_y,
-                    train_x + self._CELL_WIDTH,
-                    hour_y + self._CELL_HEIGHT * 2,
-                    self.display_config.train_border,
+                    entry_x,
+                    current_y,
+                    entry_x + self._CELL_WIDTH,
+                    current_y + row_count * self._CELL_HEIGHT,
+                    config.train_border,
                 )
 
-                separator = self.display_config.train_separator
+            current_y += row_count * self._CELL_HEIGHT
 
-                if separator.enabled:
-                    self.canvas.create_line(
-                        train_x,
-                        hour_y + self._CELL_HEIGHT,
-                        train_x + self._CELL_WIDTH,
-                        hour_y + self._CELL_HEIGHT,
-                        fill=self._to_tk_color(separator.color),
-                        width=self._border_width(separator.style),
-                    )
+    def _draw_hour_cell(
+        self,
+        x: float,
+        y: float,
+        hour: int | None,
+        row_count: int,
+        stripe_hour: int,
+    ) -> None:
+        config = self.display_config
+        fill = self._to_tk_color(config.hour_fill)
+        if fill is None:
+            hour_order = (
+                (stripe_hour - 4) % 24
+                if 0 <= stripe_hour < 24
+                else stripe_hour
+            )
+            fill = self._to_tk_color(
+                config.timetable_alt_fill
+                if hour_order % 2 == 0
+                else config.timetable_fill
+            ) or "#F2F2F2"
+        self.canvas.create_rectangle(
+            x,
+            y,
+            x + self._HOUR_WIDTH,
+            y + row_count * self._CELL_HEIGHT,
+            fill=fill,
+            outline="",
+            tags=(PreviewItem.HOUR,),
+        )
+        self._draw_border(
+            x,
+            y,
+            x + self._HOUR_WIDTH,
+            y + row_count * self._CELL_HEIGHT,
+            config.hour_border,
+        )
+        if hour is not None:
+            self.canvas.create_text(
+                x + self._HOUR_WIDTH / 2,
+                y + row_count * self._CELL_HEIGHT / 2,
+                text=str(hour),
+                font=(
+                    config.hour_font_name,
+                    config.hour_font_size,
+                    "bold",
+                ),
+                fill=self._to_tk_color(config.hour_font_color),
+            )
+
+    def _draw_entry_text(
+        self,
+        entry: TimetableEntry,
+        kinds: list[str],
+        x: float,
+        y: float,
+    ) -> None:
+        values = {
+            "destination": entry.destination.display_name,
+            "train_type": (
+                entry.train_type.short_name
+                if (
+                    self.display_config.use_train_type_short_name
+                    and entry.train_type.short_name
+                )
+                else entry.train_type.name
+            ),
+            "minute": f"{entry.minute:02d}",
+        }
+        rendered = []
+        for kind in kinds:
+            font_name, font_size, color = (
+                self.display_config.get_entry_font_settings(
+                    kind,
+                    entry.train_type.index,
+                )
+            )
+            font = tkfont.Font(
+                family=font_name,
+                size=font_size,
+                weight="bold" if kind == "minute" else "normal",
+            )
+            rendered.append((values[kind], font, color))
+
+        spacing = 4
+        total_width = sum(font.measure(text) for text, font, _ in rendered)
+        total_width += spacing * max(len(rendered) - 1, 0)
+        current_x = x + (self._CELL_WIDTH - total_width) / 2
+        for text, font, color in rendered:
+            self.canvas.create_text(
+                current_x,
+                y + self._CELL_HEIGHT / 2,
+                anchor=tk.W,
+                text=text,
+                font=font,
+                fill=self._to_tk_color(color),
+            )
+            current_x += font.measure(text) + spacing
+
+    def _draw_center_hour_column(
+        self,
+        x: float,
+        y: float,
+        slots: list[HourSlot],
+        row_counts: list[int],
+    ) -> None:
+        current_y = y + self._HEADER_HEIGHT
+        for slot, row_count in zip(slots, row_counts):
+            self._draw_hour_cell(
+                x=x,
+                y=current_y,
+                hour=slot.hour,
+                row_count=row_count,
+                stripe_hour=slot.hour,
+            )
+            current_y += row_count * self._CELL_HEIGHT
+
+    def _hour_row_count(self, slot: HourSlot) -> int:
+        counts = [
+            len(get_entry_layout(entry, self.display_config))
+            for entry in (*slot.down_entries, *slot.up_entries)
+        ]
+        if counts:
+            return max(counts)
+        if (
+            self.display_config.destination_position == "bottom"
+            or self.display_config.train_type_position == "bottom"
+        ):
+            return 3
+        return 2
 
 
     def _get_destination_legend_items(
@@ -663,7 +748,7 @@ class TimetablePreview(tk.Frame):
             destinations = [
                 (
                     f"{short_name}＝{station_name}",
-                    config.train_font_color,
+                    config.legend_font_color,
                 )
                 for short_name, station_name in station_items
             ]
@@ -703,6 +788,7 @@ class TimetablePreview(tk.Frame):
         y: float,
         down_width: float,
         up_width: float,
+        central_hour_column: bool = False,
     ) -> None:
         """下り・上りそれぞれの時刻表位置に凡例を描画する。"""
         row_height = self.display_config.legend_row_height
@@ -720,7 +806,13 @@ class TimetablePreview(tk.Frame):
         directions = (
             (x, down_width, down_label_width, down_rows),
             (
-                x + down_width + self._DIRECTION_GAP,
+                x
+                + down_width
+                + (
+                    self._HOUR_WIDTH
+                    if central_hour_column
+                    else self._DIRECTION_GAP
+                ),
                 up_width,
                 up_label_width,
                 up_rows,
