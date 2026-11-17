@@ -310,6 +310,32 @@ def load_official_presets() -> list[Preset]:
     return presets
 
 
+def apply_official_preset(
+    current_config: TimetableDisplayConfig,
+    preset: Preset,
+) -> TimetableDisplayConfig:
+    """公式プリセットを適用し、列車種別ごとの設定は維持する。"""
+    if not isinstance(current_config, TimetableDisplayConfig):
+        raise _invalid_data("current_config")
+
+    if not isinstance(preset, Preset):
+        raise _invalid_data("preset")
+
+    if not isinstance(preset.config, TimetableDisplayConfig):
+        raise _invalid_data("preset.config")
+
+    # 現在の設定を基準にする。
+    merged_config = asdict(current_config)
+    preset_config = asdict(preset.config)
+
+    # 列車種別依存の4項目以外をプリセットの値で更新する。
+    for name, value in preset_config.items():
+        if name not in _TRAIN_TYPE_CONFIG_FIELDS:
+            merged_config[name] = value
+
+    return _display_config_from_dict(merged_config)
+
+
 def _serialize_presets(presets: list[Preset]) -> list[dict[str, Any]]:
     result: list[dict[str, Any]] = []
     seen_ids: set[str] = set()

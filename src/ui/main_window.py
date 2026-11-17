@@ -1,8 +1,10 @@
 from pathlib import Path
+import secrets
 import tkinter as tk
-from tkinter import filedialog, ttk
+from tkinter import filedialog, simpledialog, ttk
 
 from src.ui.timetable_image_exporter import TimetableImageExporter
+from src.ui.timetable_preview import TimetablePreview
 
 from src.application.oud2_loader import load_oud2
 from src.application.station_timetable import generate_station_timetable
@@ -13,10 +15,18 @@ from src.application.station_alias_settings import (
     load_station_no_mark
 )
 from src.application.excel_export import export_station_timetable
+from src.application.preset_settings import (
+    Preset,
+    load_official_presets,
+    load_presets,
+    save_presets,
+    apply_official_preset,
+)
+
 from src.models.railway import Railway
 from src.models.station import Station
 from src.models.timetable import StationTimetable
-from src.ui.timetable_preview import TimetablePreview
+
 from src.timetable.display_config import TimetableDisplayConfig
 
 
@@ -124,6 +134,13 @@ class MainWindow:
             command=self._open_station_alias_editor,
         )
         alias_button.pack(side=tk.LEFT, padx=(0, 8))
+
+        preset_button = tk.Button(
+            button_frame,
+            text="プリセット",
+            command=self._open_preset_dialog,
+        )
+        preset_button.pack(side=tk.LEFT, padx=(0, 8))
 
         export_button = tk.Button(
             button_frame,
@@ -375,6 +392,220 @@ class MainWindow:
             "PNG出力完了",
             f"PNG画像を出力しました。\n\n{output_path}",
         )
+
+    def _open_preset_dialog(self) -> None:
+        """プリセット選択ウィンドウを開く。"""
+        if self.railway is None:
+            self._show_message(
+                "未読み込み",
+                "先にOuDiaSecondファイルを読み込んでください。",
+            )
+            return
+
+        try:
+            official_presets = load_official_presets()
+            user_presets = load_presets(
+                Path(self.file_path.get())
+            )
+        except (OSError, ValueError) as exc:
+            self._show_message(
+                "プリセット読み込みエラー",
+                f"プリセットを読み込めませんでした。\n\n{exc}",
+            )
+            return
+
+        dialog = tk.Toplevel(self.root)
+        dialog.title("プリセット")
+        dialog.transient(self.root)
+        dialog.resizable(False, False)
+
+        container = ttk.Frame(dialog, padding=12)
+        container.pack(fill=tk.BOTH, expand=True)
+
+        ttk.Label(
+            container,
+            text="適用するプリセットを選択してください。",
+        ).pack(anchor=tk.W, pady=(0, 8))
+
+        preset_list = tk.Listbox(
+            container,
+            width=40,
+            height=12,
+            exportselection=False,
+        )
+        preset_list.pack(fill=tk.BOTH, expand=True)
+
+        # 表示項目とプリセットの対応を保持する。
+        preset_items: list[tuple[bool, Preset]] = []
+
+        def refresh_preset_list() -> None:
+            """プリセット一覧を更新する。"""
+            preset_list.delete(0, tk.END)
+            preset_items.clear()
+
+            for preset in load_official_presets():
+                preset_list.insert(
+                    tk.END,
+                    f"[公式] {preset.name}",
+                )
+                preset_items.append((True, preset))
+
+            for preset in load_presets(Path(self.file_path.get())):
+                preset_list.insert(
+                    tk.END,
+                    f"[ユーザー] {preset.name}",
+                )
+                preset_items.append((False, preset))
+
+        refresh_preset_list()
+
+        if preset_items:
+            preset_list.selection_set(0)
+
+        def apply() -> None:
+            selection = preset_list.curselection()
+
+            if not selection:
+                self._show_message(
+                    "未選択",
+                    "プリセットを選択してください。",
+                )
+                return
+
+            is_official, preset = preset_items[selection[0]]
+
+            try:
+                if is_official:
+                    new_config = apply_official_preset(
+                        self.display_config,
+                        preset,
+                    )
+                else:
+                    new_config = preset.config
+
+                aliases = {
+                    station.name: station.short_name
+                    for station in self.railway.stations
+                    if station.short_name
+                }
+
+                save_station_settings(
+                    Path(self.file_path.get()),
+                    aliases,
+                    new_config,
+                )
+
+            except (OSError, ValueError) as exc:
+                self._show_message(
+                    "プリセット適用エラー",
+                    f"プリセットを適用できませんでした。\n\n{exc}",
+                )
+                return
+
+            self.display_config = new_config
+            self.timetable_preview.display_config = new_config
+            self.timetable_preview.redraw()
+
+            dialog.destroy()
+
+        def save_current_preset() -> None:
+            """現在の表示設定をユーザープリセットとして保存する。"""
+            name = simpledialog.askstring(
+                "プリセット保存",
+                "プリセット名を入力してください。",
+                parent=dialog,
+            )
+
+            if name is None:
+                return
+
+            name = name.strip()
+
+            if not name:
+                self._show_message(
+                    "入力エラー",
+                    "プリセット名を入力してください。",
+                )
+                return
+
+            try:
+                path = Path(self.file_path.get())
+
+                # 最新のユーザープリセットを読み込む。
+                current_presets = load_presets(path)
+
+                new_preset = Preset(
+                    id=secrets.token_hex(8),
+                    name=name,
+                    base_preset_id=None,
+                    config=self.display_config,
+                )
+
+                save_presets(
+                    path,
+                    current_presets + [new_preset],
+                )
+
+                refresh_preset_list()
+
+                # 保存したプリセットを選択する。
+                preset_list.selection_clear(0, tk.END)
+                preset_list.selection_set(tk.END)
+                preset_list.see(tk.END)
+
+            except (OSError, ValueError) as exc:
+                self._show_message(
+                    "プリセット保存エラー",
+                    f"プリセットを保存できませんでした。\n\n{exc}",
+                )
+
+        button_frame = ttk.Frame(container)
+        button_frame.pack(
+            fill=tk.X,
+            pady=(10, 0),
+        )
+
+        ttk.Button(
+            button_frame,
+            text="現在の設定を保存",
+            command=save_current_preset,
+        ).pack(side=tk.LEFT)
+
+        ttk.Button(
+            button_frame,
+            text="適用",
+            command=apply,
+        ).pack(side=tk.RIGHT)
+
+        ttk.Button(
+            button_frame,
+            text="閉じる",
+            command=dialog.destroy,
+        ).pack(side=tk.RIGHT, padx=(0, 8))
+
+        preset_list.bind(
+            "<Double-Button-1>",
+            lambda _event: apply(),
+        )
+
+        dialog.update_idletasks()
+
+        root_x = self.root.winfo_rootx()
+        root_y = self.root.winfo_rooty()
+        root_width = self.root.winfo_width()
+        root_height = self.root.winfo_height()
+
+        dialog_width = dialog.winfo_reqwidth()
+        dialog_height = dialog.winfo_reqheight()
+
+        x = root_x + (root_width - dialog_width) // 2
+        y = root_y + (root_height - dialog_height) // 2
+
+        dialog.geometry(
+            f"+{x}+{y}"
+        )
+
+        dialog.grab_set()
 
     def _open_station_alias_editor(self) -> None:
         """駅略称の編集ウィンドウを開く。"""

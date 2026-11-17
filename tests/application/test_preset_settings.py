@@ -104,6 +104,54 @@ def test_save_and_load_preset(oud2_path: Path) -> None:
     assert loaded[0].config.train_type_column_visible == {2: True}
 
 
+def test_apply_official_preset_preserves_train_type_settings() -> None:
+    current_config = TimetableDisplayConfig(
+        show_destination=False,
+        train_type_colors={0: "FF0000", 1: "00FF00"},
+        train_type_fills={0: "FFFF00"},
+        train_type_visible={0: False, 1: True},
+        train_type_column_visible={0: True, 1: False},
+    )
+
+    preset_config = TimetableDisplayConfig(
+        show_destination=True,
+        title_font_size=20,
+        train_type_colors={0: "000000"},
+        train_type_fills={},
+        train_type_visible={},
+        train_type_column_visible={},
+    )
+
+    preset = Preset(
+        "official-test",
+        "公式テスト",
+        None,
+        preset_config,
+    )
+
+    result = preset_settings.apply_official_preset(
+        current_config,
+        preset,
+    )
+
+    # 共通設定は公式プリセットの値になる。
+    assert result.show_destination is True
+    assert result.title_font_size == 20
+
+    # 列車種別依存の4項目は現在の設定を維持する。
+    assert result.train_type_colors == {0: "FF0000", 1: "00FF00"}
+    assert result.train_type_fills == {0: "FFFF00"}
+    assert result.train_type_visible == {0: False, 1: True}
+    assert result.train_type_column_visible == {0: True, 1: False}
+
+    # 元の設定オブジェクトは変更されない。
+    assert current_config.show_destination is False
+    assert current_config.train_type_colors == {
+        0: "FF0000",
+        1: "00FF00",
+    }
+    
+
 def test_load_official_presets_from_one_file(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

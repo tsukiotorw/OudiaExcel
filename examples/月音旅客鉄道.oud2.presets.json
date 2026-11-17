@@ -1,0 +1,235 @@
+{
+  "version": 1,
+  "presets": [
+    {
+      "id": "3d6db7c5eeb8d593",
+      "name": "TEST",
+      "base_preset_id": null,
+      "config": {
+        "train_type_colors": {
+          "0": "000000",
+          "1": "000000",
+          "2": "000000",
+          "3": "000000",
+          "4": "000000",
+          "5": "000000",
+          "6": "000000",
+          "7": "0080FF",
+          "8": "FF0080",
+          "9": "FF00FF",
+          "10": "000000",
+          "11": "008888",
+          "12": "00BD00",
+          "13": "804000",
+          "14": "000000",
+          "15": "0000A0"
+        },
+        "train_type_fills": {
+          "7": "A6D2FF",
+          "8": "FFCECE",
+          "9": "FFC1FF"
+        },
+        "train_type_visible": {
+          "0": false,
+          "1": true,
+          "2": false,
+          "3": false,
+          "4": false,
+          "5": false,
+          "6": false,
+          "7": true,
+          "8": true,
+          "9": true,
+          "10": false,
+          "11": true,
+          "12": true,
+          "13": true,
+          "14": false,
+          "15": true
+        },
+        "train_type_column_visible": {
+          "0": false,
+          "1": false,
+          "2": false,
+          "3": false,
+          "4": false,
+          "5": false,
+          "6": false,
+          "7": true,
+          "8": true,
+          "9": true,
+          "10": false,
+          "11": true,
+          "12": false,
+          "13": true,
+          "14": true,
+          "15": true
+        },
+        "destination_position": "top",
+        "train_type_position": "top",
+        "metadata_order": "destination_first",
+        "hour_column_mode": "center",
+        "striped_train_fill": false,
+        "title_border": {
+          "top": {
+            "enabled": false,
+            "color": "000000",
+            "style": "thin"
+          },
+          "bottom": {
+            "enabled": true,
+            "color": "FFFFFF",
+            "style": "thick"
+          },
+          "left": {
+            "enabled": false,
+            "color": "000000",
+            "style": "thin"
+          },
+          "right": {
+            "enabled": false,
+            "color": "000000",
+            "style": "thin"
+          }
+        },
+        "header_border": {
+          "top": {
+            "enabled": false,
+            "color": "000000",
+            "style": "thin"
+          },
+          "bottom": {
+            "enabled": true,
+            "color": "FFFFFF",
+            "style": "thick"
+          },
+          "left": {
+            "enabled": false,
+            "color": "000000",
+            "style": "thin"
+          },
+          "right": {
+            "enabled": false,
+            "color": "000000",
+            "style": "thin"
+          }
+        },
+        "hour_border": {
+          "top": {
+            "enabled": false,
+            "color": "FFFFFF",
+            "style": "thin"
+          },
+          "bottom": {
+            "enabled": true,
+            "color": "FFFFFF",
+            "style": "thick"
+          },
+          "left": {
+            "enabled": false,
+            "color": "000000",
+            "style": "thin"
+          },
+          "right": {
+            "enabled": false,
+            "color": "000000",
+            "style": "thin"
+          }
+        },
+        "train_border": {
+          "top": {
+            "enabled": false,
+            "color": "000000",
+            "style": "thin"
+          },
+          "bottom": {
+            "enabled": false,
+            "color": "000000",
+            "style": "thin"
+          },
+          "left": {
+            "enabled": false,
+            "color": "000000",
+            "style": "thin"
+          },
+          "right": {
+            "enabled": false,
+            "color": "000000",
+            "style": "thin"
+          }
+        },
+        "train_separator": {
+          "enabled": false,
+          "color": "000000",
+          "style": "thin"
+        },
+        "legend_border": {
+          "top": {
+            "enabled": false,
+            "color": "000000",
+            "style": "thin"
+          },
+          "bottom": {
+            "enabled": false,
+            "color": "000000",
+            "style": "thin"
+          },
+          "left": {
+            "enabled": false,
+            "color": "000000",
+            "style": "thin"
+          },
+          "right": {
+            "enabled": false,
+            "color": "000000",
+            "style": "thin"
+          }
+        },
+        "title_fill": "000000",
+        "title_font_color": "FFFFFF",
+        "title_font_name": "源ノ角ゴシック JP",
+        "title_font_size": 14,
+        "header_fill": "0065CA",
+        "header_font_color": "FAFAFA",
+        "header_font_name": "源ノ角ゴシック JP Heavy",
+        "header_font_size": 12,
+        "timetable_fill": "FAFAFA",
+        "timetable_alt_fill": "C8E6C9",
+        "timetable_border_color": "FAFAFA",
+        "timetable_border_width": "thin",
+        "hour_fill": "000000",
+        "hour_font_color": "FFFFFF",
+        "hour_font_name": "源ノ角ゴシック JP Heavy",
+        "hour_font_size": 14,
+        "train_fill": "FFFFFF",
+        "train_font_color": "FFFFFF",
+        "minute_font_color": "000000",
+        "use_train_type_short_name": true,
+        "show_destination": true,
+        "show_destination_legend": true,
+        "metadata_font_name": "源ノ角ゴシック JP Heavy",
+        "metadata_font_size": 8,
+        "minute_font_name": "源ノ角ゴシック JP Medium",
+        "minute_font_size": 12,
+        "destination_font_name": "源ノ角ゴシック JP Heavy",
+        "destination_font_size": 10,
+        "destination_font_color": "000000",
+        "destination_font_mode": "independent",
+        "train_type_font_name": "源ノ角ゴシック JP Heavy",
+        "train_type_font_size": 8,
+        "train_type_font_color": "000000",
+        "train_type_font_mode": "independent",
+        "minute_font_mode": "independent",
+        "legend_label_fill": "000000",
+        "legend_fill": "FAFAFA",
+        "legend_font_color": "408080",
+        "legend_label_font_name": "源ノ角ゴシック JP Heavy",
+        "legend_font_name": "源ノ角ゴシック JP",
+        "legend_label_font_size": 8,
+        "legend_font_size": 8,
+        "legend_label_font_color": "FAFAFA",
+        "legend_row_height": 24.2
+      }
+    }
+  ]
+}
