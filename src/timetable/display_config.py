@@ -77,7 +77,11 @@ class TimetableDisplayConfig:
     title_font_size: int = 14
 
     # ヘッダー
+    up_header_text: str = "上り"
+    down_header_text: str = "下り"
     header_fill: str | None = None
+    up_header_fill: str | None = None
+    down_header_fill: str | None = None
     header_font_color: str = "FAFAFA"
     header_font_name: str = "源ノ角ゴシック JP Heavy"
     header_font_size: int = 12

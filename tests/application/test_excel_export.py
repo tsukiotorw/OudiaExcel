@@ -34,4 +34,8 @@ def test_export_station_timetable(
     worksheet = workbook[timetable.station_name]
 
     assert worksheet["D1"].value == "B駅 時刻表"
-    assert worksheet["A3"].value == "下り"
+    assert worksheet["A3"].value == "上り"
+    assert any(
+        cell.value == "下り" and cell.column > 1
+        for cell in worksheet[3]
+    )

@@ -260,6 +260,12 @@ class DisplayConfigDialog(tk.Toplevel):
 
     def _create_header_variables(self) -> None:
         """ヘッダ情報の設定値を保持するTk変数を作成する。"""
+        self.up_header_text = tk.StringVar(
+            value=self.display_config.up_header_text,
+        )
+        self.down_header_text = tk.StringVar(
+            value=self.display_config.down_header_text,
+        )
         self.header_font_name = tk.StringVar(
             value=self.display_config.header_font_name,
         )
@@ -272,6 +278,12 @@ class DisplayConfigDialog(tk.Toplevel):
         )
         self.header_fill = tk.StringVar(
             value=self.display_config.header_fill or "",
+        )
+        self.up_header_fill = tk.StringVar(
+            value=self.display_config.up_header_fill or "",
+        )
+        self.down_header_fill = tk.StringVar(
+            value=self.display_config.down_header_fill or "",
         )
 
 
@@ -826,11 +838,47 @@ class DisplayConfigDialog(tk.Toplevel):
             pady=(0, 15),
         )
 
+        ttk.Label(frame, text="上りヘッダ文字列").grid(
+            row=1,
+            column=0,
+            sticky=tk.W,
+        )
+        ttk.Entry(
+            frame,
+            textvariable=self.up_header_text,
+            width=28,
+        ).grid(
+            row=1,
+            column=1,
+            columnspan=2,
+            padx=(10, 0),
+            pady=4,
+            sticky=tk.W,
+        )
+
+        ttk.Label(frame, text="下りヘッダ文字列").grid(
+            row=2,
+            column=0,
+            sticky=tk.W,
+        )
+        ttk.Entry(
+            frame,
+            textvariable=self.down_header_text,
+            width=28,
+        ).grid(
+            row=2,
+            column=1,
+            columnspan=2,
+            padx=(10, 0),
+            pady=4,
+            sticky=tk.W,
+        )
+
         ttk.Label(
             frame,
             text="フォント",
         ).grid(
-            row=1,
+            row=3,
             column=0,
             sticky=tk.W,
         )
@@ -842,7 +890,7 @@ class DisplayConfigDialog(tk.Toplevel):
             state="readonly",
             width=28,
         ).grid(
-            row=1,
+            row=3,
             column=1,
             columnspan=2,
             padx=(10, 0),
@@ -853,7 +901,7 @@ class DisplayConfigDialog(tk.Toplevel):
             frame,
             text="サイズ",
         ).grid(
-            row=2,
+            row=4,
             column=0,
             sticky=tk.W,
         )
@@ -865,7 +913,7 @@ class DisplayConfigDialog(tk.Toplevel):
             textvariable=self.header_font_size,
             width=8,
         ).grid(
-            row=2,
+            row=4,
             column=1,
             sticky=tk.W,
             padx=(10, 0),
@@ -876,7 +924,7 @@ class DisplayConfigDialog(tk.Toplevel):
             frame,
             text="文字色",
         ).grid(
-            row=3,
+            row=5,
             column=0,
             sticky=tk.W,
         )
@@ -886,7 +934,7 @@ class DisplayConfigDialog(tk.Toplevel):
             textvariable=self.header_font_color,
             width=12,
         ).grid(
-            row=3,
+            row=5,
             column=1,
             padx=(10, 0),
             pady=4,
@@ -897,16 +945,16 @@ class DisplayConfigDialog(tk.Toplevel):
             text="選択...",
             command=self._choose_header_font_color,
         ).grid(
-            row=3,
+            row=5,
             column=2,
             padx=(5, 0),
         )
 
         ttk.Label(
             frame,
-            text="塗りつぶし色",
+            text="共通ヘッダ背景色",
         ).grid(
-            row=4,
+            row=6,
             column=0,
             sticky=tk.W,
         )
@@ -916,7 +964,7 @@ class DisplayConfigDialog(tk.Toplevel):
             textvariable=self.header_fill,
             width=12,
         ).grid(
-            row=4,
+            row=6,
             column=1,
             padx=(10, 0),
             pady=4,
@@ -927,14 +975,64 @@ class DisplayConfigDialog(tk.Toplevel):
             text="選択...",
             command=self._choose_header_fill,
         ).grid(
-            row=4,
+            row=6,
+            column=2,
+            padx=(5, 0),
+        )
+
+        ttk.Label(frame, text="上りヘッダ背景色").grid(
+            row=7,
+            column=0,
+            sticky=tk.W,
+        )
+        ttk.Entry(
+            frame,
+            textvariable=self.up_header_fill,
+            width=12,
+        ).grid(
+            row=7,
+            column=1,
+            padx=(10, 0),
+            pady=4,
+        )
+        ttk.Button(
+            frame,
+            text="選択...",
+            command=self._choose_up_header_fill,
+        ).grid(
+            row=7,
+            column=2,
+            padx=(5, 0),
+        )
+
+        ttk.Label(frame, text="下りヘッダ背景色").grid(
+            row=8,
+            column=0,
+            sticky=tk.W,
+        )
+        ttk.Entry(
+            frame,
+            textvariable=self.down_header_fill,
+            width=12,
+        ).grid(
+            row=8,
+            column=1,
+            padx=(10, 0),
+            pady=4,
+        )
+        ttk.Button(
+            frame,
+            text="選択...",
+            command=self._choose_down_header_fill,
+        ).grid(
+            row=8,
             column=2,
             padx=(5, 0),
         )
 
         border_row = self._create_border_widgets(
             frame,
-            start_row=5,
+            start_row=9,
         )
 
         button_frame = ttk.Frame(frame)
@@ -1959,6 +2057,38 @@ class DisplayConfigDialog(tk.Toplevel):
                 color[1].lstrip("#").upper()
             )
 
+    def _choose_up_header_fill(self) -> None:
+        """上りヘッダの塗りつぶし色を選択する。"""
+        current_color = self.up_header_fill.get().strip()
+        color = colorchooser.askcolor(
+            initialcolor=(
+                f"#{current_color.lstrip('#')}"
+                if current_color
+                else "#FFFFFF"
+            ),
+            parent=self,
+        )
+        if color[1] is not None:
+            self.up_header_fill.set(
+                color[1].lstrip("#").upper()
+            )
+
+    def _choose_down_header_fill(self) -> None:
+        """下りヘッダの塗りつぶし色を選択する。"""
+        current_color = self.down_header_fill.get().strip()
+        color = colorchooser.askcolor(
+            initialcolor=(
+                f"#{current_color.lstrip('#')}"
+                if current_color
+                else "#FFFFFF"
+            ),
+            parent=self,
+        )
+        if color[1] is not None:
+            self.down_header_fill.set(
+                color[1].lstrip("#").upper()
+            )
+
 
     def _choose_hour_fill(self) -> None:
         """時刻欄の塗りつぶし色を選択する。"""
@@ -2138,6 +2268,8 @@ class DisplayConfigDialog(tk.Toplevel):
 
     def _apply_header(self) -> None:
         """ヘッダの表示設定を適用する。"""
+        self.display_config.up_header_text = self.up_header_text.get()
+        self.display_config.down_header_text = self.down_header_text.get()
         self.display_config.header_font_name = (
             self.header_font_name.get()
         )
@@ -2151,6 +2283,15 @@ class DisplayConfigDialog(tk.Toplevel):
         fill_color = self.header_fill.get().strip()
         self.display_config.header_fill = (
             fill_color if fill_color else None
+        )
+
+        up_fill_color = self.up_header_fill.get().strip()
+        self.display_config.up_header_fill = (
+            up_fill_color if up_fill_color else None
+        )
+        down_fill_color = self.down_header_fill.get().strip()
+        self.display_config.down_header_fill = (
+            down_fill_color if down_fill_color else None
         )
 
 

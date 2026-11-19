@@ -18,6 +18,7 @@ from src.models.timetable import (
 )
 from src.models.train_type import TrainType
 from src.timetable.display_layout import get_entry_layout
+from src.timetable.display_layout import merge_timetable_hours
 
 
 def _first_marked_entry(hours):
@@ -106,6 +107,48 @@ def _single_entry_timetable(source, entry, hour: int = 4) -> StationTimetable:
     )
 
 
+def _direction_columns(
+    timetable: StationTimetable,
+    config: TimetableDisplayConfig,
+) -> dict[str, int]:
+    slots = merge_timetable_hours(timetable.down, timetable.up)
+    up_count = max(
+        (len(slot.up_entries) for slot in slots),
+        default=0,
+    )
+    up_width = max(up_count, 1)
+
+    if config.hour_column_mode == "center":
+        down_start = up_width + 2
+        return {
+            "up_header": 1,
+            "down_header": down_start,
+            "up_hour": up_width + 1,
+            "down_hour": up_width + 1,
+            "up_train": 1,
+            "down_train": down_start,
+        }
+
+    up_width += 1
+    down_start = 1 + up_width + ExcelWriter._DIRECTION_GAP
+    return {
+        "up_header": 1,
+        "down_header": down_start,
+        "up_hour": 1,
+        "down_hour": down_start,
+        "up_train": 2,
+        "down_train": down_start + 1,
+    }
+
+
+def _legend_row(worksheet, column: int) -> int:
+    return next(
+        row
+        for row in range(1, worksheet.max_row + 1)
+        if worksheet.cell(row=row, column=column).value == "凡例"
+    )
+
+
 def test_write_station_timetable(
     parsed_railway: Railway,
     tmp_path,
@@ -130,7 +173,9 @@ def test_write_station_timetable(
     worksheet = workbook[timetable.station_name]
 
     assert worksheet["D1"].value == "B駅 時刻表"
-    assert worksheet["A3"].value == "下り"
+    columns = _direction_columns(timetable, writer.display_config)
+    assert worksheet.cell(row=3, column=columns["up_header"]).value == "上り"
+    assert worksheet.cell(row=3, column=columns["down_header"]).value == "下り"
 
 
 def test_write_station_timetable_layout(
@@ -151,40 +196,78 @@ def test_write_station_timetable_layout(
     workbook = load_workbook(output_path)
     worksheet = workbook[timetable.station_name]
 
-    # 下り
-    assert worksheet["A3"].value == "下り"
+    columns = _direction_columns(timetable, writer.display_config)
+    assert worksheet.cell(row=3, column=columns["up_header"]).value == "上り"
+    assert worksheet.cell(row=3, column=columns["down_header"]).value == "下り"
 
-    # 下りは4時から開始
-    assert worksheet["A4"].value == 4
-    assert worksheet["A6"].value == 5
-    assert worksheet["A8"].value == 6
+    # 上りを左、下りを右に配置し、それぞれ4時から開始する。
+    assert worksheet.cell(row=4, column=columns["up_hour"]).value == 4
+    assert worksheet.cell(row=4, column=columns["down_hour"]).value == 4
 
-    # 上りの開始位置を確認
-    down_width = max(
-        len(hour.entries)
-        for hour in timetable.down
-    ) + 1
 
-    up_start_column = (
-        1
-        + down_width
-        + writer._DIRECTION_GAP
+@pytest.mark.parametrize("hour_column_mode", ["center", "separate"])
+def test_write_direction_order_headers_data_and_legends(
+    tmp_path,
+    hour_column_mode: str,
+) -> None:
+    train_type = TrainType(0, "快速")
+    up_entry = TimetableEntry(
+        minute=11,
+        destination=Station(1, "上り先", "UP"),
+        train_type=train_type,
+        train_number="U1",
     )
-
-    up_start_cell = worksheet.cell(
-        row=3,
-        column=up_start_column,
+    down_entry = TimetableEntry(
+        minute=22,
+        destination=Station(2, "下り先", "DOWN"),
+        train_type=train_type,
+        train_number="D1",
     )
-
-    assert up_start_cell.value == "上り"
-
-    # 上りも4時から開始
-    up_hour_cell = worksheet.cell(
-        row=4,
-        column=up_start_column,
+    timetable = StationTimetable(
+        station_name="Direction test",
+        down=[TimetableHour(4, [down_entry])],
+        up=[TimetableHour(4, [up_entry])],
+        train_types=[train_type],
     )
+    config = TimetableDisplayConfig(
+        hour_column_mode=hour_column_mode,
+        up_header_text="北行",
+        down_header_text="南行",
+    )
+    output_path = tmp_path / f"directions-{hour_column_mode}.xlsx"
 
-    assert up_hour_cell.value == 4
+    ExcelWriter(config).write(timetable, output_path)
+
+    worksheet = load_workbook(output_path)[timetable.station_name]
+    columns = _direction_columns(timetable, config)
+    assert worksheet.cell(row=3, column=columns["up_header"]).value == "北行"
+    assert worksheet.cell(row=3, column=columns["down_header"]).value == "南行"
+    assert worksheet.cell(row=4, column=columns["up_hour"]).value == 4
+    assert worksheet.cell(row=4, column=columns["down_hour"]).value == 4
+    assert worksheet.cell(row=4, column=columns["up_train"]).value == "UP 快速"
+    assert worksheet.cell(row=5, column=columns["up_train"]).value == 11
+    assert worksheet.cell(row=4, column=columns["down_train"]).value == (
+        "DOWN 快速"
+    )
+    assert worksheet.cell(row=5, column=columns["down_train"]).value == 22
+
+    up_legend = "UP＝上り先"
+    down_legend = "DOWN＝下り先"
+    up_positions = [
+        (cell.row, cell.column)
+        for row in worksheet.iter_rows()
+        for cell in row
+        if cell.value == up_legend
+    ]
+    down_positions = [
+        (cell.row, cell.column)
+        for row in worksheet.iter_rows()
+        for cell in row
+        if cell.value == down_legend
+    ]
+    assert len(up_positions) == 1
+    assert len(down_positions) == 1
+    assert up_positions[0][1] < down_positions[0][1]
 
 
 def test_write_station_timetable_entry(
@@ -213,7 +296,7 @@ def test_write_station_timetable_entry(
 
     entry = hour.entries[0]
 
-    # A列が時なので、最初の列車はB列
+    columns = _direction_columns(timetable, writer.display_config)
     expected_destination = (
         entry.destination.display_name
         if (
@@ -244,9 +327,13 @@ def test_write_station_timetable_entry(
         if part
     )
 
-    assert worksheet["B4"].value == expected_metadata
+    assert worksheet.cell(row=4, column=columns["down_train"]).value == (
+        expected_metadata
+    )
 
-    assert worksheet["B5"].value == entry.minute
+    assert worksheet.cell(row=5, column=columns["down_train"]).value == (
+        entry.minute
+    )
 
 
 def test_write_train_type_colors(
@@ -290,6 +377,7 @@ def test_write_train_type_colors(
 
     # 4時台の最初の下り列車
     entry = timetable.down[0].entries[0]
+    columns = _direction_columns(timetable, display_config)
 
     expected_color = display_config.get_train_type_color(
         entry.train_type.index
@@ -298,8 +386,9 @@ def test_write_train_type_colors(
     # ↓↓↓ ここにもデバッグ出力を追加 ↓↓↓
     # ↑↑↑ ここまで ↑↑↑
 
-    assert worksheet["B4"].font.color.type == "rgb"
-    assert worksheet["B4"].font.color.rgb == (
+    cell = worksheet.cell(row=4, column=columns["down_train"])
+    assert cell.font.color.type == "rgb"
+    assert cell.font.color.rgb == (
         "FF" + expected_color
     )
 
@@ -333,13 +422,72 @@ def test_write_header_display_config(
     workbook = load_workbook(output_path)
     worksheet = workbook[timetable.station_name]
 
-    cell = worksheet["A3"]
+    cell = worksheet.cell(
+        row=3,
+        column=_direction_columns(timetable, display_config)["up_header"],
+    )
 
     assert cell.fill.fgColor.rgb == "FFD9EAD3"
     assert cell.font.color.type == "rgb"
     assert cell.font.color.rgb == "FFFF0000"
     assert cell.font.name == "ＭＳ ゴシック"
     assert cell.font.sz == 14
+
+
+def test_write_direction_header_fills_and_center_header_common_fill(
+    parsed_railway: Railway,
+    tmp_path,
+) -> None:
+    station = parsed_railway.stations[1]
+    timetable = StationTimetableGenerator(parsed_railway).generate(station)
+    display_config = TimetableDisplayConfig(
+        hour_column_mode="center",
+        header_fill="D9EAD3",
+        up_header_fill="CFE2F3",
+        down_header_fill="FCE5CD",
+    )
+    output_path = tmp_path / "direction_header_fills.xlsx"
+
+    ExcelWriter(display_config).write(timetable, output_path)
+
+    worksheet = load_workbook(output_path)[timetable.station_name]
+    columns = _direction_columns(timetable, display_config)
+
+    assert worksheet.cell(row=3, column=columns["up_header"]).fill.fgColor.rgb == (
+        "FFCFE2F3"
+    )
+    assert worksheet.cell(row=3, column=columns["down_header"]).fill.fgColor.rgb == (
+        "FFFCE5CD"
+    )
+    assert worksheet.cell(row=3, column=columns["up_hour"]).fill.fgColor.rgb == (
+        "FFD9EAD3"
+    )
+
+
+def test_write_direction_header_falls_back_to_common_fill(
+    parsed_railway: Railway,
+    tmp_path,
+) -> None:
+    station = parsed_railway.stations[1]
+    timetable = StationTimetableGenerator(parsed_railway).generate(station)
+    display_config = TimetableDisplayConfig(
+        header_fill="D9EAD3",
+        up_header_fill=None,
+        down_header_fill=None,
+    )
+    output_path = tmp_path / "common_header_fill.xlsx"
+
+    ExcelWriter(display_config).write(timetable, output_path)
+
+    worksheet = load_workbook(output_path)[timetable.station_name]
+    columns = _direction_columns(timetable, display_config)
+
+    assert worksheet.cell(row=3, column=columns["up_header"]).fill.fgColor.rgb == (
+        "FFD9EAD3"
+    )
+    assert worksheet.cell(row=3, column=columns["down_header"]).fill.fgColor.rgb == (
+        "FFD9EAD3"
+    )
 
 def test_write_hour_display_config(
     parsed_railway: Railway,
@@ -406,7 +554,10 @@ def test_write_train_display_config(
     workbook = load_workbook(output_path)
     worksheet = workbook[timetable.station_name]
 
-    cell = worksheet["B4"]
+    cell = worksheet.cell(
+        row=4,
+        column=_direction_columns(timetable, display_config)["down_train"],
+    )
 
     assert cell.fill.fgColor.rgb == "FFFFF2CC"
     assert cell.font.color.type == "rgb"
@@ -448,7 +599,10 @@ def test_train_type_color_takes_priority_over_train_font_color(
         entry.train_type.index
     )
 
-    cell = worksheet["B4"]
+    cell = worksheet.cell(
+        row=4,
+        column=_direction_columns(timetable, display_config)["down_train"],
+    )
 
     assert expected_color is not None
     assert cell.font.color.type == "rgb"
@@ -574,13 +728,14 @@ def test_write_legend_wraps_destinations_and_preserves_formatting(
     ExcelWriter(config).write(timetable, output_path)
 
     worksheet = load_workbook(output_path)[timetable.station_name]
-    legend_row = next(
-        row
-        for row in range(1, worksheet.max_row + 1)
-        if worksheet.cell(row=row, column=1).value == "凡例"
-    )
+    legend_row = _legend_row(worksheet, 1)
+    down_label_column = _direction_columns(
+        timetable,
+        config,
+    )["down_header"]
+    down_legend_row = _legend_row(worksheet, down_label_column)
     assert [
-        worksheet.cell(row=legend_row + offset, column=2).value
+        worksheet.cell(row=down_legend_row + offset, column=down_label_column + 1).value
         for offset in range(4)
     ] == [
         "Train type 0",
@@ -594,7 +749,10 @@ def test_write_legend_wraps_destinations_and_preserves_formatting(
     assert label_cell.font.name == "Calibri"
     assert label_cell.font.sz == 10
 
-    train_type_cell = worksheet.cell(row=legend_row, column=2)
+    train_type_cell = worksheet.cell(
+        row=down_legend_row,
+        column=down_label_column + 1,
+    )
     assert train_type_cell.fill.fgColor.rgb == "FFE1E2E3"
     assert train_type_cell.font.name == "Arial"
     assert train_type_cell.font.sz == 9
@@ -602,11 +760,17 @@ def test_write_legend_wraps_destinations_and_preserves_formatting(
     assert train_type_cell.border.left.style == "thin"
     assert train_type_cell.border.left.color.rgb == "FFAABBCC"
 
-    destination_cell = worksheet.cell(row=legend_row + 1, column=2)
+    destination_cell = worksheet.cell(
+        row=down_legend_row + 1,
+        column=down_label_column + 1,
+    )
     assert destination_cell.font.color.rgb == "FF445566"
     assert destination_cell.fill.fgColor.rgb == "FFE1E2E3"
     assert destination_cell.alignment.wrap_text is True
-    assert f"A{legend_row}:A{legend_row + 3}" in {
+    assert (
+        f"{get_column_letter(down_label_column)}{down_legend_row}:"
+        f"{get_column_letter(down_label_column)}{down_legend_row + 3}"
+    ) in {
         str(cell_range)
         for cell_range in worksheet.merged_cells.ranges
     }
@@ -626,30 +790,31 @@ def test_write_legend_wraps_down_and_up_independently(
     ExcelWriter().write(timetable, output_path)
 
     worksheet = load_workbook(output_path)[timetable.station_name]
-    legend_row = next(
-        row
-        for row in range(1, worksheet.max_row + 1)
-        if worksheet.cell(row=row, column=1).value == "凡例"
-    )
-    assert worksheet.cell(row=legend_row, column=2).value == (
+    columns = _direction_columns(timetable, TimetableDisplayConfig())
+    up_legend_row = _legend_row(worksheet, columns["up_header"])
+    down_legend_row = _legend_row(worksheet, columns["down_header"])
+    assert worksheet.cell(
+        row=down_legend_row,
+        column=columns["down_header"] + 1,
+    ).value == (
         "Down0＝Down station 0"
     )
-    assert f"A{legend_row}:A{legend_row}" not in {
+    assert f"A{up_legend_row}:A{up_legend_row}" not in {
         str(cell_range)
         for cell_range in worksheet.merged_cells.ranges
     }
     assert [
-        worksheet.cell(row=legend_row + offset, column=6).value
+        worksheet.cell(row=up_legend_row + offset, column=2).value
         for offset in range(2)
     ] == ["Up0＝Up station 0", "Up2＝Up station 2"]
     assert [
-        worksheet.cell(row=legend_row + offset, column=7).value
+        worksheet.cell(row=up_legend_row + offset, column=3).value
         for offset in range(2)
     ] == ["Up1＝Up station 1", "Up3＝Up station 3"]
-    assert worksheet.cell(row=legend_row + 2, column=6).value == (
+    assert worksheet.cell(row=up_legend_row + 2, column=2).value == (
         "Up4＝Up station 4"
     )
-    assert f"E{legend_row}:E{legend_row + 2}" in {
+    assert f"A{up_legend_row}:A{up_legend_row + 2}" in {
         str(cell_range)
         for cell_range in worksheet.merged_cells.ranges
     }
@@ -671,17 +836,21 @@ def test_write_center_hour_column_wraps_legend(
     ).write(timetable, output_path)
 
     worksheet = load_workbook(output_path)[timetable.station_name]
-    legend_row = next(
-        row
-        for row in range(1, worksheet.max_row + 1)
-        if worksheet.cell(row=row, column=1).value == "凡例"
-    )
+    up_legend_row = _legend_row(worksheet, 1)
+    down_legend_row = _legend_row(worksheet, 3)
     assert [
-        worksheet.cell(row=legend_row + offset, column=2).value
-        for offset in range(2)
+        worksheet.cell(row=up_legend_row + offset, column=1).value
+        for offset in range(1, 3)
     ] == ["Train type 0", "Train type 1"]
     assert [
-        worksheet.cell(row=legend_row + offset, column=2).value
+        worksheet.cell(row=down_legend_row + offset, column=4).value
+        for offset in range(2)
+    ] == [
+        "Train type 0",
+        "Train type 1",
+    ]
+    assert [
+        worksheet.cell(row=down_legend_row + offset, column=4).value
         for offset in range(2, 6)
     ] == [
         "Down0＝Down station 0",
@@ -689,11 +858,10 @@ def test_write_center_hour_column_wraps_legend(
         "Down2＝Down station 2",
         "Down3＝Down station 3",
     ]
-    assert worksheet.cell(row=legend_row, column=3).value is None
-    assert worksheet.cell(row=legend_row, column=4).value == "凡例"
+    assert worksheet.cell(row=up_legend_row, column=2).value is None
     assert worksheet.column_dimensions["A"].width == 7
-    assert worksheet.column_dimensions["B"].width == 7
-    assert worksheet.column_dimensions["C"].width == 4
+    assert worksheet.column_dimensions["B"].width == 4
+    assert worksheet.column_dimensions["C"].width == 7
     assert worksheet.column_dimensions["D"].width == 7
 
 
@@ -708,13 +876,17 @@ def test_write_center_legend_with_no_item_columns_stacks_below_label(
     ).write(timetable, output_path)
 
     worksheet = load_workbook(output_path)[timetable.station_name]
-    legend_row = next(
-        row
-        for row in range(1, worksheet.max_row + 1)
-        if worksheet.cell(row=row, column=1).value == "凡例"
-    )
+    up_legend_row = _legend_row(worksheet, 1)
+    down_legend_row = _legend_row(worksheet, 3)
     assert [
-        worksheet.cell(row=legend_row + offset, column=1).value
+        worksheet.cell(row=up_legend_row + offset, column=1).value
+        for offset in range(1, 3)
+    ] == [
+        "Train type 0",
+        "Train type 1",
+    ]
+    assert [
+        worksheet.cell(row=down_legend_row + offset, column=3).value
         for offset in range(1, 5)
     ] == [
         "Train type 0",
@@ -722,11 +894,11 @@ def test_write_center_legend_with_no_item_columns_stacks_below_label(
         "Down0＝Down station 0",
         "Down1＝Down station 1",
     ]
-    assert f"A{legend_row}:A{legend_row}" not in {
+    assert f"A{up_legend_row}:A{up_legend_row}" not in {
         str(cell_range)
         for cell_range in worksheet.merged_cells.ranges
     }
-    assert worksheet.cell(row=legend_row, column=2).value is None
+    assert worksheet.cell(row=down_legend_row, column=2).value is None
 
 
 def test_write_timetable_without_legend_items_does_not_add_legend(
@@ -775,6 +947,7 @@ def test_write_entry_layout_positions(
     ExcelWriter(config).write(timetable, output_path)
 
     worksheet = load_workbook(output_path)[timetable.station_name]
+    down_train_column = _direction_columns(timetable, config)["down_train"]
     expected_type = (
         entry.train_type.short_name
         if config.use_train_type_short_name and entry.train_type.short_name
@@ -804,7 +977,10 @@ def test_write_entry_layout_positions(
             if kinds
             else None
         )
-        cell_value = worksheet.cell(row=4 + row_offset, column=2).value
+        cell_value = worksheet.cell(
+            row=4 + row_offset,
+            column=down_train_column,
+        ).value
         assert cell_value == expected
 
 
@@ -826,8 +1002,12 @@ def test_write_entry_layout_respects_visibility(
     ExcelWriter(config).write(timetable, output_path)
 
     worksheet = load_workbook(output_path)[timetable.station_name]
-    assert worksheet["B4"].value is None
-    assert worksheet["B5"].value == entry.minute
+    down_train_column = _direction_columns(timetable, config)["down_train"]
+    assert worksheet.cell(row=4, column=down_train_column).value is None
+    assert worksheet.cell(
+        row=5,
+        column=down_train_column,
+    ).value == entry.minute
 
 
 def test_write_entry_fonts_and_train_type_color_priority(
@@ -855,13 +1035,14 @@ def test_write_entry_fonts_and_train_type_color_priority(
     ExcelWriter(config).write(timetable, output_path)
 
     worksheet = load_workbook(output_path)[timetable.station_name]
-    assert worksheet["B4"].font.name == "Arial"
-    assert worksheet["B4"].font.sz == 9
-    assert worksheet["B4"].font.color.rgb == "FF00AA00"
-    assert worksheet["B5"].font.name == "ＭＳ ゴシック"
-    assert worksheet["B5"].font.sz == 11
-    assert worksheet["B5"].font.color.rgb == "FF00AA00"
-    assert worksheet["B6"].font.color.rgb == "FF00AA00"
+    down_train_column = _direction_columns(timetable, config)["down_train"]
+    assert worksheet.cell(row=4, column=down_train_column).font.name == "Arial"
+    assert worksheet.cell(row=4, column=down_train_column).font.sz == 9
+    assert worksheet.cell(row=4, column=down_train_column).font.color.rgb == "FF00AA00"
+    assert worksheet.cell(row=5, column=down_train_column).font.name == "ＭＳ ゴシック"
+    assert worksheet.cell(row=5, column=down_train_column).font.sz == 11
+    assert worksheet.cell(row=5, column=down_train_column).font.color.rgb == "FF00AA00"
+    assert worksheet.cell(row=6, column=down_train_column).font.color.rgb == "FF00AA00"
 
 
 def test_write_same_row_items_with_independent_rich_text_styles(
@@ -884,9 +1065,11 @@ def test_write_same_row_items_with_independent_rich_text_styles(
 
     ExcelWriter(config).write(timetable, output_path)
 
-    cell = load_workbook(output_path, rich_text=True)[timetable.station_name][
-        "B4"
-    ]
+    down_train_column = _direction_columns(timetable, config)["down_train"]
+    cell = load_workbook(output_path, rich_text=True)[timetable.station_name].cell(
+        row=4,
+        column=down_train_column,
+    )
     assert isinstance(cell.value, CellRichText)
     assert str(cell.value) == (
         f"{entry.destination.display_name} {entry.train_type.name}"
@@ -926,9 +1109,10 @@ def test_write_striped_and_train_type_fills(
     ExcelWriter(config).write(timetable, output_path)
 
     worksheet = load_workbook(output_path)[timetable.station_name]
-    assert worksheet["B4"].fill.fgColor.rgb == "FFFFCC00"
-    assert worksheet["B5"].fill.fgColor.rgb == "FFFFCC00"
-    assert worksheet["B6"].fill.fgColor.rgb == "FFFFCC00"
+    down_train_column = _direction_columns(timetable, config)["down_train"]
+    assert worksheet.cell(row=4, column=down_train_column).fill.fgColor.rgb == "FFFFCC00"
+    assert worksheet.cell(row=5, column=down_train_column).fill.fgColor.rgb == "FFFFCC00"
+    assert worksheet.cell(row=6, column=down_train_column).fill.fgColor.rgb == "FFFFCC00"
 
     config.train_type_fills.clear()
     config.train_fill = None
@@ -936,15 +1120,15 @@ def test_write_striped_and_train_type_fills(
     output_path = tmp_path / "striped.xlsx"
     ExcelWriter(config).write(timetable, output_path)
     worksheet = load_workbook(output_path)[timetable.station_name]
-    assert worksheet["B4"].fill.fgColor.rgb == "FFC8E6C9"
-    assert worksheet["B7"].fill.fgColor.rgb == "FFFAFAFA"
+    assert worksheet.cell(row=4, column=down_train_column).fill.fgColor.rgb == "FFC8E6C9"
+    assert worksheet.cell(row=7, column=down_train_column).fill.fgColor.rgb == "FFFAFAFA"
 
     config.striped_train_fill = False
     output_path = tmp_path / "unstriped.xlsx"
     ExcelWriter(config).write(timetable, output_path)
     worksheet = load_workbook(output_path)[timetable.station_name]
-    assert worksheet["B4"].fill.fgColor.rgb == "FFFAFAFA"
-    assert worksheet["B7"].fill.fgColor.rgb == "FFFAFAFA"
+    assert worksheet.cell(row=4, column=down_train_column).fill.fgColor.rgb == "FFFAFAFA"
+    assert worksheet.cell(row=7, column=down_train_column).fill.fgColor.rgb == "FFFAFAFA"
 
 
 def test_write_center_hour_column_merges_asymmetric_hours(
@@ -972,8 +1156,8 @@ def test_write_center_hour_column_merges_asymmetric_hours(
     ExcelWriter(config).write(timetable, output_path)
 
     worksheet = load_workbook(output_path)[timetable.station_name]
-    assert worksheet["A3"].value == "下り"
-    assert worksheet["C3"].value == "上り"
+    assert worksheet["A3"].value == "上り"
+    assert worksheet["C3"].value == "下り"
     assert [worksheet.cell(row=row, column=2).value for row in (4, 6, 8)] == [
         4,
         5,

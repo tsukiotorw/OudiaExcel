@@ -64,27 +64,19 @@ class ExcelWriter:
         )
         central_hour_column = self.display_config.hour_column_mode == "center"
 
-        down_start_column = 1
+        up_start_column = 1
         if central_hour_column:
-            down_width = down_train_width
-            central_column = down_start_column + down_width
-            up_start_column = central_column + 1
             up_width = up_train_width
+            central_column = up_start_column + up_width
+            down_start_column = central_column + 1
+            down_width = down_train_width
             title_column = central_column + 1
             column_groups = (
-                (down_start_column, down_width),
-                (central_column, 1),
                 (up_start_column, up_width),
+                (central_column, 1),
+                (down_start_column, down_width),
             )
             column_widths = {
-                **{
-                    column: 7
-                    for column in range(
-                        down_start_column,
-                        down_start_column + down_width,
-                    )
-                },
-                central_column: 4,
                 **{
                     column: 7
                     for column in range(
@@ -92,32 +84,33 @@ class ExcelWriter:
                         up_start_column + up_width,
                     )
                 },
-            }
-            train_starts = (down_start_column, up_start_column)
-            hour_columns = (central_column, central_column)
-        else:
-            down_width = down_train_width + 1
-            up_width = up_train_width + 1
-            up_start_column = (
-                down_start_column
-                + down_width
-                + self._DIRECTION_GAP
-            )
-            title_column = up_start_column
-            column_groups = (
-                (down_start_column, down_width),
-                (up_start_column, up_width),
-            )
-            column_widths = {
-                down_start_column: 4,
-                up_start_column: 4,
+                central_column: 4,
                 **{
                     column: 7
                     for column in range(
-                        down_start_column + 1,
+                        down_start_column,
                         down_start_column + down_width,
                     )
                 },
+            }
+            train_starts = (up_start_column, down_start_column)
+            hour_columns = (central_column, central_column)
+        else:
+            up_width = up_train_width + 1
+            down_width = down_train_width + 1
+            down_start_column = (
+                up_start_column
+                + up_width
+                + self._DIRECTION_GAP
+            )
+            title_column = down_start_column
+            column_groups = (
+                (up_start_column, up_width),
+                (down_start_column, down_width),
+            )
+            column_widths = {
+                up_start_column: 4,
+                down_start_column: 4,
                 **{
                     column: 7
                     for column in range(
@@ -125,12 +118,19 @@ class ExcelWriter:
                         up_start_column + up_width,
                     )
                 },
+                **{
+                    column: 7
+                    for column in range(
+                        down_start_column + 1,
+                        down_start_column + down_width,
+                    )
+                },
             }
             train_starts = (
-                down_start_column + 1,
                 up_start_column + 1,
+                down_start_column + 1,
             )
-            hour_columns = (down_start_column, up_start_column)
+            hour_columns = (up_start_column, down_start_column)
 
         self._write_title(
             worksheet=worksheet,
@@ -140,16 +140,18 @@ class ExcelWriter:
         self._write_direction_header(
             worksheet,
             start_row,
-            down_start_column,
-            "下り",
-            down_width,
+            up_start_column,
+            self.display_config.up_header_text,
+            up_width,
+            "up",
         )
         self._write_direction_header(
             worksheet,
             start_row,
-            up_start_column,
-            "上り",
-            up_width,
+            down_start_column,
+            self.display_config.down_header_text,
+            down_width,
+            "down",
         )
         if central_hour_column:
             header_cell = worksheet.cell(
@@ -170,7 +172,7 @@ class ExcelWriter:
                 worksheet,
                 row,
                 hour_columns[0],
-                slot.hour if central_hour_column or slot.down_present else None,
+                slot.hour if central_hour_column or slot.up_present else None,
                 slot.hour,
                 row_count,
             )
@@ -179,7 +181,7 @@ class ExcelWriter:
                     worksheet,
                     row,
                     hour_columns[1],
-                    slot.hour if slot.up_present else None,
+                    slot.hour if slot.down_present else None,
                     slot.hour,
                     row_count,
                 )
@@ -187,7 +189,7 @@ class ExcelWriter:
                 worksheet,
                 row,
                 train_starts[0],
-                slot.down_entries,
+                slot.up_entries,
                 slot.hour,
                 row_count,
             )
@@ -195,7 +197,7 @@ class ExcelWriter:
                 worksheet,
                 row,
                 train_starts[1],
-                slot.up_entries,
+                slot.down_entries,
                 slot.hour,
                 row_count,
             )
@@ -213,7 +215,7 @@ class ExcelWriter:
         self._write_legend(
             worksheet=worksheet,
             row=table_end_row + 1,
-            start_column=down_start_column,
+            down_start_column=down_start_column,
             up_start_column=up_start_column,
             timetable=timetable,
         )
@@ -280,10 +282,16 @@ class ExcelWriter:
         start_column: int,
         title: str,
         width: int,
+        direction: str,
     ) -> None:
         end_column = start_column + width - 1
+        direction_fill = (
+            self.display_config.up_header_fill
+            if direction == "up"
+            else self.display_config.down_header_fill
+        )
         header_fill = self._create_fill(
-            self.display_config.header_fill
+            direction_fill or self.display_config.header_fill
         )
 
         for column in range(start_column, end_column + 1):
@@ -613,7 +621,7 @@ class ExcelWriter:
         self,
         worksheet,
         row: int,
-        start_column: int,
+        down_start_column: int,
         up_start_column: int,
         timetable: StationTimetable,
     ) -> int:
@@ -797,7 +805,7 @@ class ExcelWriter:
             return row_count
 
         down_rows = write_direction(
-            start_column,
+            down_start_column,
             available_columns(is_down=True),
             down_items,
         )

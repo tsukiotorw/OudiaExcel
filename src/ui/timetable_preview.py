@@ -213,35 +213,35 @@ class TimetablePreview(tk.Frame):
 
         direction_y = y0 + self._TITLE_HEIGHT
 
-        # 下り
+        # 上り
         self._draw_direction(
             x=x0,
             y=direction_y,
-            width=down_width,
-            title="下り",
+            width=up_width,
+            title=self.display_config.up_header_text,
             slots=slots,
-            direction="down",
+            direction="up",
             include_hour_column=not central_hour_column,
             row_counts=row_counts,
         )
 
         self._draw_direction(
             x=(
-                x0 + down_width + self._HOUR_WIDTH
+                x0 + up_width + self._HOUR_WIDTH
                 if central_hour_column
-                else x0 + down_width + self._DIRECTION_GAP
+                else x0 + up_width + self._DIRECTION_GAP
             ),
             y=direction_y,
-            width=up_width,
-            title="上り",
+            width=down_width,
+            title=self.display_config.down_header_text,
             slots=slots,
-            direction="up",
+            direction="down",
             include_hour_column=not central_hour_column,
             row_counts=row_counts,
         )
         if central_hour_column:
             self._draw_center_hour_column(
-                x=x0 + down_width,
+                x=x0 + up_width,
                 y=direction_y,
                 slots=slots,
                 row_counts=row_counts,
@@ -393,7 +393,12 @@ class TimetablePreview(tk.Frame):
             x + width,
             y + self._HEADER_HEIGHT,
             fill=self._to_tk_color(
-                self.display_config.header_fill
+                (
+                    config.up_header_fill
+                    if direction == "up"
+                    else config.down_header_fill
+                )
+                or config.header_fill
             ) or "#D9EAD3",
             outline="",
             tags=(PreviewItem.HEADER,),
@@ -804,18 +809,18 @@ class TimetablePreview(tk.Frame):
         legend_height = row_height * legend_rows
 
         directions = (
-            (x, down_width, down_label_width, down_rows),
+            (x, up_width, up_label_width, up_rows),
             (
                 x
-                + down_width
+                + up_width
                 + (
                     self._HOUR_WIDTH
                     if central_hour_column
                     else self._DIRECTION_GAP
                 ),
-                up_width,
-                up_label_width,
-                up_rows,
+                down_width,
+                down_label_width,
+                down_rows,
             ),
         )
 

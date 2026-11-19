@@ -75,6 +75,8 @@ def _write_official_file(
 def test_save_and_load_preset(oud2_path: Path) -> None:
     config = TimetableDisplayConfig(
         show_destination=False,
+        up_header_text="北行",
+        down_header_text="南行",
         train_type_colors={0: "008000", 2: "0000FF"},
         train_type_fills={0: "FFFF00"},
         train_type_visible={0: True, 2: False},
@@ -440,6 +442,52 @@ def test_missing_display_config_field_uses_default(
 
     assert loaded.title_font_size == TimetableDisplayConfig().title_font_size
     assert loaded.show_destination is False
+    assert loaded.up_header_text == "上り"
+    assert loaded.down_header_text == "下り"
+
+
+def test_missing_direction_header_text_uses_defaults_in_old_preset(
+    oud2_path: Path,
+) -> None:
+    config = asdict(TimetableDisplayConfig())
+    del config["up_header_text"]
+    del config["down_header_text"]
+    _write_single_preset(oud2_path, config)
+
+    loaded = load_presets(oud2_path)[0].config
+
+    assert loaded.up_header_text == "上り"
+    assert loaded.down_header_text == "下り"
+
+
+def test_official_preset_direction_header_text_round_trip(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(preset_settings, "_OFFICIAL_PRESETS_DIR", tmp_path)
+    _write_official_file(
+        tmp_path,
+        "direction-labels.json",
+        {
+            "version": 1,
+            "presets": [
+                {
+                    "id": "direction-labels",
+                    "name": "方向表示",
+                    "base_preset_id": None,
+                    "config": {
+                        "up_header_text": "北行",
+                        "down_header_text": "南行",
+                    },
+                }
+            ],
+        },
+    )
+
+    loaded = load_official_presets()[0]
+
+    assert loaded.config.up_header_text == "北行"
+    assert loaded.config.down_header_text == "南行"
 
 
 def test_unknown_display_config_field_is_ignored(

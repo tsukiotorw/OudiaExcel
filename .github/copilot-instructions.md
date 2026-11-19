@@ -72,14 +72,14 @@ When possible, explain why the change is necessary and what other functionality 
 
 The application processing flow is:
 
-OuDiaSecond file
-→ Reader
-→ Tokenizer
-→ SectionBuilder
-→ Parser
-→ Domain Model
-→ StationTimetableGenerator
-→ StationTimetable
+OuDiaSecond file  
+→ Reader  
+→ Tokenizer  
+→ SectionBuilder  
+→ Parser  
+→ Domain Model  
+→ StationTimetableGenerator  
+→ StationTimetable  
 → ExcelWriter
 
 Important domain models include:
@@ -181,3 +181,15 @@ When instructions conflict, prioritize:
 4. General coding preferences.
 
 The primary objective is to develop OuDiaExcel safely and incrementally while maintaining consistency between the Windows and Web applications.
+
+## 12. pytest Execution Approval
+
+- Run pytest commands automatically without asking the user for individual permission each time.
+- Do not ask questions such as "May I run pytest?" or "Can I execute the tests?" before running pytest.
+- After code changes, run the relevant tests automatically.
+- Run the full test suite using `pytest -s` when appropriate.
+- Check the actual test results and report the number of passed, failed, and skipped tests when available.
+- If tests fail, investigate the cause and report the findings.
+- Do not modify or weaken tests merely to obtain a passing result.
+- Automatic execution permission applies only to pytest commands. It does not grant permission to install or uninstall packages, execute unrelated commands requiring approval, commit changes, or push changes to GitHub.
+- Continue to follow the existing approval rules for all other operations.

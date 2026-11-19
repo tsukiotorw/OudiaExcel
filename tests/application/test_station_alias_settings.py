@@ -49,6 +49,13 @@ def test_load_station_aliases_returns_empty_when_no_settings(
     assert load_station_aliases(oud2_path) == {}
 
 
+def test_display_config_direction_header_defaults() -> None:
+    config = TimetableDisplayConfig()
+
+    assert config.up_header_text == "上り"
+    assert config.down_header_text == "下り"
+
+
 def test_save_and_load_station_aliases(
     settings_path: Path,
     oud2_path: Path,
@@ -72,6 +79,9 @@ def test_save_and_load_display_config(
     config = TimetableDisplayConfig(
         train_type_colors={0: "008000", 1: "0000FF"},
         train_type_fills={0: "FFFF00", 1: "00FFFF"},
+        header_fill="D9EAD3",
+        up_header_fill="CFE2F3",
+        down_header_fill="FCE5CD",
         train_type_visible={0: True, 1: False},
         destination_position="bottom",
         train_type_position="top",
@@ -111,6 +121,9 @@ def test_save_and_load_display_config(
     assert loaded.use_train_type_short_name is True
     assert loaded.train_type_colors == {0: "008000", 1: "0000FF"}
     assert loaded.train_type_fills == {0: "FFFF00", 1: "00FFFF"}
+    assert loaded.header_fill == "D9EAD3"
+    assert loaded.up_header_fill == "CFE2F3"
+    assert loaded.down_header_fill == "FCE5CD"
     assert loaded.train_type_visible == {0: True, 1: False}
     assert loaded.destination_position == "bottom"
     assert loaded.train_type_position == "top"
@@ -126,6 +139,8 @@ def test_save_and_load_display_config(
     assert loaded.train_type_font_color == "445566"
     assert loaded.train_type_font_mode == "destination"
     assert loaded.minute_font_mode == "train_type"
+    assert loaded.up_header_text == "上り"
+    assert loaded.down_header_text == "下り"
 
     assert isinstance(loaded.title_border, BorderConfig)
     assert isinstance(loaded.title_border.top, BorderSideConfig)
@@ -137,6 +152,79 @@ def test_save_and_load_display_config(
     assert loaded.train_separator.enabled is True
     assert loaded.train_separator.color == "0000FF"
     assert loaded.train_separator.style == "dashed"
+
+
+def test_display_config_header_text_round_trip(
+    settings_path: Path,
+    oud2_path: Path,
+) -> None:
+    config = TimetableDisplayConfig(
+        up_header_text="仙台方面",
+        down_header_text="東京方面",
+    )
+
+    save_station_settings(oud2_path, {}, config)
+
+    loaded = load_display_config(oud2_path)
+
+    assert loaded.up_header_text == "仙台方面"
+    assert loaded.down_header_text == "東京方面"
+
+
+def test_old_display_config_uses_direction_header_defaults(
+    settings_path: Path,
+    oud2_path: Path,
+) -> None:
+    settings_path.parent.mkdir(parents=True, exist_ok=True)
+    settings_path.write_text(
+        json.dumps(
+            {
+                "railways": {
+                    str(oud2_path.resolve()): {
+                        "station_aliases": {},
+                        "display_config": {
+                            "header_font_size": 14,
+                        },
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    loaded = load_display_config(oud2_path)
+
+    assert loaded.header_font_size == 14
+    assert loaded.up_header_text == "上り"
+    assert loaded.down_header_text == "下り"
+
+
+def test_old_display_config_keeps_common_header_fill(
+    settings_path: Path,
+    oud2_path: Path,
+) -> None:
+    settings_path.parent.mkdir(parents=True, exist_ok=True)
+    settings_path.write_text(
+        json.dumps(
+            {
+                "railways": {
+                    str(oud2_path.resolve()): {
+                        "station_aliases": {},
+                        "display_config": {
+                            "header_fill": "D9EAD3",
+                        },
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    loaded = load_display_config(oud2_path)
+
+    assert loaded.header_fill == "D9EAD3"
+    assert loaded.up_header_fill is None
+    assert loaded.down_header_fill is None
 
 
 def test_save_station_aliases_preserves_display_config(

@@ -86,6 +86,8 @@ OuDiaExcelの駅時刻表表示設定を管理する `TimetableDisplayConfig` �
 
 | Pythonフィールド名 | 日本語名称 | 型 | デフォルト値 | 設定内容 |
 |---|---|---|---|---|
+| `up_header_text` | 上りヘッダー文字列 | `str` | `"上り"` | 上り方向のヘッダーに表示する文字列 |
+| `down_header_text` | 下りヘッダー文字列 | `str` | `"下り"` | 下り方向のヘッダーに表示する文字列 |
 | `header_fill` | ヘッダーの背景色 | `str \| None` | `None` | ヘッダー部分の塗りつぶし色 |
 | `header_font_color` | ヘッダーの文字色 | `str` | `"FAFAFA"` | ヘッダー文字の色 |
 | `header_font_name` | ヘッダーのフォント | `str` | `"源ノ角ゴシック JP Heavy"` | ヘッダー文字のフォント |
