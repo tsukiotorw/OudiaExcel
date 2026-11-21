@@ -122,12 +122,29 @@ def _load_style_settings(
         defaults["font_color"],
     )
 
+    if key == "header":
+        for direction in ("up", "down"):
+            field_name = f"{direction}_header_text"
+            text = style.get(field_name)
+            style[field_name] = (
+                text if isinstance(text, str) else defaults[field_name]
+            )
+
     fill = style.get("fill")
     style["fill"] = (
         str(fill).upper()
         if isinstance(fill, str) and re.fullmatch(r"[0-9A-Fa-f]{6}", fill)
         else None
     )
+    if key == "header":
+        for direction in ("up", "down"):
+            direction_fill = style.get(f"{direction}_fill")
+            style[f"{direction}_fill"] = (
+                direction_fill.upper()
+                if isinstance(direction_fill, str)
+                and re.fullmatch(r"[0-9A-Fa-f]{6}", direction_fill)
+                else None
+            )
     return style
 
 
@@ -160,7 +177,7 @@ def _read_style_settings(
         else:
             fill = saved.get("fill")
 
-    return {
+    style = {
         "font_name": font_name[:100] if font_name else saved.get(
             "font_name", defaults["font_name"]
         ),
@@ -168,6 +185,33 @@ def _read_style_settings(
         "font_color": font_color,
         "fill": fill,
     }
+    if prefix == "header":
+        for direction in ("up", "down"):
+            text_field = f"{direction}_header_text"
+            if text_field in form_data:
+                style[text_field] = str(form_data.get(text_field, ""))
+            else:
+                saved_text = saved.get(
+                    text_field,
+                    defaults[text_field],
+                )
+                style[text_field] = (
+                    saved_text
+                    if isinstance(saved_text, str)
+                    else defaults[text_field]
+                )
+
+            direction_fill = None
+            if form_data.get(f"{direction}_header_fill_enabled") == "true":
+                submitted_fill = str(
+                    form_data.get(f"{direction}_header_fill", "")
+                ).strip()
+                if re.fullmatch(r"#[0-9A-Fa-f]{6}", submitted_fill):
+                    direction_fill = submitted_fill[1:].upper()
+                else:
+                    direction_fill = saved.get(f"{direction}_fill")
+            style[f"{direction}_fill"] = direction_fill
+    return style
 
 
 def _border_config_from_settings(settings: object) -> BorderConfig:
@@ -227,14 +271,20 @@ def _display_config_from_settings(settings: dict) -> TimetableDisplayConfig:
         {
             "font_name": "源ノ角ゴシック JP Heavy",
             "font_size": 12,
-            "font_color": "FFFFFF",
-            "fill": "0864C5",
+            "font_color": "FAFAFA",
+            "fill": "D9EAD3",
+            "up_header_text": config.up_header_text,
+            "down_header_text": config.down_header_text,
         },
     )
     config.header_font_name = header["font_name"]
     config.header_font_size = header["font_size"]
     config.header_font_color = header["font_color"]
+    config.up_header_text = header["up_header_text"]
+    config.down_header_text = header["down_header_text"]
     config.header_fill = header["fill"]
+    config.up_header_fill = header["up_fill"]
+    config.down_header_fill = header["down_fill"]
     config.header_border = _border_config_from_settings(
         display_settings.get("header_border")
     )
@@ -478,8 +528,10 @@ def _render_page(
         {
             "font_name": "源ノ角ゴシック JP Heavy",
             "font_size": 12,
-            "font_color": "FFFFFF",
-            "fill": "0864C5",
+            "font_color": "FAFAFA",
+            "fill": "D9EAD3",
+            "up_header_text": "上り",
+            "down_header_text": "下り",
         },
     )
     hour_display_settings = _load_style_settings(
@@ -1210,8 +1262,10 @@ async def save_settings(
             {
                 "font_name": "源ノ角ゴシック JP Heavy",
                 "font_size": 12,
-                "font_color": "FFFFFF",
+                "font_color": "FAFAFA",
                 "fill": "0864C5",
+                "up_header_text": "上り",
+                "down_header_text": "下り",
             },
         ),
         (
