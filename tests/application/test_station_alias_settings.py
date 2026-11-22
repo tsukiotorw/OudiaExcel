@@ -87,7 +87,7 @@ def test_save_and_load_display_config(
         train_type_position="top",
         metadata_order="train_type_first",
         hour_column_mode="center",
-        striped_train_fill=False,
+        striped_train_fill="none",
         destination_font_name="ＭＳ ゴシック",
         destination_font_size=9,
         destination_font_color="112233",
@@ -129,7 +129,7 @@ def test_save_and_load_display_config(
     assert loaded.train_type_position == "top"
     assert loaded.metadata_order == "train_type_first"
     assert loaded.hour_column_mode == "center"
-    assert loaded.striped_train_fill is False
+    assert loaded.striped_train_fill == "none"
     assert loaded.destination_font_name == "ＭＳ ゴシック"
     assert loaded.destination_font_size == 9
     assert loaded.destination_font_color == "112233"
@@ -225,6 +225,110 @@ def test_old_display_config_keeps_common_header_fill(
     assert loaded.header_fill == "D9EAD3"
     assert loaded.up_header_fill is None
     assert loaded.down_header_fill is None
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (True, "both"),
+        (False, "none"),
+        ("both", "both"),
+        ("metadata", "metadata"),
+        ("minute", "minute"),
+        ("none", "none"),
+    ],
+)
+def test_old_and_new_striped_train_fill_values(
+    settings_path: Path,
+    oud2_path: Path,
+    value: object,
+    expected: str,
+) -> None:
+    settings_path.parent.mkdir(parents=True, exist_ok=True)
+    settings_path.write_text(
+        json.dumps(
+            {
+                "railways": {
+                    str(oud2_path.resolve()): {
+                        "station_aliases": {},
+                        "display_config": {
+                            "striped_train_fill": value,
+                        },
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    loaded = load_display_config(oud2_path)
+
+    assert loaded.striped_train_fill == expected
+
+
+def test_missing_striped_train_fill_uses_default(
+    settings_path: Path,
+    oud2_path: Path,
+) -> None:
+    settings_path.parent.mkdir(parents=True, exist_ok=True)
+    settings_path.write_text(
+        json.dumps(
+            {
+                "railways": {
+                    str(oud2_path.resolve()): {
+                        "station_aliases": {},
+                        "display_config": {},
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    loaded = load_display_config(oud2_path)
+
+    assert loaded.striped_train_fill == "both"
+
+
+@pytest.mark.parametrize(
+    ("old_value", "expected"),
+    [
+        (True, "both"),
+        (False, "none"),
+    ],
+)
+def test_save_old_bool_striped_train_fill_as_string(
+    settings_path: Path,
+    oud2_path: Path,
+    old_value: bool,
+    expected: str,
+) -> None:
+    settings_path.parent.mkdir(parents=True, exist_ok=True)
+    settings_path.write_text(
+        json.dumps(
+            {
+                "railways": {
+                    str(oud2_path.resolve()): {
+                        "station_aliases": {},
+                        "display_config": {
+                            "striped_train_fill": old_value,
+                        },
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    loaded = load_display_config(oud2_path)
+    save_station_settings(oud2_path, {}, loaded)
+
+    saved = json.loads(settings_path.read_text(encoding="utf-8"))
+    saved_value = saved["railways"][str(oud2_path.resolve())]["display_config"][
+        "striped_train_fill"
+    ]
+    assert saved_value == expected
+    assert type(saved_value) is str
 
 
 def test_save_station_aliases_preserves_display_config(

@@ -307,6 +307,26 @@ def _display_config_from_settings(settings: dict) -> TimetableDisplayConfig:
         display_settings.get("hour_border")
     )
 
+    timetable_settings = display_settings.get("timetable", {})
+    if not isinstance(timetable_settings, dict):
+        timetable_settings = {}
+    config.up_timetable_fill = _validated_color(
+        timetable_settings.get("up_fill"),
+        "FAFAFA",
+    )
+    config.up_timetable_alt_fill = _validated_color(
+        timetable_settings.get("up_alt_fill"),
+        "C8E6C9",
+    )
+    config.down_timetable_fill = _validated_color(
+        timetable_settings.get("down_fill"),
+        "FAFAFA",
+    )
+    config.down_timetable_alt_fill = _validated_color(
+        timetable_settings.get("down_alt_fill"),
+        "C8E6C9",
+    )
+
     train_settings = display_settings.get("train", {})
     if not isinstance(train_settings, dict):
         train_settings = {}
@@ -449,6 +469,26 @@ def _display_config_from_settings(settings: dict) -> TimetableDisplayConfig:
         if isinstance(legend["show_destination_legend"], bool)
         else True
     )
+    config.show_legend = (
+        display_settings.get("show_legend")
+        if isinstance(display_settings.get("show_legend"), bool)
+        else True
+    )
+    config.show_train_type_legend = (
+        display_settings.get("show_train_type_legend")
+        if isinstance(display_settings.get("show_train_type_legend"), bool)
+        else True
+    )
+    config.show_up_destination_legend = (
+        legend.get("show_up_destination_legend")
+        if isinstance(legend.get("show_up_destination_legend"), bool)
+        else config.show_destination_legend
+    )
+    config.show_down_destination_legend = (
+        legend.get("show_down_destination_legend")
+        if isinstance(legend.get("show_down_destination_legend"), bool)
+        else config.show_destination_legend
+    )
     config.legend_border = _border_config_from_settings(
         display_settings.get("legend_border")
     )
@@ -472,6 +512,39 @@ def _display_config_from_settings(settings: dict) -> TimetableDisplayConfig:
         for index, visible in saved_type_visibility.items()
         if str(index).isdigit() and isinstance(visible, bool)
     }
+    saved_type_fills = display_settings.get(
+        "train_type_fills",
+        settings.get("train_type_fills", {}),
+    )
+    if not isinstance(saved_type_fills, dict):
+        saved_type_fills = {}
+    config.train_type_fills = {
+        int(index): color.upper()
+        for index, color in saved_type_fills.items()
+        if str(index).isdigit()
+        and isinstance(color, str)
+        and re.fullmatch(r"[0-9A-Fa-f]{6}", color)
+    }
+    saved_highlight_enabled = display_settings.get(
+        "train_type_minute_highlight_enabled", {}
+    )
+    if isinstance(saved_highlight_enabled, dict):
+        config.train_type_minute_highlight_enabled = {
+            int(index): enabled
+            for index, enabled in saved_highlight_enabled.items()
+            if str(index).isdigit() and isinstance(enabled, bool)
+        }
+    saved_highlight_fills = display_settings.get(
+        "train_type_minute_highlight_fills", {}
+    )
+    if isinstance(saved_highlight_fills, dict):
+        config.train_type_minute_highlight_fills = {
+            int(index): color.upper()
+            for index, color in saved_highlight_fills.items()
+            if str(index).isdigit()
+            and isinstance(color, str)
+            and re.fullmatch(r"[0-9A-Fa-f]{6}", color)
+        }
     return config
 
 
@@ -898,6 +971,64 @@ def _render_page(
             ):
                 train_type_colors[int(index)] = color.upper()
 
+    saved_type_fills = display_settings.get(
+        "train_type_fills",
+        settings.get("train_type_fills", {}),
+    )
+    train_type_fills: dict[int, str] = {}
+    if isinstance(saved_type_fills, dict):
+        for index, color in saved_type_fills.items():
+            if (
+                str(index).isdigit()
+                and isinstance(color, str)
+                and re.fullmatch(r"[0-9A-Fa-f]{6}", color)
+            ):
+                train_type_fills[int(index)] = color.upper()
+
+    train_type_minute_highlight_enabled: dict[int, bool] = {}
+    saved_highlight_enabled = display_settings.get(
+        "train_type_minute_highlight_enabled", {}
+    )
+    if isinstance(saved_highlight_enabled, dict):
+        train_type_minute_highlight_enabled = {
+            int(index): enabled
+            for index, enabled in saved_highlight_enabled.items()
+            if str(index).isdigit() and isinstance(enabled, bool)
+        }
+    train_type_minute_highlight_fills: dict[int, str] = {}
+    saved_highlight_fills = display_settings.get(
+        "train_type_minute_highlight_fills", {}
+    )
+    if isinstance(saved_highlight_fills, dict):
+        for index, color in saved_highlight_fills.items():
+            if (
+                str(index).isdigit()
+                and isinstance(color, str)
+                and re.fullmatch(r"[0-9A-Fa-f]{6}", color)
+            ):
+                train_type_minute_highlight_fills[int(index)] = color.upper()
+
+    timetable_display_defaults = {
+        "up_fill": "FAFAFA",
+        "up_alt_fill": "C8E6C9",
+        "down_fill": "FAFAFA",
+        "down_alt_fill": "C8E6C9",
+    }
+    timetable_display_settings = timetable_display_defaults.copy()
+    saved_timetable_display = display_settings.get("timetable", {})
+    if isinstance(saved_timetable_display, dict):
+        timetable_display_settings.update(saved_timetable_display)
+    for key, default in (
+        ("up_fill", "FAFAFA"),
+        ("up_alt_fill", "C8E6C9"),
+        ("down_fill", "FAFAFA"),
+        ("down_alt_fill", "C8E6C9"),
+    ):
+        timetable_display_settings[key] = _validated_color(
+            timetable_display_settings.get(key),
+            default,
+        )
+
     if railway is not None and station_index is not None:
         station = next(
             (
@@ -985,6 +1116,12 @@ def _render_page(
             "train_type_legend": train_type_legend,
             "station_legend": station_legend,
             "train_type_colors": train_type_colors,
+            "train_type_fills": train_type_fills,
+            "train_type_minute_highlight_enabled":
+                train_type_minute_highlight_enabled,
+            "train_type_minute_highlight_fills":
+                train_type_minute_highlight_fills,
+            "timetable_display_settings": timetable_display_settings,
             "show_legend": show_legend,
             "show_train_type_legend": show_train_type_legend,
             "show_station_legend": show_station_legend,
@@ -1241,6 +1378,28 @@ async def save_settings(
     )
 
     display_settings["train"] = train_display_settings
+    timetable_fill_defaults = {
+        "up_fill": "FAFAFA",
+        "up_alt_fill": "C8E6C9",
+        "down_fill": "FAFAFA",
+        "down_alt_fill": "C8E6C9",
+    }
+    saved_timetable_display = display_settings.get("timetable", {})
+    if not isinstance(saved_timetable_display, dict):
+        saved_timetable_display = {}
+    display_settings["timetable"] = {
+        key: (
+            submitted[1:].upper()
+            if re.fullmatch(r"#[0-9A-Fa-f]{6}", (submitted := str(
+                form_data.get(key, "")
+            ).strip()))
+            else _validated_color(
+                saved_timetable_display.get(key),
+                default,
+            )
+        )
+        for key, default in timetable_fill_defaults.items()
+    }
 
     # 列車種別ごとの表示・非表示
     train_type_column_visible = {}
@@ -1366,7 +1525,19 @@ async def save_settings(
         "show_destination_legend": (
             form_data.get("show_destination_legend") == "true"
         ),
+        "show_up_destination_legend": (
+            form_data.get("show_up_destination_legend") == "true"
+        ),
+        "show_down_destination_legend": (
+            form_data.get("show_down_destination_legend") == "true"
+        ),
     }
+    display_settings["show_legend"] = (
+        form_data.get("show_legend") == "true"
+    )
+    display_settings["show_train_type_legend"] = (
+        form_data.get("show_train_type_legend") == "true"
+    )
 
     display_settings["train_type_legend_visible"] = {
         str(train_type.index): (
@@ -1732,12 +1903,57 @@ async def save_settings(
         if re.fullmatch(r"#[0-9A-Fa-f]{6}", submitted_color):
             train_type_colors[train_type.index] = submitted_color[1:].upper()
 
+    train_type_fills: dict[int, str] = {}
+    saved_type_fills = existing_settings.get("train_type_fills", {})
+    if isinstance(saved_type_fills, dict):
+        for index, color in saved_type_fills.items():
+            if (
+                str(index).isdigit()
+                and isinstance(color, str)
+                and re.fullmatch(r"[0-9A-Fa-f]{6}", color)
+            ):
+                train_type_fills[int(index)] = color.upper()
+    train_type_minute_highlight_enabled: dict[int, bool] = {}
+    train_type_minute_highlight_fills: dict[int, str] = {}
+    for train_type in railway.train_types:
+        fill_field = f"train_type_fill_{train_type.index}"
+        submitted_fill = str(form_data.get(fill_field, "")).strip()
+        if re.fullmatch(r"#[0-9A-Fa-f]{6}", submitted_fill):
+            train_type_fills[train_type.index] = submitted_fill[1:].upper()
+        highlight_field = f"train_type_minute_highlight_{train_type.index}"
+        train_type_minute_highlight_enabled[train_type.index] = (
+            form_data.get(highlight_field) == "true"
+        )
+        highlight_fill_field = (
+            f"train_type_minute_highlight_fill_{train_type.index}"
+        )
+        submitted_highlight_fill = str(
+            form_data.get(highlight_fill_field, "")
+        ).strip()
+        if re.fullmatch(r"#[0-9A-Fa-f]{6}", submitted_highlight_fill):
+            train_type_minute_highlight_fills[
+                train_type.index
+            ] = submitted_highlight_fill[1:].upper()
+
+    display_settings["train_type_fills"] = {
+        str(index): color
+        for index, color in train_type_fills.items()
+    }
+    display_settings["train_type_minute_highlight_enabled"] = (
+        train_type_minute_highlight_enabled
+    )
+    display_settings["train_type_minute_highlight_fills"] = {
+        str(index): color
+        for index, color in train_type_minute_highlight_fills.items()
+    }
+
     save_station_settings(
         session_id=session_id,
         file_key=file_key,
         station_aliases=station_aliases,
         station_no_mark=station_no_mark,
         train_type_colors=train_type_colors,
+        train_type_fills=train_type_fills,
         legend_settings=legend_settings,
         display_settings=display_settings,
     )

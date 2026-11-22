@@ -336,6 +336,33 @@ def test_save_and_load_multiple_presets(oud2_path: Path) -> None:
     assert load_presets(oud2_path) == presets
 
 
+def test_direction_and_minute_highlight_settings_round_trip(
+    oud2_path: Path,
+) -> None:
+    config = TimetableDisplayConfig(
+        down_timetable_fill="ABCDEF",
+        down_timetable_alt_fill="123456",
+        train_type_minute_highlight_enabled={1: True, 2: False},
+        train_type_minute_highlight_fills={1: "FFF2CC", 2: "E2F0D9"},
+        show_up_destination_legend=False,
+        show_down_destination_legend=True,
+    )
+    presets = [Preset("direction", "方向別設定", None, config)]
+
+    save_presets(oud2_path, presets)
+    loaded = load_presets(oud2_path)[0].config
+
+    assert loaded.down_timetable_fill == "ABCDEF"
+    assert loaded.down_timetable_alt_fill == "123456"
+    assert loaded.train_type_minute_highlight_enabled == {1: True, 2: False}
+    assert loaded.train_type_minute_highlight_fills == {
+        1: "FFF2CC",
+        2: "E2F0D9",
+    }
+    assert loaded.show_up_destination_legend is False
+    assert loaded.show_down_destination_legend is True
+
+
 def test_presets_are_separated_by_oud2_path(tmp_path: Path) -> None:
     first_path = tmp_path / "first.oud2"
     second_path = tmp_path / "second.oud2"
@@ -629,6 +656,87 @@ def test_save_accepts_existing_preset_with_missing_and_unknown_fields(
     assert loaded[0].config.title_font_size == 14
     assert loaded[0].config.show_destination is False
 
+
+@pytest.mark.parametrize(
+    ("legacy_value", "expected"),
+    [
+        (True, "both"),
+        (False, "none"),
+    ],
+)
+def test_save_accepts_legacy_striped_train_fill(
+    oud2_path: Path,
+    legacy_value: bool,
+    expected: str,
+) -> None:
+    config = asdict(TimetableDisplayConfig())
+    config["striped_train_fill"] = legacy_value
+    _write_single_preset(oud2_path, config)
+
+    # 旧形式のbool値を新形式に変換して読み込める。
+    presets = load_presets(oud2_path)
+    assert presets[0].config.striped_train_fill == expected
+
+    # 既存プリセットを保持したまま、新しいプリセットを追加する。
+    presets.append(
+        Preset(
+            "new-preset",
+            "新規プリセット",
+            None,
+            TimetableDisplayConfig(),
+        )
+    )
+    save_presets(oud2_path, presets)
+
+    # 保存されたJSONも新形式の文字列になっている。
+    presets_path = oud2_path.with_name(
+        f"{oud2_path.name}.presets.json"
+    )
+    saved_data = json.loads(
+        presets_path.read_text(encoding="utf-8")
+    )
+
+    assert (
+        saved_data["presets"][0]["config"]["striped_train_fill"]
+        == expected
+    )
+
+    # 再読み込みしても既存プリセットが保持されている。
+    loaded = load_presets(oud2_path)
+
+    assert [preset.id for preset in loaded] == [
+        "test-preset",
+        "new-preset",
+    ]
+    assert loaded[0].config.striped_train_fill == expected
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "none",
+        "both",
+        "metadata",
+        "minute",
+    ],
+)
+def test_striped_train_fill_round_trip(
+    oud2_path: Path,
+    value: str,
+) -> None:
+    config = TimetableDisplayConfig(
+        striped_train_fill=value,
+    )
+    presets = [
+        Preset("striped", "時間帯背景色", None, config)
+    ]
+
+    save_presets(oud2_path, presets)
+    loaded = load_presets(oud2_path)
+
+    assert len(loaded) == 1
+    assert loaded[0].config.striped_train_fill == value
+    
 
 def test_invalid_data_is_rejected_before_save(oud2_path: Path) -> None:
     path = oud2_path.with_name(f"{oud2_path.name}.presets.json")

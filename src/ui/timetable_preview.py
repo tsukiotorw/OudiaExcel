@@ -254,13 +254,14 @@ class TimetablePreview(tk.Frame):
             + 10
         )
 
-        self._draw_legend(
-            x=x0,
-            y=legend_y,
-            down_width=down_width,
-            up_width=up_width,
-            central_hour_column=central_hour_column,
-        )
+        if self.display_config.show_legend:
+            self._draw_legend(
+                x=x0,
+                y=legend_y,
+                down_width=down_width,
+                up_width=up_width,
+                central_hour_column=central_hour_column,
+            )
 
         self.canvas.configure(
             scrollregion=self.canvas.bbox("all")
@@ -450,6 +451,7 @@ class TimetablePreview(tk.Frame):
                     hour=slot.hour if has_hour else None,
                     row_count=row_count,
                     stripe_hour=slot.hour,
+                    direction=direction,
                 )
 
             for entry_index, entry in enumerate(entries):
@@ -466,12 +468,42 @@ class TimetablePreview(tk.Frame):
                         if row_index < len(entry_layout)
                         else []
                     )
-                    fill = self._to_tk_color(
-                        (type_fill if kinds else None)
-                        or config.get_entry_fill(
-                            slot.hour,
+
+                    # 時間帯別背景色を適用するか判定
+                    has_metadata = any(
+                        kind in ("destination", "train_type")
+                        for kind in kinds
+                    )
+                    use_striped_fill = (
+                        (
+                            config.is_striped_train_fill_for_metadata()
+                            and has_metadata
                         )
-                    ) or "#FAFAFA"
+                        or (
+                            config.is_striped_train_fill_for_minute()
+                            and "minute" in kinds
+                        )
+                    )
+
+                    if use_striped_fill:
+                        fill_color = config.get_entry_fill(
+                            slot.hour,
+                            direction,
+                        )
+                    else:
+                        fill_color = (
+                            config.get_train_type_minute_highlight_fill(
+                                entry.train_type.index
+                            )
+                            if "minute" in kinds
+                            else (type_fill if kinds else None)
+                        ) or config.get_entry_fill(
+                            slot.hour,
+                            direction,
+                        )
+
+                    fill = self._to_tk_color(fill_color) or "#FAFAFA"
+
                     self.canvas.create_rectangle(
                         entry_x,
                         row_y,
@@ -481,6 +513,7 @@ class TimetablePreview(tk.Frame):
                         outline="",
                         tags=(PreviewItem.TRAIN,),
                     )
+
                     if kinds:
                         self._draw_entry_text(
                             entry=entry,
@@ -518,6 +551,7 @@ class TimetablePreview(tk.Frame):
         hour: int | None,
         row_count: int,
         stripe_hour: int,
+        direction: str = "up",
     ) -> None:
         config = self.display_config
         fill = self._to_tk_color(config.hour_fill)
@@ -528,9 +562,17 @@ class TimetablePreview(tk.Frame):
                 else stripe_hour
             )
             fill = self._to_tk_color(
-                config.timetable_alt_fill
+                (
+                    config.down_timetable_alt_fill
+                    if direction == "down"
+                    else config.get_up_timetable_fill(alternate=True)
+                )
                 if hour_order % 2 == 0
-                else config.timetable_fill
+                else (
+                    config.down_timetable_fill
+                    if direction == "down"
+                    else config.get_up_timetable_fill()
+                )
             ) or "#F2F2F2"
         self.canvas.create_rectangle(
             x,
@@ -646,9 +688,17 @@ class TimetablePreview(tk.Frame):
     def _get_destination_legend_items(
         self,
         hours: list[TimetableHour] | None = None,
+        direction: str = "up",
     ) -> list[tuple[str, str]]:
         """指定された時刻表から行先凡例を取得する。"""
         if self.timetable is None or not self.display_config.show_destination_legend:
+            return []
+        direction_visible = (
+            self.display_config.show_down_destination_legend
+            if direction == "down"
+            else self.display_config.show_up_destination_legend
+        )
+        if not direction_visible:
             return []
 
         if hours is None:
@@ -700,6 +750,8 @@ class TimetablePreview(tk.Frame):
 
             if self.timetable is not None:
                 for train_type in self.timetable.train_types:
+                    if not config.show_train_type_legend:
+                        continue
                     if not config.train_type_visible.get(
                         train_type.index, True
                     ):
@@ -762,12 +814,18 @@ class TimetablePreview(tk.Frame):
             return rows, label_width
 
         down_items = (
-            self._get_destination_legend_items(self.timetable.down)
+            self._get_destination_legend_items(
+                self.timetable.down,
+                "down",
+            )
             if self.timetable is not None
             else []
         )
         up_items = (
-            self._get_destination_legend_items(self.timetable.up)
+            self._get_destination_legend_items(
+                self.timetable.up,
+                "up",
+            )
             if self.timetable is not None
             else []
         )

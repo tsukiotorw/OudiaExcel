@@ -3,6 +3,21 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 
+STRIPED_TRAIN_FILL_NONE = "none"
+STRIPED_TRAIN_FILL_BOTH = "both"
+STRIPED_TRAIN_FILL_METADATA = "metadata"
+STRIPED_TRAIN_FILL_MINUTE = "minute"
+
+
+def normalize_striped_train_fill(value: object) -> object:
+    """旧bool形式の時間帯別背景色設定を新文字列形式へ正規化する。"""
+    if type(value) is bool:
+        if value:
+            return STRIPED_TRAIN_FILL_BOTH
+        return STRIPED_TRAIN_FILL_NONE
+    return value
+
+
 @dataclass
 class BorderSideConfig:
     """罫線の片側に対する表示設定。"""
@@ -38,6 +53,12 @@ class TimetableDisplayConfig:
     train_type_colors: dict[int, str] = field(default_factory=dict)
     train_type_fills: dict[int, str] = field(default_factory=dict)
     train_type_visible: dict[int, bool] = field(default_factory=dict)
+    train_type_minute_highlight_enabled: dict[int, bool] = field(
+        default_factory=dict
+    )
+    train_type_minute_highlight_fills: dict[int, str] = field(
+        default_factory=dict
+    )
 
     # 列車欄での列車種別ごとの表示有無
     train_type_column_visible: dict[int, bool] = field(
@@ -48,7 +69,7 @@ class TimetableDisplayConfig:
     train_type_position: str = "top"
     metadata_order: str = "destination_first"
     hour_column_mode: str = "separate"
-    striped_train_fill: bool = True
+    striped_train_fill: str = STRIPED_TRAIN_FILL_BOTH
 
     # 罫線
     title_border: BorderConfig = field(
@@ -89,6 +110,10 @@ class TimetableDisplayConfig:
     # 時刻表本体
     timetable_fill: str = "FAFAFA"
     timetable_alt_fill: str = "C8E6C9"
+    up_timetable_fill: str = "FAFAFA"
+    up_timetable_alt_fill: str = "C8E6C9"
+    down_timetable_fill: str = "FAFAFA"
+    down_timetable_alt_fill: str = "C8E6C9"
     timetable_border_color: str = "FAFAFA"
     timetable_border_width: str = "thin"
 
@@ -129,6 +154,10 @@ class TimetableDisplayConfig:
     minute_font_mode: str = "independent"
 
     # 凡例
+    show_legend: bool = True
+    show_train_type_legend: bool = True
+    show_up_destination_legend: bool = True
+    show_down_destination_legend: bool = True
     legend_label_fill: str = "000000"
     legend_fill: str = "FAFAFA"
     legend_font_color: str = "000000"
@@ -214,14 +243,72 @@ class TimetableDisplayConfig:
 
         return values
 
+    def get_up_timetable_fill(self, alternate: bool = False) -> str:
+        if alternate:
+            if self.up_timetable_alt_fill != "C8E6C9":
+                return self.up_timetable_alt_fill
+            return self.timetable_alt_fill
+        if self.up_timetable_fill != "FAFAFA":
+            return self.up_timetable_fill
+        return self.timetable_fill
+
+    def is_striped_train_fill_for_metadata(self) -> bool:
+        """行先・列車種別欄に時間帯別交互背景色を適用するかを返す。"""
+        return self.striped_train_fill in (
+            STRIPED_TRAIN_FILL_BOTH,
+            STRIPED_TRAIN_FILL_METADATA,
+        )
+
+    def is_striped_train_fill_for_minute(self) -> bool:
+        """分に時間帯別交互背景色を適用するかを返す。"""
+        return self.striped_train_fill in (
+            STRIPED_TRAIN_FILL_BOTH,
+            STRIPED_TRAIN_FILL_MINUTE,
+        )
+
     def get_entry_fill(
         self,
         hour: int,
+        direction: str = "up",
     ) -> str:
         """列車欄の基本背景色を返す。種別色は呼び出し側で優先する。"""
+
+        hour_order = (hour - 4) % 24 if 0 <= hour < 24 else hour
+        apply_metadata_fill = self.is_striped_train_fill_for_metadata()
+
+        if apply_metadata_fill:
+            if direction == "down":
+                return (
+                    self.down_timetable_alt_fill
+                    if hour_order % 2 == 0
+                    else self.down_timetable_fill
+                )
+
+            return (
+                self.get_up_timetable_fill(alternate=True)
+                if hour_order % 2 == 0
+                else self.get_up_timetable_fill()
+            )
+
         if self.train_fill is not None:
             return self.train_fill
-        hour_order = (hour - 4) % 24 if 0 <= hour < 24 else hour
-        if self.striped_train_fill and hour_order % 2 == 0:
-            return self.timetable_alt_fill
-        return self.timetable_fill
+
+        if direction == "down":
+            return self.down_timetable_fill
+
+        return self.get_up_timetable_fill()
+
+
+    def get_train_type_minute_highlight_fill(
+        self,
+        train_type_index: int,
+    ) -> str | None:
+        """分強調が有効な列車種別の背景色を返す。"""
+        if not self.train_type_minute_highlight_enabled.get(
+            train_type_index,
+            False,
+        ):
+            return None
+        return self.train_type_minute_highlight_fills.get(
+            train_type_index
+        )

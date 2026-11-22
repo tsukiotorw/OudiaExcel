@@ -90,6 +90,7 @@ def save_station_settings(
     station_aliases: dict[str, str],
     station_no_mark: dict[str, bool],
     train_type_colors: dict[int, str] | None = None,
+    train_type_fills: dict[int, str] | None = None,
     legend_settings: dict[str, bool] | None = None,
     display_settings: dict | None = None,
 ) -> None:
@@ -110,6 +111,11 @@ def save_station_settings(
         settings["train_type_colors"] = {
             str(index): color
             for index, color in train_type_colors.items()
+        }
+    if train_type_fills is not None:
+        settings["train_type_fills"] = {
+            str(index): color
+            for index, color in train_type_fills.items()
         }
 
     # 凡例設定が渡された場合だけ更新する。

@@ -15,7 +15,11 @@ from typing import Any, Union, get_args, get_origin, get_type_hints
 from src.application.station_alias_settings import (
     _display_config_from_dict,
 )
-from src.timetable.display_config import TimetableDisplayConfig
+from src.timetable.display_config import (
+    TimetableDisplayConfig,
+    normalize_striped_train_fill,
+)
+
 
 
 _FILE_VERSION = 1
@@ -30,6 +34,8 @@ _TRAIN_TYPE_CONFIG_FIELDS = {
     "train_type_fills",
     "train_type_visible",
     "train_type_column_visible",
+    "train_type_minute_highlight_enabled",
+    "train_type_minute_highlight_fills",
 }
 
 
@@ -119,6 +125,12 @@ def _validated_display_config(value: Any) -> TimetableDisplayConfig:
         raise _invalid_data("config")
 
     normalized = dict(value)
+
+    # 旧形式のbool値を新形式の文字列に正規化する。
+    if "striped_train_fill" in normalized:
+        normalized["striped_train_fill"] = normalize_striped_train_fill(
+            normalized["striped_train_fill"]
+        )
 
     # float型フィールドに整数が指定されていた場合はfloatに正規化する。
     config_hints = get_type_hints(TimetableDisplayConfig)

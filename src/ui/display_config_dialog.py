@@ -3,7 +3,13 @@ import tkinter.font as tkfont
 from tkinter import colorchooser,ttk
 
 from src.ui.preview_item import PreviewItem
-from src.timetable.display_config import TimetableDisplayConfig
+from src.timetable.display_config import (
+    TimetableDisplayConfig,
+    STRIPED_TRAIN_FILL_NONE,
+    STRIPED_TRAIN_FILL_BOTH,
+    STRIPED_TRAIN_FILL_METADATA,
+    STRIPED_TRAIN_FILL_MINUTE,
+)
 from src.models.train_type import TrainType
 
 BORDER_STYLES = {
@@ -192,8 +198,20 @@ class DisplayConfigDialog(tk.Toplevel):
                 else "上下線別"
             )
         )
-        self.striped_train_fill = tk.BooleanVar(
+        self.striped_train_fill = tk.StringVar(
             value=self.display_config.striped_train_fill,
+        )
+        self.up_timetable_fill = tk.StringVar(
+            value=self.display_config.up_timetable_fill,
+        )
+        self.up_timetable_alt_fill = tk.StringVar(
+            value=self.display_config.up_timetable_alt_fill,
+        )
+        self.down_timetable_fill = tk.StringVar(
+            value=self.display_config.down_timetable_fill,
+        )
+        self.down_timetable_alt_fill = tk.StringVar(
+            value=self.display_config.down_timetable_alt_fill,
         )
         self.entry_font_modes: dict[str, tk.StringVar] = {}
         self.entry_font_names: dict[str, tk.StringVar] = {}
@@ -250,6 +268,26 @@ class DisplayConfigDialog(tk.Toplevel):
         self.train_type_fills = {
             train_type.index: tk.StringVar(
                 value=self.display_config.train_type_fills.get(
+                    train_type.index,
+                    "",
+                )
+            )
+            for train_type in self.train_types
+        }
+        self.train_type_minute_highlight_enabled = {
+            train_type.index: tk.BooleanVar(
+                value=self.display_config
+                .train_type_minute_highlight_enabled.get(
+                    train_type.index,
+                    False,
+                )
+            )
+            for train_type in self.train_types
+        }
+        self.train_type_minute_highlight_fills = {
+            train_type.index: tk.StringVar(
+                value=self.display_config
+                .train_type_minute_highlight_fills.get(
                     train_type.index,
                     "",
                 )
@@ -773,15 +811,89 @@ class DisplayConfigDialog(tk.Toplevel):
             text="選択...",
             command=self._choose_fill_color,
         ).grid(row=1, column=2, padx=4, pady=4)
-        ttk.Checkbutton(
+        ttk.Label(
             color_frame,
-            text="時間帯ごとに背景色を切り替える",
-            variable=self.striped_train_fill,
-        ).grid(row=2, column=0, columnspan=3, sticky=tk.W, pady=4)
-        ttk.Label(color_frame, text="列車種別ごとの背景色").grid(
-            row=3, column=0, columnspan=3, sticky=tk.W, pady=(10, 4)
+            text="時間帯別背景色",
+        ).grid(
+            row=2,
+            column=0,
+            sticky=tk.W,
+            padx=4,
+            pady=4,
         )
-        for row, train_type in enumerate(self.train_types, start=4):
+
+        ttk.Combobox(
+            color_frame,
+            textvariable=self.striped_train_fill,
+            values=(
+                STRIPED_TRAIN_FILL_NONE,
+                STRIPED_TRAIN_FILL_BOTH,
+                STRIPED_TRAIN_FILL_METADATA,
+                STRIPED_TRAIN_FILL_MINUTE,
+            ),
+            state="readonly",
+            width=16,
+        ).grid(
+            row=2,
+            column=1,
+            sticky=tk.W,
+            padx=4,
+            pady=4,
+        )
+
+        direction_fill_fields = (
+            ("上り基本", self.up_timetable_fill, "up"),
+            ("上り交互", self.up_timetable_alt_fill, "up_alt"),
+            ("下り基本", self.down_timetable_fill, "down"),
+            ("下り交互", self.down_timetable_alt_fill, "down_alt"),
+        )
+        for offset, (label, variable, color_type) in enumerate(
+            direction_fill_fields
+        ):
+            row = 3 + offset // 2
+            column = (offset % 2) * 3
+            ttk.Label(color_frame, text=label).grid(
+                row=row,
+                column=column,
+                sticky=tk.W,
+                padx=4,
+                pady=2,
+            )
+            ttk.Entry(
+                color_frame,
+                textvariable=variable,
+                width=12,
+            ).grid(
+                row=row,
+                column=column + 1,
+                padx=4,
+                pady=2,
+            )
+            ttk.Button(
+                color_frame,
+                text="選択...",
+                command=lambda current=color_type: (
+                    self._choose_timetable_fill(current)
+                ),
+            ).grid(
+                row=row,
+                column=column + 2,
+                padx=4,
+                pady=2,
+            )
+
+        ttk.Label(color_frame, text="列車種別ごとの背景色").grid(
+            row=5, column=0, columnspan=3, sticky=tk.W, pady=(10, 4)
+        )
+        ttk.Label(
+            color_frame,
+            text="分強調",
+        ).grid(row=5, column=3, sticky=tk.W, pady=(10, 4))
+        ttk.Label(
+            color_frame,
+            text="分強調背景色",
+        ).grid(row=5, column=4, columnspan=2, sticky=tk.W, pady=(10, 4))
+        for row, train_type in enumerate(self.train_types, start=6):
             ttk.Label(color_frame, text=train_type.name).grid(
                 row=row, column=0, sticky=tk.W, padx=4, pady=2
             )
@@ -797,6 +909,26 @@ class DisplayConfigDialog(tk.Toplevel):
                     index
                 ),
             ).grid(row=row, column=2, padx=4, pady=2)
+            ttk.Checkbutton(
+                color_frame,
+                variable=self.train_type_minute_highlight_enabled[
+                    train_type.index
+                ],
+            ).grid(row=row, column=3, padx=4, pady=2)
+            ttk.Entry(
+                color_frame,
+                textvariable=(
+                    self.train_type_minute_highlight_fills[train_type.index]
+                ),
+                width=12,
+            ).grid(row=row, column=4, padx=4, pady=2)
+            ttk.Button(
+                color_frame,
+                text="選択...",
+                command=lambda index=train_type.index: (
+                    self._choose_train_type_minute_highlight_fill(index)
+                ),
+            ).grid(row=row, column=5, padx=4, pady=2)
 
         border_row = self._create_border_widgets(
             border_frame,
@@ -1493,7 +1625,7 @@ class DisplayConfigDialog(tk.Toplevel):
                 pady=2,
             )
 
-            ttk.Label(
+            ttk.Entry(
                 frame,
                 textvariable=self.train_type_colors[train_type.index],
                 width=8,
@@ -1613,10 +1745,10 @@ class DisplayConfigDialog(tk.Toplevel):
                 pady=2,
             )
 
-            ttk.Label(
+            ttk.Entry(
                 border_frame,
                 textvariable=self.border_colors[side],
-                width=8,
+                width=10,
             ).grid(
                 row=row,
                 column=2,
@@ -1690,18 +1822,16 @@ class DisplayConfigDialog(tk.Toplevel):
             padx=(0, 5),
         )
 
-        color_label = ttk.Label(
+        ttk.Entry(
             frame,
             textvariable=self.train_separator_color,
-            width=8,
-            relief="solid",
-        )
-        color_label.grid(
+            width=10,
+        ).grid(
             row=0,
             column=2,
             padx=(0, 5),
         )
-
+        
         ttk.Button(
             frame,
             text="選択...",
@@ -1842,6 +1972,35 @@ class DisplayConfigDialog(tk.Toplevel):
             color[1].lstrip("#").upper()
         )
 
+
+    def _choose_timetable_fill(self, color_type: str) -> None:
+        """時間帯別背景色を選択する。"""
+        variables = {
+            "up": self.up_timetable_fill,
+            "up_alt": self.up_timetable_alt_fill,
+            "down": self.down_timetable_fill,
+            "down_alt": self.down_timetable_alt_fill,
+        }
+
+        variable = variables[color_type]
+        current = variable.get().strip()
+
+        color = colorchooser.askcolor(
+            title="時間帯別背景色を選択",
+            initialcolor=(
+                f"#{current.lstrip('#')}"
+                if current
+                else "#FFFFFF"
+            ),
+            parent=self,
+        )
+
+        if color[1] is not None:
+            variable.set(
+                color[1].lstrip("#").upper()
+            )
+
+
     def _choose_train_type_fill(
         self,
         train_type_index: int,
@@ -1854,6 +2013,27 @@ class DisplayConfigDialog(tk.Toplevel):
         )
         if color[1] is not None:
             self.train_type_fills[train_type_index].set(
+                color[1].lstrip("#").upper()
+            )
+
+    def _choose_train_type_minute_highlight_fill(
+        self,
+        train_type_index: int,
+    ) -> None:
+        current = (
+            self.train_type_minute_highlight_fills[
+                train_type_index
+            ].get().strip()
+        )
+        color = colorchooser.askcolor(
+            title="列車種別の分強調背景色を選択",
+            initialcolor=f"#{current.lstrip('#')}" if current else "#FFF2CC",
+            parent=self,
+        )
+        if color[1] is not None:
+            self.train_type_minute_highlight_fills[
+                train_type_index
+            ].set(
                 color[1].lstrip("#").upper()
             )
 
@@ -2213,6 +2393,22 @@ class DisplayConfigDialog(tk.Toplevel):
         self.display_config.striped_train_fill = (
             self.striped_train_fill.get()
         )
+        self.display_config.up_timetable_fill = (
+            self.up_timetable_fill.get().strip().lstrip("#").upper()
+            or "FAFAFA"
+        )
+        self.display_config.up_timetable_alt_fill = (
+            self.up_timetable_alt_fill.get().strip().lstrip("#").upper()
+            or "C8E6C9"
+        )
+        self.display_config.down_timetable_fill = (
+            self.down_timetable_fill.get().strip().lstrip("#").upper()
+            or "FAFAFA"
+        )
+        self.display_config.down_timetable_alt_fill = (
+            self.down_timetable_alt_fill.get().strip().lstrip("#").upper()
+            or "C8E6C9"
+        )
 
         font_mode_keys = {
             label: mode
@@ -2262,6 +2458,17 @@ class DisplayConfigDialog(tk.Toplevel):
         self.display_config.train_type_fills = {
             index: variable.get().strip().lstrip("#").upper()
             for index, variable in self.train_type_fills.items()
+            if variable.get().strip().lstrip("#")
+        }
+        self.display_config.train_type_minute_highlight_enabled = {
+            index: variable.get()
+            for index, variable
+            in self.train_type_minute_highlight_enabled.items()
+        }
+        self.display_config.train_type_minute_highlight_fills = {
+            index: variable.get().strip().lstrip("#").upper()
+            for index, variable
+            in self.train_type_minute_highlight_fills.items()
             if variable.get().strip().lstrip("#")
         }
 

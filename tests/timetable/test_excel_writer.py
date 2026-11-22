@@ -539,6 +539,7 @@ def test_write_train_display_config(
     display_config = TimetableDisplayConfig(
         train_fill="FFF2CC",
         train_font_color="800080",
+        striped_train_fill="none",
     )
 
     output_path = tmp_path / "station_timetable.xlsx"
@@ -1103,6 +1104,7 @@ def test_write_striped_and_train_type_fills(
         train_type_position="bottom",
         train_fill="AA0000",
         train_type_fills={entry.train_type.index: "FFCC00"},
+        striped_train_fill="none",
     )
     output_path = tmp_path / "fills.xlsx"
 
@@ -1111,24 +1113,185 @@ def test_write_striped_and_train_type_fills(
     worksheet = load_workbook(output_path)[timetable.station_name]
     down_train_column = _direction_columns(timetable, config)["down_train"]
     assert worksheet.cell(row=4, column=down_train_column).fill.fgColor.rgb == "FFFFCC00"
-    assert worksheet.cell(row=5, column=down_train_column).fill.fgColor.rgb == "FFFFCC00"
+    assert worksheet.cell(row=5, column=down_train_column).fill.fgColor.rgb == "FFAA0000"
     assert worksheet.cell(row=6, column=down_train_column).fill.fgColor.rgb == "FFFFCC00"
 
     config.train_type_fills.clear()
     config.train_fill = None
-    config.striped_train_fill = True
+    config.striped_train_fill = "both"
     output_path = tmp_path / "striped.xlsx"
     ExcelWriter(config).write(timetable, output_path)
     worksheet = load_workbook(output_path)[timetable.station_name]
     assert worksheet.cell(row=4, column=down_train_column).fill.fgColor.rgb == "FFC8E6C9"
     assert worksheet.cell(row=7, column=down_train_column).fill.fgColor.rgb == "FFFAFAFA"
 
-    config.striped_train_fill = False
+    config.striped_train_fill = "none"
     output_path = tmp_path / "unstriped.xlsx"
     ExcelWriter(config).write(timetable, output_path)
     worksheet = load_workbook(output_path)[timetable.station_name]
     assert worksheet.cell(row=4, column=down_train_column).fill.fgColor.rgb == "FFFAFAFA"
-    assert worksheet.cell(row=7, column=down_train_column).fill.fgColor.rgb == "FFFAFAFA"
+
+
+def test_write_direction_colors_and_minute_highlight(
+    parsed_railway: Railway,
+    tmp_path,
+) -> None:
+    station = parsed_railway.stations[1]
+    source = StationTimetableGenerator(parsed_railway).generate(station)
+    entry = _first_marked_entry(source.down)
+    timetable = StationTimetable(
+        station_name=source.station_name,
+        down=[TimetableHour(4, [entry]), TimetableHour(5, [entry])],
+        up=[TimetableHour(4, [entry]), TimetableHour(5, [entry])],
+        train_types=source.train_types,
+    )
+    config = TimetableDisplayConfig(
+        striped_train_fill="both",
+        up_timetable_fill="FFFFFF",
+        up_timetable_alt_fill="E2F0D9",
+        down_timetable_fill="F2F2F2",
+        down_timetable_alt_fill="DDEBF7",
+        train_type_minute_highlight_enabled={
+            entry.train_type.index: True,
+        },
+        train_type_minute_highlight_fills={
+            entry.train_type.index: "FFF2CC",
+        },
+    )
+    output_path = tmp_path / "direction_highlight.xlsx"
+    ExcelWriter(config).write(timetable, output_path)
+
+    worksheet = load_workbook(output_path)[timetable.station_name]
+    columns = _direction_columns(timetable, config)
+    assert worksheet.cell(
+        row=4,
+        column=columns["up_train"],
+    ).fill.fgColor.rgb == "FFE2F0D9"
+    assert worksheet.cell(
+        row=4,
+        column=columns["down_train"],
+    ).fill.fgColor.rgb == "FFDDEBF7"
+
+    highlight_cells = [
+        cell
+        for row in worksheet.iter_rows()
+        for cell in row
+        if cell.fill.fgColor.rgb == "FFFFF2CC"
+    ]
+    assert not highlight_cells
+
+
+
+@pytest.mark.parametrize(
+    (
+        "striped_train_fill",
+        "expected_metadata_4",
+        "expected_metadata_5",
+        "expected_minute_4",
+        "expected_minute_5",
+    ),
+    [
+        (
+            "none",
+            "FFFFCC00",
+            "FFFFCC00",
+            "FFFFF2CC",
+            "FFFFF2CC",
+        ),
+        (
+            "metadata",
+            "FFDDEBF7",
+            "FFF2F2F2",
+            "FFFFF2CC",
+            "FFFFF2CC",
+        ),
+        (
+            "minute",
+            "FFFFCC00",
+            "FFFFCC00",
+            "FFDDEBF7",
+            "FFF2F2F2",
+        ),
+        (
+            "both",
+            "FFDDEBF7",
+            "FFF2F2F2",
+            "FFDDEBF7",
+            "FFF2F2F2",
+        ),
+    ],
+)
+def test_write_striped_fill_modes(
+    parsed_railway: Railway,
+    tmp_path,
+    striped_train_fill: str,
+    expected_metadata_4: str,
+    expected_metadata_5: str,
+    expected_minute_4: str,
+    expected_minute_5: str,
+) -> None:
+    """時間帯別背景色の4つの設定と個別背景色の優先順位を検証する。"""
+    station = parsed_railway.stations[1]
+    source = StationTimetableGenerator(parsed_railway).generate(station)
+    entry = _first_marked_entry(source.down)
+
+    timetable = StationTimetable(
+        station_name=source.station_name,
+        down=[
+            TimetableHour(4, [entry]),
+            TimetableHour(5, [entry]),
+        ],
+        up=[],
+        train_types=source.train_types,
+    )
+
+    config = TimetableDisplayConfig(
+        destination_position="top",
+        train_type_position="top",
+        striped_train_fill=striped_train_fill,
+        down_timetable_fill="F2F2F2",
+        down_timetable_alt_fill="DDEBF7",
+        train_type_fills={
+            entry.train_type.index: "FFCC00",
+        },
+        train_type_minute_highlight_enabled={
+            entry.train_type.index: True,
+        },
+        train_type_minute_highlight_fills={
+            entry.train_type.index: "FFF2CC",
+        },
+    )
+
+    output_path = tmp_path / f"striped_{striped_train_fill}.xlsx"
+    ExcelWriter(config).write(timetable, output_path)
+
+    worksheet = load_workbook(output_path)[timetable.station_name]
+    train_column = _direction_columns(
+        timetable,
+        config,
+    )["down_train"]
+
+    # 4時台：4行目が行先・列車種別、5行目が分
+    assert worksheet.cell(
+        row=4,
+        column=train_column,
+    ).fill.fgColor.rgb == expected_metadata_4
+
+    assert worksheet.cell(
+        row=5,
+        column=train_column,
+    ).fill.fgColor.rgb == expected_minute_4
+
+    # 5時台：6行目が行先・列車種別、7行目が分
+    assert worksheet.cell(
+        row=6,
+        column=train_column,
+    ).fill.fgColor.rgb == expected_metadata_5
+
+    assert worksheet.cell(
+        row=7,
+        column=train_column,
+    ).fill.fgColor.rgb == expected_minute_5
 
 
 def test_write_center_hour_column_merges_asymmetric_hours(

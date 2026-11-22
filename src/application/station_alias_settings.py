@@ -11,6 +11,7 @@ from src.timetable.display_config import (
     BorderConfig,
     BorderSideConfig,
     TimetableDisplayConfig,
+    normalize_striped_train_fill,
 )
 
 
@@ -229,6 +230,8 @@ def _display_config_from_dict(
             "train_type_fills",
             "train_type_visible",
             "train_type_column_visible",
+            "train_type_minute_highlight_enabled",
+            "train_type_minute_highlight_fills",
         }:
             if not isinstance(item, dict):
                 raise ValueError("列車種別設定の形式が正しくありません。")
@@ -243,6 +246,12 @@ def _display_config_from_dict(
                 ) from exc
 
             setattr(config, name, converted)
+        elif name == "striped_train_fill":
+            setattr(
+                config,
+                name,
+                normalize_striped_train_fill(item),
+            )
         else:
             setattr(config, name, item)
 

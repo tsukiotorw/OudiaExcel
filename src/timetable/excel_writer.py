@@ -175,6 +175,7 @@ class ExcelWriter:
                 slot.hour if central_hour_column or slot.up_present else None,
                 slot.hour,
                 row_count,
+                "up" if central_hour_column else "up",
             )
             if not central_hour_column:
                 self._write_hour_column(
@@ -184,6 +185,7 @@ class ExcelWriter:
                     slot.hour if slot.down_present else None,
                     slot.hour,
                     row_count,
+                    "down",
                 )
             self._write_hour_entries(
                 worksheet,
@@ -192,6 +194,7 @@ class ExcelWriter:
                 slot.up_entries,
                 slot.hour,
                 row_count,
+                "up",
             )
             self._write_hour_entries(
                 worksheet,
@@ -200,6 +203,7 @@ class ExcelWriter:
                 slot.down_entries,
                 slot.hour,
                 row_count,
+                "down",
             )
             self._set_hour_row_heights(worksheet, row, row_count)
             row += row_count
@@ -350,6 +354,7 @@ class ExcelWriter:
         hour: int | None,
         stripe_hour: int,
         row_count: int,
+        direction: str = "up",
     ) -> None:
         config = self.display_config
         hour_fill = self._create_fill(config.hour_fill)
@@ -359,10 +364,18 @@ class ExcelWriter:
             else stripe_hour
         )
         body_fill = self._create_fill(
-            config.timetable_alt_fill
-            if config.striped_train_fill and hour_order % 2 == 0
-            else config.timetable_fill
+            (
+                config.get_up_timetable_fill(alternate=True)
+                if config.striped_train_fill and hour_order % 2 == 0
+                else config.get_up_timetable_fill()
+            )
         )
+        if direction == "down":
+            body_fill = self._create_fill(
+                config.down_timetable_alt_fill
+                if config.striped_train_fill and hour_order % 2 == 0
+                else config.down_timetable_fill
+            )
         fill = hour_fill or body_fill or PatternFill()
 
         for row_offset in range(row_count):
@@ -398,6 +411,7 @@ class ExcelWriter:
         entries: list[TimetableEntry],
         hour: int,
         row_count: int,
+        direction: str = "up",
     ) -> None:
         for column, entry in enumerate(entries, start=start_column):
             entry_rows = get_entry_layout(entry, self.display_config)
@@ -411,19 +425,71 @@ class ExcelWriter:
                     row=row + row_offset,
                     column=column,
                 )
+
+                has_metadata = any(
+                    kind in ("destination", "train_type")
+                    for kind in kinds
+                )
+                has_minute = "minute" in kinds
+
                 fill_color = (
                     self.display_config.train_type_fills.get(
                         entry.train_type.index
                     )
-                    if kinds
+                    if has_metadata
                     else None
                 )
-                cell.fill = self._create_fill(
-                    fill_color
-                    or self.display_config.get_entry_fill(
-                        hour,
+
+                minute_highlight_fill = (
+                    self.display_config
+                    .get_train_type_minute_highlight_fill(
+                        entry.train_type.index
                     )
-                ) or PatternFill()
+                    if has_minute
+                    else None
+                )
+
+                config = self.display_config
+                if (
+                    has_metadata
+                    and config.is_striped_train_fill_for_metadata()
+                ):
+                    # 行先・列車種別欄は時間帯別背景色を優先
+                    fill = config.get_entry_fill(hour, direction)
+
+                elif (
+                    has_minute
+                    and config.is_striped_train_fill_for_minute()
+                ):
+                    # 分欄は時間帯別背景色を優先
+                    hour_order = (
+                        (hour - 4) % 24
+                        if 0 <= hour < 24
+                        else hour
+                    )
+                    alternate = hour_order % 2 == 0
+
+                    if direction == "down":
+                        fill = (
+                            config.down_timetable_alt_fill
+                            if alternate
+                            else config.down_timetable_fill
+                        )
+                    else:
+                        fill = config.get_up_timetable_fill(
+                            alternate=alternate
+                        )
+
+                else:
+                    # 時間帯別背景色を使わない欄は個別設定を優先
+                    fill = (
+                        minute_highlight_fill
+                        or fill_color
+                        or config.get_entry_fill(hour, direction)
+                    )
+
+                cell.fill = self._create_fill(fill) or PatternFill()
+
                 cell.alignment = Alignment(
                     horizontal="center",
                     vertical="center",
@@ -627,18 +693,32 @@ class ExcelWriter:
     ) -> int:
         """下り・上りそれぞれの列車種別と行先凡例を書き込む。"""
         config = self.display_config
+        if not config.show_legend:
+            return row
 
         train_types = [
             train_type
             for train_type in timetable.train_types
             if config.train_type_visible.get(train_type.index, True)
+            and config.show_train_type_legend
         ]
 
-        def collect_station_items(hours: list[TimetableHour]) -> list[str]:
+        def collect_station_items(
+            hours: list[TimetableHour],
+            direction: str,
+        ) -> list[str]:
             items: list[str] = []
             seen: set[tuple[int, str]] = set()
 
-            if not config.show_destination_legend:
+            direction_visible = (
+                config.show_down_destination_legend
+                if direction == "down"
+                else config.show_up_destination_legend
+            )
+            if (
+                not config.show_destination_legend
+                or not direction_visible
+            ):
                 return items
 
             for hour in hours:
@@ -657,8 +737,8 @@ class ExcelWriter:
 
             return items
 
-        down_items = collect_station_items(timetable.down)
-        up_items = collect_station_items(timetable.up)
+        down_items = collect_station_items(timetable.down, "down")
+        up_items = collect_station_items(timetable.up, "up")
 
         if not train_types and not down_items and not up_items:
             return row
