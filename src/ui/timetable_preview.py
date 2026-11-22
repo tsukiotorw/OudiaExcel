@@ -48,6 +48,14 @@ class TimetablePreview(tk.Frame):
             else TimetableDisplayConfig()
         )
 
+        self._cell_width = (
+            self._CELL_WIDTH
+            * self.display_config.train_column_width
+            / 7.0
+        )
+
+        self._cell_height = self._CELL_HEIGHT
+
         self.on_display_config_changed = on_display_config_changed
 
         container = ttk.Frame(self)
@@ -106,8 +114,16 @@ class TimetablePreview(tk.Frame):
         self._draw()
 
 
+
     def _draw(self) -> None:
         """時刻表を描画する。"""
+
+        # 表示設定の変更をプレビューの列車欄幅に反映する
+        self._cell_width = (
+            self._CELL_WIDTH
+            * self.display_config.train_column_width
+            / 7.0
+        )
 
         self.canvas.delete("all")
 
@@ -148,8 +164,14 @@ class TimetablePreview(tk.Frame):
         central_hour_column = (
             self.display_config.hour_column_mode == "center"
         )
-        down_train_width = self._CELL_WIDTH * max(down_train_count, 1)
-        up_train_width = self._CELL_WIDTH * max(up_train_count, 1)
+        cell_width = getattr(
+            self,
+            "_cell_width",
+            self._CELL_WIDTH,
+        )
+
+        down_train_width = cell_width * max(down_train_count, 1)
+        up_train_width = cell_width * max(up_train_count, 1)
         if central_hour_column:
             down_width = down_train_width
             up_width = up_train_width
@@ -176,7 +198,15 @@ class TimetablePreview(tk.Frame):
 
         direction_height = (
             self._HEADER_HEIGHT
-            + self._CELL_HEIGHT * sum(row_counts)
+            + sum(
+                sum(
+                    TimetablePreview._get_row_heights(
+                        row_count,
+                        self.display_config,
+                    )
+                )
+                for row_count in row_counts
+            )
         )
 
         legend_height = (
@@ -434,6 +464,11 @@ class TimetablePreview(tk.Frame):
         )
         current_y = header_y
         for slot, row_count in zip(slots, row_counts):
+            row_heights = self._get_row_heights(
+                row_count,
+                config,
+            )
+            slot_height = sum(row_heights)
             entries = (
                 slot.down_entries
                 if direction == "down"
@@ -452,17 +487,20 @@ class TimetablePreview(tk.Frame):
                     row_count=row_count,
                     stripe_hour=slot.hour,
                     direction=direction,
+                    row_heights=row_heights,
                 )
 
             for entry_index, entry in enumerate(entries):
-                entry_x = entries_start_x + entry_index * self._CELL_WIDTH
+                entry_x = entries_start_x + entry_index * self._cell_width
                 entry_layout = get_entry_layout(entry, config)
                 type_fill = config.train_type_fills.get(
                     entry.train_type.index
                 )
 
+                row_y = current_y
+
                 for row_index in range(row_count):
-                    row_y = current_y + row_index * self._CELL_HEIGHT
+                    row_height = row_heights[row_index]
                     kinds = (
                         entry_layout[row_index]
                         if row_index < len(entry_layout)
@@ -507,8 +545,8 @@ class TimetablePreview(tk.Frame):
                     self.canvas.create_rectangle(
                         entry_x,
                         row_y,
-                        entry_x + self._CELL_WIDTH,
-                        row_y + self._CELL_HEIGHT,
+                        entry_x + self._cell_width,
+                        row_y + row_height,
                         fill=fill,
                         outline="",
                         tags=(PreviewItem.TRAIN,),
@@ -520,6 +558,7 @@ class TimetablePreview(tk.Frame):
                             kinds=kinds,
                             x=entry_x,
                             y=row_y,
+                            height=row_height,
                         )
 
                     if "minute" in kinds and row_index > 0:
@@ -528,21 +567,23 @@ class TimetablePreview(tk.Frame):
                             self.canvas.create_line(
                                 entry_x,
                                 row_y,
-                                entry_x + self._CELL_WIDTH,
+                                entry_x + self._cell_width,
                                 row_y,
                                 fill=self._to_tk_color(separator.color),
                                 width=self._border_width(separator.style),
                             )
+                    row_y += row_height
 
                 self._draw_border(
                     entry_x,
                     current_y,
-                    entry_x + self._CELL_WIDTH,
-                    current_y + row_count * self._CELL_HEIGHT,
+                    entry_x + self._cell_width,
+                    current_y + slot_height,
                     config.train_border,
                 )
 
-            current_y += row_count * self._CELL_HEIGHT
+            current_y += slot_height
+
 
     def _draw_hour_cell(
         self,
@@ -552,8 +593,15 @@ class TimetablePreview(tk.Frame):
         row_count: int,
         stripe_hour: int,
         direction: str = "up",
+        row_heights: list[float] | None = None,
     ) -> None:
         config = self.display_config
+        cell_height = (
+            sum(row_heights)
+            if row_heights is not None
+            else row_count * self._cell_height
+        )        
+
         fill = self._to_tk_color(config.hour_fill)
         if fill is None:
             hour_order = (
@@ -578,7 +626,7 @@ class TimetablePreview(tk.Frame):
             x,
             y,
             x + self._HOUR_WIDTH,
-            y + row_count * self._CELL_HEIGHT,
+            y + cell_height,
             fill=fill,
             outline="",
             tags=(PreviewItem.HOUR,),
@@ -587,13 +635,13 @@ class TimetablePreview(tk.Frame):
             x,
             y,
             x + self._HOUR_WIDTH,
-            y + row_count * self._CELL_HEIGHT,
+            y + cell_height,
             config.hour_border,
         )
         if hour is not None:
             self.canvas.create_text(
                 x + self._HOUR_WIDTH / 2,
-                y + row_count * self._CELL_HEIGHT / 2,
+                y + cell_height / 2,
                 text=str(hour),
                 font=(
                     config.hour_font_name,
@@ -609,6 +657,7 @@ class TimetablePreview(tk.Frame):
         kinds: list[str],
         x: float,
         y: float,
+        height: float | None = None,
     ) -> None:
         values = {
             "destination": entry.destination.display_name,
@@ -637,14 +686,17 @@ class TimetablePreview(tk.Frame):
             )
             rendered.append((values[kind], font, color))
 
+        if height is None:
+            height = self._cell_height
+            
         spacing = 4
         total_width = sum(font.measure(text) for text, font, _ in rendered)
         total_width += spacing * max(len(rendered) - 1, 0)
-        current_x = x + (self._CELL_WIDTH - total_width) / 2
+        current_x = x + (self._cell_width - total_width) / 2
         for text, font, color in rendered:
             self.canvas.create_text(
                 current_x,
-                y + self._CELL_HEIGHT / 2,
+                y + height / 2,
                 anchor=tk.W,
                 text=text,
                 font=font,
@@ -660,15 +712,59 @@ class TimetablePreview(tk.Frame):
         row_counts: list[int],
     ) -> None:
         current_y = y + self._HEADER_HEIGHT
+
         for slot, row_count in zip(slots, row_counts):
+            row_heights = self._get_row_heights(
+                row_count,
+                self.display_config,
+            )
+
             self._draw_hour_cell(
                 x=x,
                 y=current_y,
                 hour=slot.hour,
                 row_count=row_count,
                 stripe_hour=slot.hour,
+                row_heights=row_heights,
             )
-            current_y += row_count * self._CELL_HEIGHT
+
+            current_y += sum(row_heights)
+
+    @staticmethod
+    def _get_row_heights(
+        row_count: int,
+        config: TimetableDisplayConfig,
+    ) -> list[float]:
+        """行数と表示設定から、各行の高さをpx単位で取得する。"""
+
+        upper_height = (
+            config.train_upper_row_height * 4 / 3
+        )
+        lower_height = (
+            config.train_lower_row_height * 4 / 3
+        )
+
+        if row_count == 2:
+            return [
+                upper_height,
+                lower_height,
+            ]
+
+        if row_count == 3:
+            return [
+                upper_height,
+                TimetablePreview._CELL_HEIGHT,
+                lower_height,
+            ]
+
+        return [
+            upper_height,
+            *(
+                TimetablePreview._CELL_HEIGHT
+                for _ in range(row_count - 2)
+            ),
+            lower_height,
+        ]
 
     def _hour_row_count(self, slot: HourSlot) -> int:
         counts = [

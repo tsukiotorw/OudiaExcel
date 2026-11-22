@@ -127,6 +127,11 @@ class TimetableDisplayConfig:
     train_fill: str | None = None
     train_font_color: str = "000000"
 
+    # 列車欄の寸法
+    train_column_width: float = 7.0
+    train_upper_row_height: float = 18.0
+    train_lower_row_height: float = 20.0
+
     # 分の文字色（Noneの場合は列車欄の文字色を使用）
     minute_font_color: str | None = None
 

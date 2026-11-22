@@ -78,7 +78,7 @@ class ExcelWriter:
             )
             column_widths = {
                 **{
-                    column: 7
+                    column: self.display_config.train_column_width
                     for column in range(
                         up_start_column,
                         up_start_column + up_width,
@@ -86,7 +86,7 @@ class ExcelWriter:
                 },
                 central_column: 4,
                 **{
-                    column: 7
+                    column: self.display_config.train_column_width
                     for column in range(
                         down_start_column,
                         down_start_column + down_width,
@@ -112,14 +112,14 @@ class ExcelWriter:
                 up_start_column: 4,
                 down_start_column: 4,
                 **{
-                    column: 7
+                    column: self.display_config.train_column_width
                     for column in range(
                         up_start_column + 1,
                         up_start_column + up_width,
                     )
                 },
                 **{
-                    column: 7
+                    column: self.display_config.train_column_width
                     for column in range(
                         down_start_column + 1,
                         down_start_column + down_width,
@@ -584,7 +584,20 @@ class ExcelWriter:
         row: int,
         row_count: int,
     ) -> None:
-        heights = (18, 20) if row_count == 2 else (14, 18, 14)
+        config = self.display_config
+
+        if row_count == 2:
+            heights = (
+                config.train_upper_row_height,
+                config.train_lower_row_height,
+            )
+        else:
+            heights = (
+                config.train_upper_row_height,
+                18,
+                config.train_lower_row_height,
+            )
+
         for offset in range(row_count):
             worksheet.row_dimensions[row + offset].height = heights[
                 min(offset, len(heights) - 1)
@@ -594,7 +607,7 @@ class ExcelWriter:
     def _apply_layout(
         worksheet,
         column_groups: tuple[tuple[int, int], ...],
-        column_widths: dict[int, int],
+        column_widths: dict[int, float],
         table_end_row: int,
     ) -> None:
         """時刻表全体のレイアウトを設定する。"""

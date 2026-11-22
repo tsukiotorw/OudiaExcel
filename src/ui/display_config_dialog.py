@@ -151,6 +151,17 @@ class DisplayConfigDialog(tk.Toplevel):
         self.fill_color = tk.StringVar(
             value=self.display_config.train_fill or "",
         )
+
+        # 列車欄の寸法
+        self.train_column_width = tk.DoubleVar(
+            value=self.display_config.train_column_width,
+        )
+        self.train_upper_row_height = tk.DoubleVar(
+            value=self.display_config.train_upper_row_height,
+        )
+        self.train_lower_row_height = tk.DoubleVar(
+            value=self.display_config.train_lower_row_height,
+        )
         
         self.use_train_type_short_name = tk.BooleanVar(
             value=self.display_config.use_train_type_short_name,
@@ -691,27 +702,72 @@ class DisplayConfigDialog(tk.Toplevel):
             state="readonly",
             width=20,
         ).grid(row=3, column=1, sticky=tk.W, padx=4, pady=4)
+
+        # 列車欄の寸法
+        ttk.Label(
+            layout_frame,
+            text="列車欄の横幅（Excel列幅）",
+        ).grid(row=4, column=0, sticky=tk.W, padx=4, pady=4)
+
+        ttk.Spinbox(
+            layout_frame,
+            from_=1,
+            to=50,
+            increment=0.5,
+            textvariable=self.train_column_width,
+            width=8,
+        ).grid(row=4, column=1, sticky=tk.W, padx=4, pady=4)
+
+        ttk.Label(
+            layout_frame,
+            text="上段の高さ（pt）",
+        ).grid(row=5, column=0, sticky=tk.W, padx=4, pady=4)
+
+        ttk.Spinbox(
+            layout_frame,
+            from_=1,
+            to=100,
+            increment=0.5,
+            textvariable=self.train_upper_row_height,
+            width=8,
+        ).grid(row=5, column=1, sticky=tk.W, padx=4, pady=4)
+
+        ttk.Label(
+            layout_frame,
+            text="下段の高さ（pt）",
+        ).grid(row=6, column=0, sticky=tk.W, padx=4, pady=4)
+
+        ttk.Spinbox(
+            layout_frame,
+            from_=1,
+            to=100,
+            increment=0.5,
+            textvariable=self.train_lower_row_height,
+            width=8,
+        ).grid(row=6, column=1, sticky=tk.W, padx=4, pady=4)
+
         ttk.Checkbutton(
             layout_frame,
             text="列車種別に略称を使用",
             variable=self.use_train_type_short_name,
-        ).grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=4)
+        ).grid(row=7, column=0, columnspan=2, sticky=tk.W, pady=4)
         ttk.Checkbutton(
             layout_frame,
             text="行先を表示する",
             variable=self.show_destination,
-        ).grid(row=5, column=0, columnspan=2, sticky=tk.W, pady=4)
+        ).grid(row=8, column=0, columnspan=2, sticky=tk.W, pady=4)
+
         ttk.Label(
             layout_frame,
             text="列車欄に表示する列車種別",
-        ).grid(row=6, column=0, columnspan=3, sticky=tk.W, pady=(8, 4))
+        ).grid(row=9, column=0, columnspan=3, sticky=tk.W, pady=(8, 4))
         for index, train_type in enumerate(self.train_types):
             ttk.Checkbutton(
                 layout_frame,
                 text=train_type.name,
                 variable=self.train_type_column_visible[train_type.index],
             ).grid(
-                row=7 + index // 3,
+                row=10 + index // 3,
                 column=index % 3,
                 sticky=tk.W,
                 padx=4,
@@ -2427,6 +2483,17 @@ class DisplayConfigDialog(tk.Toplevel):
 
     def _apply_train(self) -> None:
         """列車の表示設定を適用する。"""
+        # 列車欄の寸法
+        self.display_config.train_column_width = (
+            self.train_column_width.get()
+        )
+        self.display_config.train_upper_row_height = (
+            self.train_upper_row_height.get()
+        )
+        self.display_config.train_lower_row_height = (
+            self.train_lower_row_height.get()
+        )
+
         self.display_config.train_font_color = (
             self.font_color.get()
         )
