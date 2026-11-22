@@ -1342,18 +1342,85 @@ class DisplayConfigDialog(tk.Toplevel):
             padx=(8, 0),
         )
 
-
+    
     def _create_legend_widgets(self, frame: ttk.Frame) -> None:
         """凡例設定用ウィジェットを作成する。"""
-        ttk.Label(frame, text="ラベルフォント").grid(
+
+        notebook = ttk.Notebook(frame)
+
+        # 各タブのFrame
+        layout_frame = ttk.Frame(notebook, padding=10)
+        font_frame = ttk.Frame(notebook, padding=10)
+        color_frame = ttk.Frame(notebook, padding=10)
+        border_frame = ttk.Frame(notebook, padding=10)
+        train_type_frame = ttk.Frame(notebook, padding=10)
+
+        notebook.add(layout_frame, text="配置")
+        notebook.add(font_frame, text="フォント")
+        notebook.add(color_frame, text="背景色")
+        notebook.add(border_frame, text="罫線")
+        notebook.add(train_type_frame, text="列車種別")
+
+        notebook.pack(fill=tk.BOTH, expand=True)
+
+        # --------------------------------------------------
+        # 配置タブ
+        # --------------------------------------------------
+        ttk.Label(
+            layout_frame,
+            text="行の高さ",
+        ).grid(
             row=0,
             column=0,
             sticky="w",
             padx=5,
             pady=5,
         )
+
+        ttk.Spinbox(
+            layout_frame,
+            from_=10.0,
+            to=100.0,
+            increment=0.1,
+            textvariable=self.legend_row_height,
+            width=8,
+        ).grid(
+            row=0,
+            column=1,
+            sticky="w",
+            padx=5,
+            pady=5,
+        )
+
+        ttk.Checkbutton(
+            layout_frame,
+            text="駅略称の行先凡例を表示する",
+            variable=self.show_destination_legend,
+        ).grid(
+            row=1,
+            column=0,
+            columnspan=2,
+            sticky=tk.W,
+            padx=5,
+            pady=(6, 4),
+        )
+
+        # --------------------------------------------------
+        # フォントタブ
+        # --------------------------------------------------
+        ttk.Label(
+            font_frame,
+            text="ラベルフォント",
+        ).grid(
+            row=0,
+            column=0,
+            sticky="w",
+            padx=5,
+            pady=5,
+        )
+
         ttk.Combobox(
-            frame,
+            font_frame,
             textvariable=self.legend_label_font_name,
             values=self._get_available_fonts(),
             state="readonly",
@@ -1366,15 +1433,19 @@ class DisplayConfigDialog(tk.Toplevel):
             pady=5,
         )
 
-        ttk.Label(frame, text="ラベルサイズ").grid(
+        ttk.Label(
+            font_frame,
+            text="ラベルサイズ",
+        ).grid(
             row=1,
             column=0,
             sticky="w",
             padx=5,
             pady=5,
         )
+
         ttk.Spinbox(
-            frame,
+            font_frame,
             from_=6,
             to=72,
             textvariable=self.legend_label_font_size,
@@ -1387,15 +1458,19 @@ class DisplayConfigDialog(tk.Toplevel):
             pady=5,
         )
 
-        ttk.Label(frame, text="ラベル文字色").grid(
+        ttk.Label(
+            font_frame,
+            text="ラベル文字色",
+        ).grid(
             row=2,
             column=0,
             sticky="w",
             padx=5,
             pady=5,
         )
+
         ttk.Entry(
-            frame,
+            font_frame,
             textvariable=self.legend_label_font_color,
             width=12,
         ).grid(
@@ -1405,8 +1480,9 @@ class DisplayConfigDialog(tk.Toplevel):
             padx=5,
             pady=5,
         )
+
         ttk.Button(
-            frame,
+            font_frame,
             text="選択",
             command=self._choose_legend_label_font_color,
         ).grid(
@@ -1416,70 +1492,72 @@ class DisplayConfigDialog(tk.Toplevel):
             pady=5,
         )
 
-        ttk.Label(frame, text="ラベル背景色").grid(
+        ttk.Label(
+            font_frame,
+            text="凡例フォント",
+        ).grid(
             row=3,
             column=0,
             sticky="w",
-            padx=5,
-            pady=5,
-        )
-        ttk.Entry(
-            frame,
-            textvariable=self.legend_label_fill,
-            width=12,
-        ).grid(
-            row=3,
-            column=1,
-            sticky="w",
-            padx=5,
-            pady=5,
-        )
-        ttk.Button(
-            frame,
-            text="選択",
-            command=self._choose_legend_label_fill,
-        ).grid(
-            row=3,
-            column=2,
             padx=5,
             pady=5,
         )
 
-        ttk.Label(frame, text="凡例フォント").grid(
-            row=4,
-            column=0,
-            sticky="w",
-            padx=5,
-            pady=5,
-        )
         ttk.Combobox(
-            frame,
+            font_frame,
             textvariable=self.legend_font_name,
             values=self._get_available_fonts(),
             state="readonly",
             width=30,
         ).grid(
-            row=4,
+            row=3,
             column=1,
             sticky="ew",
             padx=5,
             pady=5,
         )
 
-        ttk.Label(frame, text="凡例サイズ").grid(
-            row=5,
+        ttk.Label(
+            font_frame,
+            text="凡例サイズ",
+        ).grid(
+            row=4,
             column=0,
             sticky="w",
             padx=5,
             pady=5,
         )
+
         ttk.Spinbox(
-            frame,
+            font_frame,
             from_=6,
             to=72,
             textvariable=self.legend_font_size,
             width=8,
         ).grid(
+            row=4,
+            column=1,
+            sticky="w",
+            padx=5,
+            pady=5,
+        )
+
+        ttk.Label(
+            font_frame,
+            text="凡例項目文字色",
+        ).grid(
+            row=5,
+            column=0,
+            sticky="w",
+            padx=5,
+            pady=5,
+        )
+
+        ttk.Entry(
+            font_frame,
+            textvariable=self.legend_font_color,
+            width=12,
+        ).grid(
             row=5,
             column=1,
             sticky="w",
@@ -1487,116 +1565,116 @@ class DisplayConfigDialog(tk.Toplevel):
             pady=5,
         )
 
-        ttk.Label(frame, text="凡例項目文字色").grid(
-            row=6,
-            column=0,
-            sticky="w",
-            padx=5,
-            pady=5,
-        )
-        ttk.Entry(
-            frame,
-            textvariable=self.legend_font_color,
-            width=12,
-        ).grid(
-            row=6,
-            column=1,
-            sticky="w",
-            padx=5,
-            pady=5,
-        )
         ttk.Button(
-            frame,
+            font_frame,
             text="選択",
             command=self._choose_legend_font_color,
         ).grid(
-            row=6,
+            row=5,
             column=2,
             padx=5,
             pady=5,
         )
 
-        ttk.Label(frame, text="凡例背景色").grid(
-            row=7,
+        font_frame.columnconfigure(1, weight=1)
+
+        # --------------------------------------------------
+        # 背景色タブ
+        # --------------------------------------------------
+        ttk.Label(
+            color_frame,
+            text="ラベル背景色",
+        ).grid(
+            row=0,
             column=0,
             sticky="w",
             padx=5,
             pady=5,
         )
+
         ttk.Entry(
-            frame,
+            color_frame,
+            textvariable=self.legend_label_fill,
+            width=12,
+        ).grid(
+            row=0,
+            column=1,
+            sticky="w",
+            padx=5,
+            pady=5,
+        )
+
+        ttk.Button(
+            color_frame,
+            text="選択",
+            command=self._choose_legend_label_fill,
+        ).grid(
+            row=0,
+            column=2,
+            padx=5,
+            pady=5,
+        )
+
+        ttk.Label(
+            color_frame,
+            text="凡例背景色",
+        ).grid(
+            row=1,
+            column=0,
+            sticky="w",
+            padx=5,
+            pady=5,
+        )
+
+        ttk.Entry(
+            color_frame,
             textvariable=self.legend_fill,
             width=12,
         ).grid(
-            row=7,
+            row=1,
             column=1,
             sticky="w",
             padx=5,
             pady=5,
         )
+
         ttk.Button(
-            frame,
+            color_frame,
             text="選択",
             command=self._choose_legend_fill,
         ).grid(
-            row=7,
+            row=1,
             column=2,
             padx=5,
             pady=5,
         )
 
-        ttk.Label(frame, text="行の高さ").grid(
-            row=8,
-            column=0,
-            sticky="w",
-            padx=5,
-            pady=5,
-        )
-        ttk.Spinbox(
-            frame,
-            from_=10.0,
-            to=100.0,
-            increment=0.1,
-            textvariable=self.legend_row_height,
-            width=8,
-        ).grid(
-            row=8,
-            column=1,
-            sticky="w",
-            padx=5,
-            pady=5,
+        # --------------------------------------------------
+        # 罫線タブ
+        # --------------------------------------------------
+        self._create_border_widgets(
+            border_frame,
+            start_row=0,
         )
 
-        ttk.Checkbutton(
-            frame,
-            text="駅略称の行先凡例を表示する",
-            variable=self.show_destination_legend,
-        ).grid(
-            row=9,
-            column=0,
-            columnspan=3,
-            sticky=tk.W,
-            padx=5,
-            pady=(6, 4),
-        )
-
-        row = 10
-
+        # --------------------------------------------------
+        # 列車種別タブ
+        # --------------------------------------------------
         ttk.Label(
-            frame,
+            train_type_frame,
             text="列車種別色",
         ).grid(
-            row=row,
+            row=0,
             column=0,
             sticky=tk.W,
-            pady=(10, 4),
+            pady=(5, 8),
         )
 
-        row += 1
+        row = 1
 
         for train_type in self.train_types:
             ttk.Checkbutton(
-                frame,
+                train_type_frame,
                 text=(
                     f"{train_type.name}（{train_type.short_name}）"
                     if train_type.short_name
@@ -1612,10 +1690,10 @@ class DisplayConfigDialog(tk.Toplevel):
             )
 
             ttk.Button(
-                frame,
+                train_type_frame,
                 text="色を選択",
-                command=lambda index=train_type.index: self._choose_train_type_color(
-                    index
+                command=lambda index=train_type.index: (
+                    self._choose_train_type_color(index)
                 ),
             ).grid(
                 row=row,
@@ -1626,7 +1704,7 @@ class DisplayConfigDialog(tk.Toplevel):
             )
 
             ttk.Entry(
-                frame,
+                train_type_frame,
                 textvariable=self.train_type_colors[train_type.index],
                 width=8,
             ).grid(
@@ -1639,18 +1717,14 @@ class DisplayConfigDialog(tk.Toplevel):
 
             row += 1
 
-        border_row = self._create_border_widgets(
-            frame,
-            start_row=row,
-        )
-
+        # --------------------------------------------------
+        # 適用・キャンセルボタン
+        # --------------------------------------------------
         button_frame = ttk.Frame(frame)
-        button_frame.grid(
-            row=border_row,
-            column=0,
-            columnspan=3,
-            sticky=tk.E,
-            pady=(20, 0),
+
+        button_frame.pack(
+            fill=tk.X,
+            pady=(10, 0),
         )
 
         ttk.Button(
@@ -1831,7 +1905,7 @@ class DisplayConfigDialog(tk.Toplevel):
             column=2,
             padx=(0, 5),
         )
-        
+
         ttk.Button(
             frame,
             text="選択...",
