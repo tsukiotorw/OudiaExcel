@@ -355,10 +355,26 @@ def _display_config_from_settings(settings: dict) -> TimetableDisplayConfig:
         train_settings.get("train_font_color"),
         "000000",
     )
-    config.train_fill = _validated_color(
-        train_settings.get("train_fill"),
-        "FAFAFA",
+
+    train_fill_enabled = train_settings.get("train_fill_enabled")
+
+    # 新設定がない場合は旧設定から有効・無効を判定する
+    if not isinstance(train_fill_enabled, bool):
+        legacy_fill = str(train_settings.get("train_fill", ""))
+        train_fill_enabled = (
+            bool(re.fullmatch(r"[0-9A-Fa-f]{6}", legacy_fill))
+            and legacy_fill.upper() != "FAFAFA"
+        )
+
+    config.train_fill = (
+        _validated_color(
+            train_settings.get("train_fill"),
+            "FAFAFA",
+        )
+        if train_fill_enabled
+        else None
     )
+
     config.show_destination = (
         train_settings.get("show_destination")
         if isinstance(train_settings.get("show_destination"), bool)
@@ -678,7 +694,9 @@ def _render_page(
         "minute_font_size": 9,
         "train_font_color": "000000",
         "train_fill": "FAFAFA",
+        "train_fill_enabled": False,
         "minute_color_mode": "legend",
+        "striped_train_fill": "both",
         "use_train_type_short_name": False,
         "show_destination": True,
     }
@@ -712,13 +730,45 @@ def _render_page(
 
     train_display_settings["minute_color_mode"] = minute_color_mode
 
-    for key in ("train_font_color", "train_fill"):
-        color = str(train_display_settings.get(key, ""))
+    # 列車欄の交互背景色モードを検証
+    striped_train_fill = train_display_settings.get(
+        "striped_train_fill",
+        "both",
+    )
 
-        if not re.fullmatch(r"[0-9A-Fa-f]{6}", color):
-            train_display_settings[key] = train_display_defaults[key]
-        else:
-            train_display_settings[key] = color.upper()
+    if striped_train_fill not in ("none", "both", "metadata", "minute"):
+        striped_train_fill = "both"
+
+    train_display_settings["striped_train_fill"] = striped_train_fill
+
+    # 文字色の検証
+    color = str(train_display_settings.get("train_font_color", ""))
+
+    if not re.fullmatch(r"[0-9A-Fa-f]{6}", color):
+        train_display_settings["train_font_color"] = (
+            train_display_defaults["train_font_color"]
+        )
+    else:
+        train_display_settings["train_font_color"] = color.upper()
+
+    # 共通背景色の検証
+    train_fill = str(train_display_settings.get("train_fill", ""))
+
+    if not re.fullmatch(r"[0-9A-Fa-f]{6}", train_fill):
+        train_display_settings["train_fill"] = "FAFAFA"
+    else:
+        train_display_settings["train_fill"] = train_fill.upper()
+
+    # 新設定がない場合は旧設定から有効・無効を判定する
+    if "train_fill_enabled" not in saved_train_display:
+        train_display_settings["train_fill_enabled"] = (
+            train_display_settings["train_fill"] != "FAFAFA"
+        )
+    elif not isinstance(
+        train_display_settings["train_fill_enabled"],
+        bool,
+    ):
+        train_display_settings["train_fill_enabled"] = False
 
     # 分の文字色を決定
     train_display_settings["minute_font_color"] = (
@@ -1303,6 +1353,15 @@ async def save_settings(
 
     train_display_settings = {}
 
+    for key, default in (
+        ("metadata_font_name", "源ノ角ゴシック JP"),
+        ("minute_font_name", "源ノ角ゴシック JP"),
+    ):
+        submitted = str(form_data.get(key, "")).strip()
+        train_display_settings[key] = submitted or saved_train_display.get(
+            key, default
+        )
+
     minute_color_mode = str(
         form_data.get("minute_color_mode", "legend")
     )
@@ -1318,18 +1377,25 @@ async def save_settings(
 
     train_display_settings["minute_color_mode"] = minute_color_mode
 
-    for key, default in (
-        ("train_font_color", "000000"),
-        ("train_fill", "FAFAFA"),
-    ):
-        submitted = str(form_data.get(key, "")).strip()
+    # 列車欄の交互背景色モード
+    striped_train_fill = str(
+        form_data.get("striped_train_fill", "")
+    )
 
-        if re.fullmatch(r"#[0-9A-Fa-f]{6}", submitted):
-            train_display_settings[key] = submitted[1:].upper()
-        else:
-            train_display_settings[key] = saved_train_display.get(
-                key, default
-            )
+    if striped_train_fill not in ("none", "both", "metadata", "minute"):
+        striped_train_fill = saved_train_display.get(
+            "striped_train_fill",
+            "both",
+        )
+
+    if striped_train_fill not in ("none", "both", "metadata", "minute"):
+        striped_train_fill = "both"
+
+    train_display_settings["striped_train_fill"] = striped_train_fill
+
+    train_display_settings["train_fill_enabled"] = (
+        form_data.get("train_fill_enabled") == "true"
+    )
 
     for key, default in (
         ("metadata_font_size", 9),
@@ -1903,8 +1969,10 @@ async def save_settings(
         if re.fullmatch(r"#[0-9A-Fa-f]{6}", submitted_color):
             train_type_colors[train_type.index] = submitted_color[1:].upper()
 
+    # 列車種別の背景色設定を読み込む
     train_type_fills: dict[int, str] = {}
     saved_type_fills = existing_settings.get("train_type_fills", {})
+
     if isinstance(saved_type_fills, dict):
         for index, color in saved_type_fills.items():
             if (
@@ -1913,27 +1981,63 @@ async def save_settings(
                 and re.fullmatch(r"[0-9A-Fa-f]{6}", color)
             ):
                 train_type_fills[int(index)] = color.upper()
-    train_type_minute_highlight_enabled: dict[int, bool] = {}
+
+    # 分強調色設定を読み込む
     train_type_minute_highlight_fills: dict[int, str] = {}
+    saved_highlight_fills = display_settings.get(
+        "train_type_minute_highlight_fills", {}
+    )
+
+    if isinstance(saved_highlight_fills, dict):
+        for index, color in saved_highlight_fills.items():
+            if (
+                str(index).isdigit()
+                and isinstance(color, str)
+                and re.fullmatch(r"[0-9A-Fa-f]{6}", color)
+            ):
+                train_type_minute_highlight_fills[int(index)] = (
+                    color.upper()
+                )
+
+    train_type_minute_highlight_enabled: dict[int, bool] = {}
+
     for train_type in railway.train_types:
-        fill_field = f"train_type_fill_{train_type.index}"
-        submitted_fill = str(form_data.get(fill_field, "")).strip()
-        if re.fullmatch(r"#[0-9A-Fa-f]{6}", submitted_fill):
-            train_type_fills[train_type.index] = submitted_fill[1:].upper()
-        highlight_field = f"train_type_minute_highlight_{train_type.index}"
-        train_type_minute_highlight_enabled[train_type.index] = (
+        index = train_type.index
+
+        # 列車種別の背景色
+        fill_hex_field = f"train_type_fill_hex_{index}"
+        submitted_fill = str(
+            form_data.get(fill_hex_field, "")
+        ).strip()
+
+        if submitted_fill == "":
+            train_type_fills.pop(index, None)
+        elif re.fullmatch(r"#?[0-9A-Fa-f]{6}", submitted_fill):
+            train_type_fills[index] = submitted_fill.lstrip("#").upper()
+
+        # 分強調の有効・無効
+        highlight_field = f"train_type_minute_highlight_{index}"
+        train_type_minute_highlight_enabled[index] = (
             form_data.get(highlight_field) == "true"
         )
-        highlight_fill_field = (
-            f"train_type_minute_highlight_fill_{train_type.index}"
+
+        # 分強調色
+        highlight_fill_hex_field = (
+            f"train_type_minute_highlight_fill_hex_{index}"
         )
         submitted_highlight_fill = str(
-            form_data.get(highlight_fill_field, "")
+            form_data.get(highlight_fill_hex_field, "")
         ).strip()
-        if re.fullmatch(r"#[0-9A-Fa-f]{6}", submitted_highlight_fill):
-            train_type_minute_highlight_fills[
-                train_type.index
-            ] = submitted_highlight_fill[1:].upper()
+
+        if submitted_highlight_fill == "":
+            train_type_minute_highlight_fills.pop(index, None)
+        elif re.fullmatch(
+            r"#?[0-9A-Fa-f]{6}",
+            submitted_highlight_fill,
+        ):
+            train_type_minute_highlight_fills[index] = (
+                submitted_highlight_fill.lstrip("#").upper()
+            )
 
     display_settings["train_type_fills"] = {
         str(index): color
@@ -1946,6 +2050,7 @@ async def save_settings(
         str(index): color
         for index, color in train_type_minute_highlight_fills.items()
     }
+
 
     save_station_settings(
         session_id=session_id,

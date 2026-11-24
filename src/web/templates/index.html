@@ -836,13 +836,52 @@
                                 >
 
                                 <label for="train_fill">列車情報の背景色</label>
-                                <input
-                                    type="color"
-                                    id="train_fill"
-                                    name="train_fill"
-                                    value="#{{ train_display_settings.train_fill }}"
+                                <div>
+                                    <input
+                                        type="checkbox"
+                                        id="train_fill_enabled"
+                                        name="train_fill_enabled"
+                                        value="true"
+                                        {% if train_display_settings.train_fill_enabled %}checked{% endif %}
+                                    >
+                                    <label for="train_fill_enabled">共通背景色を使用する</label>
+                                    <input
+                                        type="color"
+                                        id="train_fill"
+                                        name="train_fill"
+                                        value="#{{ train_display_settings.train_fill or 'FAFAFA' }}"
+                                    >
+                                </div>
+                                <label for="striped_train_fill">列車欄の交互背景色</label>
+                                <select
+                                    id="striped_train_fill"
+                                    name="striped_train_fill"
                                 >
-
+                                    <option
+                                        value="none"
+                                        {% if train_display_settings.striped_train_fill == 'none' %}selected{% endif %}
+                                    >
+                                        使用しない
+                                    </option>
+                                    <option
+                                        value="both"
+                                        {% if train_display_settings.striped_train_fill == 'both' %}selected{% endif %}
+                                    >
+                                        メタデータ行・分行
+                                    </option>
+                                    <option
+                                        value="metadata"
+                                        {% if train_display_settings.striped_train_fill == 'metadata' %}selected{% endif %}
+                                    >
+                                        メタデータ行のみ
+                                    </option>
+                                    <option
+                                        value="minute"
+                                        {% if train_display_settings.striped_train_fill == 'minute' %}selected{% endif %}
+                                    >
+                                        分行のみ
+                                    </option>
+                                </select>
                                 <label>
                                     <input
                                         type="checkbox"
@@ -935,7 +974,18 @@
                                                     type="color"
                                                     name="train_type_fill_{{ train_type.index }}"
                                                     value="#{{ train_type_fills.get(train_type.index, 'FAFAFA') }}"
+                                                    data-has-value="{{ 'true' if train_type.index in train_type_fills else 'false' }}"
                                                     aria-label="{{ train_type.name }}の背景色"
+                                                >
+                                                <input
+                                                    type="text"
+                                                    class="color-code-input"
+                                                    name="train_type_fill_hex_{{ train_type.index }}"
+                                                    value="{{ '#' ~ train_type_fills[train_type.index] if train_type.index in train_type_fills else '' }}"
+                                                    maxlength="7"
+                                                    size="7"
+                                                    placeholder="#RRGGBB"
+                                                    aria-label="{{ train_type.name }}の背景色カラーコード"
                                                 >
                                             </td>
                                             <td>
@@ -953,7 +1003,18 @@
                                                     type="color"
                                                     name="train_type_minute_highlight_fill_{{ train_type.index }}"
                                                     value="#{{ train_type_minute_highlight_fills.get(train_type.index, 'FFF2CC') }}"
+                                                    data-has-value="{{ 'true' if train_type.index in train_type_minute_highlight_fills else 'false' }}"
                                                     aria-label="{{ train_type.name }}の分強調背景色"
+                                                >
+                                                <input
+                                                    type="text"
+                                                    class="color-code-input"
+                                                    name="train_type_minute_highlight_fill_hex_{{ train_type.index }}"
+                                                    value="{{ '#' ~ train_type_minute_highlight_fills[train_type.index] if train_type.index in train_type_minute_highlight_fills else '' }}"
+                                                    maxlength="7"
+                                                    size="7"
+                                                    placeholder="#RRGGBB"
+                                                    aria-label="{{ train_type.name }}の分強調背景色カラーコード"
                                                 >
                                             </td>
                                             <td>
@@ -1071,11 +1132,12 @@
                                             {% for entry in hour.entries %}
                                             <td
                                                 class="train-info-cell"
+                                                data-direction="{{ direction }}"
+                                                data-hour="{{ hour.hour }}"
                                                 data-train-type-index="{{ entry.train_type.index }}"
                                                 style="
                                                     font-family: '{{ train_display_settings.metadata_font_name }}', sans-serif;
                                                     font-size: {{ train_display_settings.metadata_font_size }}px;
-                                                    background-color: #{{ train_display_settings.train_fill }};
                                                 "
                                             >
                                                 {% if not entry.destination.is_no_mark %}
@@ -1096,10 +1158,11 @@
                                             {% for i in range(counts.max_count - hour.entries|length) %}
                                             <td
                                                 class="train-info-cell"
+                                                data-direction="{{ direction }}"
+                                                data-hour="{{ hour.hour }}"
                                                 style="
                                                     font-family: '{{ train_display_settings.metadata_font_name }}', sans-serif;
                                                     font-size: {{ train_display_settings.metadata_font_size }}px;
-                                                    background-color: #{{ train_display_settings.train_fill }};
                                                 "
                                             ></td>
                                             {% endfor %}
@@ -1108,6 +1171,8 @@
                                             {% for entry in hour.entries %}
                                             <td
                                                 class="minute-cell"
+                                                data-direction="{{ direction }}"
+                                                data-hour="{{ hour.hour }}"
                                                 data-train-type-index="{{ entry.train_type.index }}"
                                                 style="
                                                     font-family: '{{ train_display_settings.minute_font_name }}', sans-serif;
@@ -1122,6 +1187,8 @@
                                             {% for i in range(counts.max_count - hour.entries|length) %}
                                             <td
                                                 class="minute-cell"
+                                                data-direction="{{ direction }}"
+                                                data-hour="{{ hour.hour }}"
                                                 style="
                                                     font-family: '{{ train_display_settings.minute_font_name }}', sans-serif;
                                                     font-size: {{ train_display_settings.minute_font_size }}px;
@@ -1322,9 +1389,13 @@
         const minuteColorMode = document.getElementById("minute_color_mode");
         const legendFontColor = document.getElementById("font_color");
         const trainFill = document.getElementById("train_fill");
-        const useTrainTypeShortName = document.getElementById(
-            "use_train_type_short_name"
-        );
+        const trainFillEnabled = document.getElementById("train_fill_enabled");
+        const stripedTrainFill = document.getElementById("striped_train_fill");
+        const upFill = document.getElementById("up_fill");
+        const upAltFill = document.getElementById("up_alt_fill");
+        const downFill = document.getElementById("down_fill");
+        const downAltFill = document.getElementById("down_alt_fill");
+        const useTrainTypeShortName = document.getElementById("use_train_type_short_name");
         const showDestination = document.getElementById("show_destination");
 
         const trainTypeVisibilityControls = document.querySelectorAll(
@@ -1333,6 +1404,74 @@
         const trainTypeColorControls = document.querySelectorAll(
             'input[name^="train_type_color_"]'
         );
+        const trainTypeFillControls = document.querySelectorAll(
+            'input[name^="train_type_fill_"]'
+        );
+        const trainTypeFillHexControls = document.querySelectorAll(
+            'input[name^="train_type_fill_hex_"]'
+        );        
+        const trainTypeMinuteHighlightControls = document.querySelectorAll(
+            'input[type="checkbox"][name^="train_type_minute_highlight_"]'
+        );
+        const trainTypeMinuteHighlightFillControls =
+            document.querySelectorAll(
+                'input[name^="train_type_minute_highlight_fill_"]'
+            );
+        const trainTypeMinuteHighlightFillHexControls =
+            document.querySelectorAll(
+                'input[name^="train_type_minute_highlight_fill_hex_"]'
+            );
+
+        function getEntryFill(cell) {
+            const mode = stripedTrainFill
+                ? stripedTrainFill.value
+                : "both";
+
+            const direction = cell.dataset.direction === "down"
+                ? "down"
+                : "up";
+
+            const hour = Number(cell.dataset.hour);
+
+            // 交互背景色の判定
+            const parityHour =
+                hour >= 0 && hour <= 23
+                    ? (hour - 4 + 24) % 24
+                    : hour;
+
+            const isAlternate = parityHour % 2 === 0;
+
+            // 交互背景色を使用しない場合
+            if (mode === "none") {
+                if (
+                    trainFillEnabled &&
+                    trainFillEnabled.checked &&
+                    trainFill &&
+                    trainFill.value
+                ) {
+                    return trainFill.value;
+                }
+
+                return direction === "down"
+                    ? (downFill ? downFill.value : "")
+                    : (upFill ? upFill.value : "");
+            }
+
+            // 交互背景色を使用する場合
+            const baseFill = direction === "down"
+                ? downFill
+                : upFill;
+
+            const alternateFill = direction === "down"
+                ? downAltFill
+                : upAltFill;
+
+            const selectedFill = isAlternate
+                ? alternateFill
+                : baseFill;
+
+            return selectedFill ? selectedFill.value : "";
+        }
 
         function updateTrainDisplayPreview() {
             // 列車情報セルのフォントと背景色
@@ -1349,9 +1488,32 @@
                     }
                 }
 
-                if (trainFill) {
-                    cell.style.backgroundColor = trainFill.value;
-                }
+                const mode = stripedTrainFill
+                    ? stripedTrainFill.value
+                    : "both";
+
+                const trainTypeIndex = cell.dataset.trainTypeIndex;
+
+                const trainTypeFill = trainTypeIndex
+                    ? document.querySelector(
+                        `input[name="train_type_fill_${trainTypeIndex}"]`
+                    )
+                    : null;
+
+                const useTrainTypeFill =
+                    (mode === "none" || mode === "metadata") &&
+                    trainTypeFill &&
+                    trainTypeFill.dataset.hasValue === "true";
+
+                cell.style.backgroundColor =
+                    useTrainTypeFill
+                        ? trainTypeFill.value
+                        : getEntryFill(cell);
+
+                cell.style.backgroundColor =
+                    useTrainTypeFill
+                        ? trainTypeFill.value
+                        : getEntryFill(cell);
             });
 
             // 分セルのフォントと文字色
@@ -1375,6 +1537,33 @@
 
                 cell.style.color = minuteColor;
 
+                const trainTypeIndex = cell.dataset.trainTypeIndex;
+                const highlightEnabled = trainTypeIndex
+                    ? document.querySelector(
+                        `input[name="train_type_minute_highlight_${trainTypeIndex}"]`
+                    )
+                    : null;
+                const highlightFill = trainTypeIndex
+                    ? document.querySelector(
+                        `input[name="train_type_minute_highlight_fill_${trainTypeIndex}"]`
+                    )
+                    : null;
+                const mode = stripedTrainFill
+                    ? stripedTrainFill.value
+                    : "both";
+
+                const useMinuteHighlight =
+                    (mode === "none" || mode === "minute") &&
+                    highlightEnabled &&
+                    highlightEnabled.checked &&
+                    highlightFill &&
+                    highlightFill.dataset.hasValue === "true";
+
+                cell.style.backgroundColor =
+                    useMinuteHighlight
+                        ? highlightFill.value
+                        : getEntryFill(cell);
+                    
             });
 
             // 行先の表示・非表示
@@ -1439,15 +1628,80 @@
             trainFontColor,
             minuteColorMode,
             legendFontColor,
+            trainFillEnabled,
             trainFill,
+            stripedTrainFill,
+            upFill,
+            upAltFill,
+            downFill,
+            downAltFill,
             useTrainTypeShortName,
             showDestination,
             ...trainTypeVisibilityControls,
             ...trainTypeColorControls,
+            ...trainTypeFillControls,
+            ...trainTypeFillHexControls,
+            ...trainTypeMinuteHighlightControls,
+            ...trainTypeMinuteHighlightFillControls,
+            ...trainTypeMinuteHighlightFillHexControls,
         ].forEach((element) => {
             if (element) {
-                element.addEventListener("input", updateTrainDisplayPreview);
-                element.addEventListener("change", updateTrainDisplayPreview);
+                const updatePreview = () => {
+                    // カラーコード入力欄の場合
+                    if (element.name.includes("_hex_")) {
+                        const colorCode = element.value.trim();
+
+                        const isValid =
+                            /^#?[0-9A-Fa-f]{6}$/.test(colorCode);
+
+                        const pickerName =
+                            element.name.replace("_hex_", "_");
+
+                        const colorPicker = document.querySelector(
+                            `input[name="${pickerName}"]`
+                        );
+
+                        if (colorPicker) {
+                            colorPicker.dataset.hasValue =
+                                isValid ? "true" : "false";
+
+                            if (isValid) {
+                                colorPicker.value =
+                                    colorCode.startsWith("#")
+                                        ? colorCode
+                                        : `#${colorCode}`;
+                            }
+                        }
+                    }
+                    // カラーピッカーの場合
+                    else if (
+                        element.name.startsWith("train_type_fill_") ||
+                        element.name.startsWith(
+                            "train_type_minute_highlight_fill_"
+                        )
+                    ) {
+                        const hexName =
+                            element.name.replace(
+                                "_fill_",
+                                "_fill_hex_"
+                            );
+
+                        const hexInput = document.querySelector(
+                            `input[name="${hexName}"]`
+                        );
+
+                        if (hexInput) {
+                            hexInput.value = element.value;
+                        }
+
+                        element.dataset.hasValue = "true";
+                    }
+
+                    updateTrainDisplayPreview();
+                };
+
+                element.addEventListener("input", updatePreview);
+                element.addEventListener("change", updatePreview);
             }
         });
 

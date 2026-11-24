@@ -349,6 +349,95 @@ def test_web_preview_places_up_left_and_down_right_with_matching_data(
                     assert entry.destination.display_name in section
 
 
+@pytest.mark.parametrize(
+    ("form_fonts", "existing_fonts", "expected_fonts"),
+    [
+        (
+            {
+                "metadata_font_name": "  Metadata Web Font  ",
+                "minute_font_name": "  Minute Web Font  ",
+            },
+            {},
+            {
+                "metadata_font_name": "Metadata Web Font",
+                "minute_font_name": "Minute Web Font",
+            },
+        ),
+        (
+            {
+                "metadata_font_name": "   ",
+                "minute_font_name": "",
+            },
+            {
+                "metadata_font_name": "Existing Metadata Font",
+                "minute_font_name": "Existing Minute Font",
+            },
+            {
+                "metadata_font_name": "Existing Metadata Font",
+                "minute_font_name": "Existing Minute Font",
+            },
+        ),
+        (
+            {},
+            {
+                "metadata_font_name": "Existing Metadata Font",
+                "minute_font_name": "Existing Minute Font",
+            },
+            {
+                "metadata_font_name": "Existing Metadata Font",
+                "minute_font_name": "Existing Minute Font",
+            },
+        ),
+        (
+            {},
+            {},
+            {
+                "metadata_font_name": "源ノ角ゴシック JP",
+                "minute_font_name": "源ノ角ゴシック JP",
+            },
+        ),
+    ],
+)
+def test_settings_save_and_render_train_font_names(
+    parsed_railway,
+    monkeypatch,
+    form_fonts: dict[str, str],
+    existing_fonts: dict[str, str],
+    expected_fonts: dict[str, str],
+) -> None:
+    railway_id = "train-font-test"
+    file_key = "train-font-file"
+    saved_settings = {"display_settings": {"train": existing_fonts.copy()}}
+    monkeypatch.setitem(routes._loaded_railways, railway_id, parsed_railway)
+    monkeypatch.setitem(routes._railway_file_keys, railway_id, file_key)
+    monkeypatch.setattr(
+        routes,
+        "load_station_settings",
+        lambda _session_id, _file_key: saved_settings,
+    )
+
+    def save_settings(**kwargs) -> None:
+        saved_settings.update(kwargs)
+
+    monkeypatch.setattr(routes, "save_station_settings", save_settings)
+    form_data = {
+        "railway_id": railway_id,
+        "station_index": str(parsed_railway.stations[0].index),
+        **form_fonts,
+    }
+
+    response = TestClient(app).post("/settings", data=form_data)
+
+    assert response.status_code == 200
+    train_settings = saved_settings["display_settings"]["train"]
+    for key, expected in expected_fonts.items():
+        assert train_settings[key] == expected
+        assert re.search(
+            rf'name="{key}"[^>]*value="{re.escape(expected)}"',
+            response.text,
+        )
+
+
 def test_settings_save_new_display_controls(
     parsed_railway,
     monkeypatch,
