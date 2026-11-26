@@ -7,6 +7,7 @@ from openpyxl import load_workbook
 import pytest
 
 from src.application.station_timetable import generate_station_timetable
+from src.timetable.display_config import TimetableDisplayConfig
 from src.web import routes
 from src.web.main import app
 
@@ -103,6 +104,79 @@ def test_display_config_uses_default_header_fill_and_legacy_settings() -> None:
     assert default_config.header_font_color == "FAFAFA"
     assert default_config.up_header_fill is None
     assert default_config.down_header_fill is None
+
+
+def test_display_config_train_layout_defaults_and_saved_values() -> None:
+    defaults = TimetableDisplayConfig()
+    config = routes._display_config_from_settings({})
+
+    assert config.destination_position == defaults.destination_position
+    assert config.train_type_position == defaults.train_type_position
+    assert config.metadata_order == defaults.metadata_order
+    assert config.train_upper_row_height == defaults.train_upper_row_height
+    assert config.train_lower_row_height == defaults.train_lower_row_height
+
+    saved_settings = {
+        "display_settings": {
+            "train": {
+                "destination_position": "bottom",
+                "train_type_position": "bottom",
+                "metadata_order": "train_type_first",
+                "train_upper_row_height": "18.5",
+                "train_lower_row_height": "24",
+            }
+        }
+    }
+    config = routes._display_config_from_settings(saved_settings)
+
+    assert config.destination_position == "bottom"
+    assert config.train_type_position == "bottom"
+    assert config.metadata_order == "train_type_first"
+    assert config.train_upper_row_height == 18.5
+    assert config.train_lower_row_height == 24.0
+
+    export_config = routes._display_config_from_settings(
+        saved_settings,
+        include_train_layout_settings=False,
+    )
+    assert export_config.destination_position == defaults.destination_position
+    assert export_config.train_type_position == defaults.train_type_position
+    assert export_config.metadata_order == defaults.metadata_order
+    assert (
+        export_config.train_upper_row_height
+        == defaults.train_upper_row_height
+    )
+    assert (
+        export_config.train_lower_row_height
+        == defaults.train_lower_row_height
+    )
+
+
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [
+        ("destination_position", "middle"),
+        ("train_type_position", "middle"),
+        ("metadata_order", "minute_first"),
+        ("train_upper_row_height", "not-a-number"),
+        ("train_upper_row_height", "0.5"),
+        ("train_upper_row_height", "100.5"),
+        ("train_upper_row_height", "1.25"),
+        ("train_upper_row_height", "NaN"),
+        ("train_upper_row_height", "Infinity"),
+        ("train_lower_row_height", "-Infinity"),
+    ],
+)
+def test_display_config_invalid_train_layout_values_use_model_defaults(
+    key: str,
+    value: str,
+) -> None:
+    defaults = TimetableDisplayConfig()
+    config = routes._display_config_from_settings(
+        {"display_settings": {"train": {key: value}}}
+    )
+
+    assert getattr(config, key) == getattr(defaults, key)
 
 
 def test_display_config_preserves_empty_direction_header_text() -> None:
@@ -536,3 +610,190 @@ def test_settings_save_new_display_controls(
         display_settings["legend_border"]["bottom"]["style"]
         == "double"
     )
+    train_settings = display_settings["train"]
+    assert train_settings["destination_position"] == "top"
+    assert train_settings["train_type_position"] == "top"
+    assert train_settings["metadata_order"] == "destination_first"
+    assert train_settings["train_upper_row_height"] == 18.0
+    assert train_settings["train_lower_row_height"] == 20.0
+
+
+def test_settings_save_and_restore_train_layout_settings(
+    parsed_railway,
+    monkeypatch,
+) -> None:
+    railway_id = "train-layout-test"
+    file_key = "train-layout-file"
+    saved_settings = {
+        "display_settings": {
+            "train": {
+                "metadata_font_name": "Saved Metadata Font",
+                "destination_position": "top",
+                "train_type_position": "top",
+                "metadata_order": "destination_first",
+                "train_upper_row_height": 18.0,
+                "train_lower_row_height": 20.0,
+            }
+        }
+    }
+    monkeypatch.setitem(routes._loaded_railways, railway_id, parsed_railway)
+    monkeypatch.setitem(routes._railway_file_keys, railway_id, file_key)
+    monkeypatch.setattr(
+        routes,
+        "load_station_settings",
+        lambda _session_id, _file_key: saved_settings,
+    )
+
+    def save_settings(**kwargs) -> None:
+        saved_settings.update(kwargs)
+
+    monkeypatch.setattr(routes, "save_station_settings", save_settings)
+    response = TestClient(app).post(
+        "/settings",
+        data={
+            "railway_id": railway_id,
+            "station_index": str(parsed_railway.stations[0].index),
+            "destination_position": "bottom",
+            "train_type_position": "top",
+            "metadata_order": "train_type_first",
+            "train_upper_row_height": "12",
+            "train_lower_row_height": "12.5",
+        },
+    )
+
+    assert response.status_code == 200
+    train_settings = saved_settings["display_settings"]["train"]
+    assert train_settings["destination_position"] == "bottom"
+    assert train_settings["train_type_position"] == "top"
+    assert train_settings["metadata_order"] == "train_type_first"
+    assert train_settings["train_upper_row_height"] == 12.0
+    assert train_settings["train_lower_row_height"] == 12.5
+    assert train_settings["metadata_font_name"] == "Saved Metadata Font"
+    assert re.search(
+        r'<option value="bottom" selected>下段</option>',
+        response.text,
+    )
+    assert re.search(
+        r'<option value="train_type_first" selected>',
+        response.text,
+    )
+    assert re.search(
+        r'name="train_upper_row_height"[^>]*value="12.0"',
+        response.text,
+    )
+    assert re.search(
+        r'name="train_lower_row_height"[^>]*value="12.5"',
+        response.text,
+    )
+
+    restored = routes._display_config_from_settings(saved_settings)
+    assert restored.destination_position == "bottom"
+    assert restored.train_type_position == "top"
+    assert restored.metadata_order == "train_type_first"
+    assert restored.train_upper_row_height == 12.0
+    assert restored.train_lower_row_height == 12.5
+
+
+def test_settings_missing_train_layout_fields_preserve_saved_values(
+    parsed_railway,
+    monkeypatch,
+) -> None:
+    railway_id = "train-layout-missing-test"
+    file_key = "train-layout-missing-file"
+    saved_settings = {
+        "display_settings": {
+            "train": {
+                "destination_position": "bottom",
+                "train_type_position": "bottom",
+                "metadata_order": "train_type_first",
+                "train_upper_row_height": 17.5,
+                "train_lower_row_height": 22.0,
+            }
+        }
+    }
+    monkeypatch.setitem(routes._loaded_railways, railway_id, parsed_railway)
+    monkeypatch.setitem(routes._railway_file_keys, railway_id, file_key)
+    monkeypatch.setattr(
+        routes,
+        "load_station_settings",
+        lambda _session_id, _file_key: saved_settings,
+    )
+
+    def save_settings(**kwargs) -> None:
+        saved_settings.update(kwargs)
+
+    monkeypatch.setattr(routes, "save_station_settings", save_settings)
+    response = TestClient(app).post(
+        "/settings",
+        data={
+            "railway_id": railway_id,
+            "station_index": str(parsed_railway.stations[0].index),
+            "metadata_font_name": "Other train setting",
+        },
+    )
+
+    assert response.status_code == 200
+    train_settings = saved_settings["display_settings"]["train"]
+    assert train_settings["destination_position"] == "bottom"
+    assert train_settings["train_type_position"] == "bottom"
+    assert train_settings["metadata_order"] == "train_type_first"
+    assert train_settings["train_upper_row_height"] == 17.5
+    assert train_settings["train_lower_row_height"] == 22.0
+    assert train_settings["metadata_font_name"] == "Other train setting"
+
+
+@pytest.mark.parametrize(
+    ("key", "invalid_value", "saved_value", "expected"),
+    [
+        ("destination_position", "sideways", "bottom", "bottom"),
+        ("train_type_position", "middle", "bottom", "bottom"),
+        (
+            "metadata_order",
+            "minute_first",
+            "train_type_first",
+            "train_type_first",
+        ),
+        ("train_upper_row_height", "not-a-number", 14.5, 14.5),
+        ("train_upper_row_height", "0.5", 14.5, 14.5),
+        ("train_upper_row_height", "100.5", 14.5, 14.5),
+        ("train_upper_row_height", "1.25", 14.5, 14.5),
+        ("train_upper_row_height", "NaN", 14.5, 14.5),
+        ("train_lower_row_height", "Infinity", 23.0, 23.0),
+        ("train_lower_row_height", "-Infinity", 23.0, 23.0),
+        ("train_lower_row_height", "NaN", "Infinity", 20.0),
+    ],
+)
+def test_settings_invalid_train_layout_submission_uses_saved_value(
+    parsed_railway,
+    monkeypatch,
+    key: str,
+    invalid_value: str,
+    saved_value: str | float,
+    expected: str | float,
+) -> None:
+    railway_id = f"train-layout-invalid-{key}"
+    file_key = f"train-layout-invalid-file-{key}"
+    saved_settings = {"display_settings": {"train": {key: saved_value}}}
+    monkeypatch.setitem(routes._loaded_railways, railway_id, parsed_railway)
+    monkeypatch.setitem(routes._railway_file_keys, railway_id, file_key)
+    monkeypatch.setattr(
+        routes,
+        "load_station_settings",
+        lambda _session_id, _file_key: saved_settings,
+    )
+
+    def save_settings(**kwargs) -> None:
+        saved_settings.update(kwargs)
+
+    monkeypatch.setattr(routes, "save_station_settings", save_settings)
+    response = TestClient(app).post(
+        "/settings",
+        data={
+            "railway_id": railway_id,
+            "station_index": str(parsed_railway.stations[0].index),
+            key: invalid_value,
+        },
+    )
+
+    assert response.status_code == 200
+    assert saved_settings["display_settings"]["train"][key] == expected

@@ -1,7 +1,8 @@
 
 import hashlib
-import secrets
 import re
+import secrets
+from decimal import Decimal, InvalidOperation
 
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -97,6 +98,28 @@ def _apply_station_settings(
 def _validated_color(value: object, default: str) -> str:
     color = str(value or "")
     return color.upper() if re.fullmatch(r"[0-9A-Fa-f]{6}", color) else default
+
+
+def _valid_choice(value: object, choices: tuple[str, ...]) -> str | None:
+    if isinstance(value, str) and value in choices:
+        return value
+    return None
+
+
+def _valid_train_row_height(value: object) -> float | None:
+    try:
+        height = Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+
+    if (
+        not height.is_finite()
+        or not Decimal("1") <= height <= Decimal("100")
+    ):
+        return None
+    if height * 2 != (height * 2).to_integral_value():
+        return None
+    return float(height)
 
 
 def _load_style_settings(
@@ -237,7 +260,11 @@ def _border_config_from_settings(settings: object) -> BorderConfig:
     return border
 
 
-def _display_config_from_settings(settings: dict) -> TimetableDisplayConfig:
+def _display_config_from_settings(
+    settings: dict,
+    *,
+    include_train_layout_settings: bool = True,
+) -> TimetableDisplayConfig:
     display_settings = settings.get("display_settings", {})
     if not isinstance(display_settings, dict):
         display_settings = {}
@@ -330,6 +357,40 @@ def _display_config_from_settings(settings: dict) -> TimetableDisplayConfig:
     train_settings = display_settings.get("train", {})
     if not isinstance(train_settings, dict):
         train_settings = {}
+    if include_train_layout_settings:
+        config.destination_position = (
+            _valid_choice(
+                train_settings.get("destination_position"),
+                ("top", "bottom"),
+            )
+            or config.destination_position
+        )
+        config.train_type_position = (
+            _valid_choice(
+                train_settings.get("train_type_position"),
+                ("top", "bottom"),
+            )
+            or config.train_type_position
+        )
+        config.metadata_order = (
+            _valid_choice(
+                train_settings.get("metadata_order"),
+                ("destination_first", "train_type_first"),
+            )
+            or config.metadata_order
+        )
+        config.train_upper_row_height = (
+            _valid_train_row_height(
+                train_settings.get("train_upper_row_height")
+            )
+            or config.train_upper_row_height
+        )
+        config.train_lower_row_height = (
+            _valid_train_row_height(
+                train_settings.get("train_lower_row_height")
+            )
+            or config.train_lower_row_height
+        )
     train_defaults = {
         "metadata_font_name": "源ノ角ゴシック JP",
         "metadata_font_size": 9,
@@ -611,6 +672,8 @@ def _render_page(
     if not isinstance(display_settings, dict):
         display_settings = {}
 
+    display_config = _display_config_from_settings(settings)
+
     header_display_settings = _load_style_settings(
         display_settings,
         "header",
@@ -709,6 +772,19 @@ def _render_page(
 
     train_display_settings.update(train_display_defaults)
     train_display_settings.update(saved_train_display)
+    train_display_settings.update(
+        {
+            "destination_position": display_config.destination_position,
+            "train_type_position": display_config.train_type_position,
+            "metadata_order": display_config.metadata_order,
+            "train_upper_row_height": (
+                display_config.train_upper_row_height
+            ),
+            "train_lower_row_height": (
+                display_config.train_lower_row_height
+            ),
+        }
+    )
 
     # フォントサイズを検証
     for key in ("metadata_font_size", "minute_font_size"):
@@ -1345,6 +1421,7 @@ async def save_settings(
 
     if not isinstance(display_settings, dict):
         display_settings = {}
+    existing_config = _display_config_from_settings(existing_settings)
 
     # 列車欄の表示設定を取得・保存する
     saved_train_display = display_settings.get("train", {})
@@ -1442,6 +1519,28 @@ async def save_settings(
     train_display_settings["show_destination"] = (
         form_data.get("show_destination") == "true"
     )
+
+    for key, choices in (
+        ("destination_position", ("top", "bottom")),
+        ("train_type_position", ("top", "bottom")),
+        (
+            "metadata_order",
+            ("destination_first", "train_type_first"),
+        ),
+    ):
+        submitted = form_data.get(key)
+        train_display_settings[key] = (
+            _valid_choice(submitted, choices)
+            or getattr(existing_config, key)
+        )
+
+    for key in ("train_upper_row_height", "train_lower_row_height"):
+        submitted = form_data.get(key)
+        train_display_settings[key] = (
+            _valid_train_row_height(submitted)
+            if submitted is not None
+            else None
+        ) or getattr(existing_config, key)
 
     display_settings["train"] = train_display_settings
     timetable_fill_defaults = {
@@ -2120,7 +2219,10 @@ async def export_excel(
     settings = load_station_settings(session_id, file_key)
     _apply_station_settings(railway, settings)
     timetable = generate_station_timetable(railway, station)
-    display_config = _display_config_from_settings(settings)
+    display_config = _display_config_from_settings(
+        settings,
+        include_train_layout_settings=False,
+    )
 
     with NamedTemporaryFile(suffix=".xlsx", delete=False) as output_file:
         output_path = Path(output_file.name)

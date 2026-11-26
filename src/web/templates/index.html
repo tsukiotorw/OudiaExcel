@@ -882,6 +882,55 @@
                                         分行のみ
                                     </option>
                                 </select>
+                                <label for="destination_position">行先の配置</label>
+                                <select
+                                    id="destination_position"
+                                    name="destination_position"
+                                >
+                                    <option value="top" {% if train_display_settings.destination_position == "top" %}selected{% endif %}>上段</option>
+                                    <option value="bottom" {% if train_display_settings.destination_position == "bottom" %}selected{% endif %}>下段</option>
+                                </select>
+
+                                <label for="train_type_position">列車種別の配置</label>
+                                <select
+                                    id="train_type_position"
+                                    name="train_type_position"
+                                >
+                                    <option value="top" {% if train_display_settings.train_type_position == "top" %}selected{% endif %}>上段</option>
+                                    <option value="bottom" {% if train_display_settings.train_type_position == "bottom" %}selected{% endif %}>下段</option>
+                                </select>
+
+                                <label for="metadata_order">同じ段に配置する場合の順序</label>
+                                <select
+                                    id="metadata_order"
+                                    name="metadata_order"
+                                >
+                                    <option value="destination_first" {% if train_display_settings.metadata_order == "destination_first" %}selected{% endif %}>行先→列車種別</option>
+                                    <option value="train_type_first" {% if train_display_settings.metadata_order == "train_type_first" %}selected{% endif %}>列車種別→行先</option>
+                                </select>
+
+                                <label for="train_upper_row_height">上段の高さ（pt）</label>
+                                <input
+                                    type="number"
+                                    id="train_upper_row_height"
+                                    name="train_upper_row_height"
+                                    min="1"
+                                    max="100"
+                                    step="0.5"
+                                    value="{{ train_display_settings.train_upper_row_height }}"
+                                >
+
+                                <label for="train_lower_row_height">下段の高さ（pt）</label>
+                                <input
+                                    type="number"
+                                    id="train_lower_row_height"
+                                    name="train_lower_row_height"
+                                    min="1"
+                                    max="100"
+                                    step="0.5"
+                                    value="{{ train_display_settings.train_lower_row_height }}"
+                                >
+
                                 <label>
                                     <input
                                         type="checkbox"
