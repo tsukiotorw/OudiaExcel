@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from itertools import product
+from types import MappingProxyType
+from typing import Mapping, TypeAlias
 
 from src.models.timetable import TimetableEntry, TimetableHour
 from src.timetable.display_config import TimetableDisplayConfig
@@ -8,6 +11,117 @@ from src.timetable.display_config import TimetableDisplayConfig
 
 EntryRow = list[str]
 EntryLayout = list[EntryRow]
+EntryLayoutPattern: TypeAlias = tuple[tuple[str, ...], ...]
+LayoutKey: TypeAlias = tuple[str, str, str, bool, bool]
+
+
+COMMON_ENTRY_LAYOUT_PATTERNS: Mapping[str, EntryLayoutPattern] = (
+    MappingProxyType({
+        "P1": ((), ("minute",)),
+        "P2": (("train_type",), ("minute",)),
+        "P3": (("destination",), ("minute",)),
+        "P4": (("destination", "train_type"), ("minute",)),
+        "P5": (("train_type", "destination"), ("minute",)),
+        "P6": ((), ("minute",), ("train_type",)),
+        "P7": (("destination",), ("minute",), ("train_type",)),
+        "P8": ((), ("minute",), ("destination",)),
+        "P9": (("train_type",), ("minute",), ("destination",)),
+        "P10": ((), ("destination", "train_type"), ("minute",)),
+        "P11": ((), ("train_type", "destination"), ("minute",)),
+    })
+)
+
+
+def _pattern_id_for_key(key: LayoutKey) -> str:
+    (
+        destination_position,
+        train_type_position,
+        metadata_order,
+        show_destination,
+        show_train_type,
+    ) = key
+    destination_position = (
+        destination_position
+        if destination_position in {"top", "bottom"}
+        else "top"
+    )
+    train_type_position = (
+        train_type_position
+        if train_type_position in {"top", "bottom"}
+        else "top"
+    )
+    if show_destination and show_train_type:
+        if destination_position == train_type_position:
+            order = (
+                ("destination", "train_type")
+                if metadata_order == "destination_first"
+                else ("train_type", "destination")
+            )
+            if destination_position == "top":
+                return "P4" if order[0] == "destination" else "P5"
+            return "P10" if order[0] == "destination" else "P11"
+        if destination_position == "top":
+            return "P7"
+        return "P9"
+    if show_destination:
+        return "P3" if destination_position == "top" else "P8"
+    if show_train_type:
+        return "P2" if train_type_position == "top" else "P6"
+    return "P1"
+
+
+ENTRY_LAYOUT_PATTERN_IDS: Mapping[LayoutKey, str] = MappingProxyType({
+    (
+        destination_position,
+        train_type_position,
+        metadata_order,
+        show_destination,
+        show_train_type,
+    ): _pattern_id_for_key((
+        destination_position,
+        train_type_position,
+        metadata_order,
+        show_destination,
+        show_train_type,
+    ))
+    for destination_position, train_type_position, metadata_order,
+    show_destination, show_train_type in product(
+        ("top", "bottom"),
+        ("top", "bottom"),
+        ("destination_first", "train_type_first"),
+        (False, True),
+        (False, True),
+    )
+})
+
+
+def get_common_entry_layout(
+    config: TimetableDisplayConfig,
+    show_destination: bool,
+    show_train_type: bool,
+) -> tuple[str, EntryLayout]:
+    """Return the shared pattern ID and a mutable layout copy."""
+    key = (
+        config.destination_position,
+        config.train_type_position,
+        config.metadata_order,
+        show_destination,
+        show_train_type,
+    )
+    normalized_key = (
+        key[0] if key[0] in {"top", "bottom"} else "top",
+        key[1] if key[1] in {"top", "bottom"} else "top",
+        (
+            key[2]
+            if key[2] in {"destination_first", "train_type_first"}
+            else "train_type_first"
+        ),
+        key[3],
+        key[4],
+    )
+    pattern_id = ENTRY_LAYOUT_PATTERN_IDS[normalized_key]
+    layout = [list(row) for row in COMMON_ENTRY_LAYOUT_PATTERNS[pattern_id]]
+    return pattern_id, layout
 
 
 @dataclass(frozen=True)

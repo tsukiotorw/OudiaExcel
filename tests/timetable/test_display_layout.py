@@ -1,10 +1,129 @@
+from dataclasses import replace
+from itertools import product
+
 from src.application.station_timetable import generate_station_timetable
+from src.models.station import Station
+from src.models.train_type import TrainType
 from src.models.timetable import TimetableHour
 from src.timetable.display_config import TimetableDisplayConfig
 from src.timetable.display_layout import (
+    COMMON_ENTRY_LAYOUT_PATTERNS,
+    ENTRY_LAYOUT_PATTERN_IDS,
+    get_common_entry_layout,
     get_entry_layout,
     merge_timetable_hours,
 )
+
+
+def test_common_layout_mapping_covers_all_32_combinations(
+    parsed_railway,
+) -> None:
+    timetable = generate_station_timetable(
+        parsed_railway,
+        parsed_railway.stations[1],
+    )
+    source = timetable.down[0].entries[0]
+    combinations = product(
+        ("top", "bottom"),
+        ("top", "bottom"),
+        ("destination_first", "train_type_first"),
+        (False, True),
+        (False, True),
+    )
+    for (
+        destination_position,
+        train_type_position,
+        metadata_order,
+        show_dest,
+        show_type,
+    ) in combinations:
+        entry = replace(
+            source,
+            destination=Station(index=source.destination.index, name="行先"),
+            train_type=TrainType(
+                index=source.train_type.index,
+                name="種別",
+                short_name="略",
+            ),
+        )
+        config = TimetableDisplayConfig(
+            destination_position=destination_position,
+            train_type_position=train_type_position,
+            metadata_order=metadata_order,
+            show_destination=show_dest,
+            use_train_type_short_name=True,
+            train_type_column_visible={source.train_type.index: show_type},
+        )
+        key = (
+            destination_position,
+            train_type_position,
+            metadata_order,
+            show_dest,
+            show_type,
+        )
+        pattern_id, layout = get_common_entry_layout(config, show_dest, show_type)
+
+        assert len(ENTRY_LAYOUT_PATTERN_IDS) == 32
+        assert pattern_id == ENTRY_LAYOUT_PATTERN_IDS[key]
+        expected_pattern = [
+            list(row) for row in COMMON_ENTRY_LAYOUT_PATTERNS[pattern_id]
+        ]
+        assert layout == expected_pattern
+        assert layout == get_entry_layout(entry, config)
+
+
+def test_common_layout_preserves_entry_visibility_rules(parsed_railway) -> None:
+    timetable = generate_station_timetable(
+        parsed_railway,
+        parsed_railway.stations[1],
+    )
+    source = timetable.down[0].entries[0]
+    config = TimetableDisplayConfig(use_train_type_short_name=True)
+
+    cases = [
+        (
+            Station(source.destination.index, "行先", is_no_mark=True),
+            TrainType(source.train_type.index, "種別"),
+            False,
+            True,
+        ),
+        (
+            Station(source.destination.index, "", short_name=""),
+            TrainType(source.train_type.index, "種別"),
+            False,
+            True,
+        ),
+        (
+            Station(source.destination.index, "行先"),
+            TrainType(source.train_type.index, "", short_name=""),
+            True,
+            False,
+        ),
+        (
+            Station(source.destination.index, "行先"),
+            TrainType(source.train_type.index, "正式", short_name="略"),
+            True,
+            True,
+        ),
+        (
+            Station(source.destination.index, "行先"),
+            TrainType(source.train_type.index, "正式", short_name=""),
+            True,
+            True,
+        ),
+    ]
+    for destination, train_type, expected_destination, expected_type in cases:
+        entry = replace(source, destination=destination, train_type=train_type)
+        config.show_destination = True
+        config.train_type_column_visible = {train_type.index: True}
+        config.use_train_type_short_name = True
+        pattern_id, layout = get_common_entry_layout(
+            config,
+            expected_destination,
+            expected_type,
+        )
+        assert layout == get_entry_layout(entry, config)
+        assert pattern_id in COMMON_ENTRY_LAYOUT_PATTERNS
 
 
 def test_entry_layout_supports_independent_positions_and_order(
